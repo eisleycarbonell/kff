@@ -10,7 +10,8 @@ import {
     Group,
     Button,
     Transition, 
-    Flex
+    Flex,
+    Center
 } from '@mantine/core';
 import classes from '@/styles/login.module.css';;
 import { useMounted } from '@mantine/hooks';
@@ -24,6 +25,7 @@ export function Login() {
 
     return (
         <>
+        <Center h={'70vh'}>
             <Transition
                 mounted={mounted}
                 transition="pop"
@@ -32,12 +34,12 @@ export function Login() {
                 enterDelay={500}
             >
             {(styles) =>
-                <Container size={420} py={40} style={styles}>
+                <Container py={0} style={styles}>
                     <Title ta="center" className={classes.title}>
                         Kusina Filipino
                     </Title>
 
-                    <Paper withBorder shadow="md" p={30} mt={30} radius="md">
+                    <Paper withBorder shadow="md" p={30} mt={10} radius="md" w={350}>
                         <TextInput label="User" placeholder="Username" required />
                         <PasswordInput label="Password" placeholder="Password" required mt="md" />
                         <Group justify="space-between" mt="lg">
@@ -53,6 +55,7 @@ export function Login() {
                 </Container>
             }
             </Transition>
+        </Center>
         </>
     );
 }

@@ -2,13 +2,13 @@
 import type { ReactElement } from 'react'
 import Layout from '../components/layout'
 import type { NextPageWithLayout } from './_app'
-import PurchaseOrderTable from '../components/purchase-order-table'
+import Table from '../components/purchase-order/table'
 import { useMantineColorScheme } from '@mantine/core'
  
 const Page: NextPageWithLayout = () => {
-    const globalTheme = useMantineColorScheme();
+	const globalTheme = useMantineColorScheme();
 
-  	return <PurchaseOrderTable feed={{theme: globalTheme}} />
+	return <Table feed={{theme: globalTheme}} />
 }
  
 Page.getLayout = function getLayout(page: ReactElement) {

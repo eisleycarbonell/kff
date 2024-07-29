@@ -1,5 +1,5 @@
 import styles from "@/styles/Home.module.css";
-import { Login } from '../components/login-modal';
+import { Login } from '../components/login';
 import { NextPage } from "next";
 import classes from '@/styles/login.module.css';import { Flex } from "@mantine/core";
 import { ColorSchemeToggle } from "@/components/colorSchemeToggle";

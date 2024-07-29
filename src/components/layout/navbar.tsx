@@ -91,6 +91,7 @@ export default function Navbar() {
             onClick={() => getLink(item)}
             variant="subtle"
             defaultOpened={childOpen}
+            color="green"
         >
             {item.child?.map((item, index) => (
                 <NavLink
@@ -100,6 +101,7 @@ export default function Navbar() {
                     label={item.label}
                     onClick={() => getLink(item)}
                     variant="subtle"
+                    color="green"
                 />
             ))}
         </NavLink>

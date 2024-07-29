@@ -7,66 +7,35 @@ import {
 import { createTheme, ThemeProvider } from '@mui/material';
 import { useMantineColorScheme } from '@mantine/core';
 
-type Person = {
-    name: {
-        firstName: string;
-        lastName: string;
-    };
-    address: string;
-    city: string;
-    state: string;
+type PurchaseOrder = {
+    supplierName: '',
+    itemCode: '',
+    qty: '',
+    status: '',
+    date: '',
+    total: ''
 };
 
-const data: Person[] = [
+const data: PurchaseOrder[] = [
     {
-        name: {
-        firstName: 'John',
-        lastName: 'Doe',
-        },
-        address: '261 Erdman Ford',
-        city: 'East Daphne',
-        state: 'Kentucky',
+        supplierName: '',
+        itemCode: '',
+        qty: '',
+        status: '',
+        date: '',
+        total: ''
     },
     {
-        name: {
-        firstName: 'Jane',
-        lastName: 'Doe',
-        },
-        address: '769 Dominic Grove',
-        city: 'Columbus',
-        state: 'Ohio',
-    },
-    {
-        name: {
-        firstName: 'Joe',
-        lastName: 'Doe',
-        },
-        address: '566 Brakus Inlet',
-        city: 'South Linda',
-        state: 'West Virginia',
-    },
-    {
-        name: {
-        firstName: 'Kevin',
-        lastName: 'Vandy',
-        },
-        address: '722 Emie Stream',
-        city: 'Lincoln',
-        state: 'Nebraska',
-    },
-    {
-        name: {
-        firstName: 'Joshua',
-        lastName: 'Rolluffs',
-        },
-        address: '32188 Larkin Turnpike',
-        city: 'Omaha',
-        state: 'Nebraska',
+        supplierName: '',
+        itemCode: '',
+        qty: '',
+        status: '',
+        date: '',
+        total: ''
     },
 ];
 
 const table = ({feed}) => {
-    console.log(feed)
 
     const baseBackgroundColor =
     feed.theme.colorScheme === 'dark'
@@ -83,25 +52,35 @@ const table = ({feed}) => {
         [feed.theme],
     );
 
-    const columns = useMemo<MRT_ColumnDef<Person>[]>(() => 
+    const columns = useMemo<MRT_ColumnDef<PurchaseOrder>[]>(() => 
         [
             {
-                accessorKey: 'name.firstName',
+                accessorKey: 'suppierName',
                 header: 'Supplier',
                 size: 150,
             },
             {
-                accessorKey: 'name.lastName',
+                accessorKey: 'itemCode',
+                header: 'Item Code',
+                size: 150,
+            },
+            {
+                accessorKey: 'qty',
+                header: 'Quantity',
+                size: 150,
+            },
+            {
+                accessorKey: 'status',
                 header: 'Status',
                 size: 150,
             },
             {
-                accessorKey: 'Date',
+                accessorKey: 'date',
                 header: 'Date',
                 size: 200,
             },
             {
-                accessorKey: 'Grand Total',
+                accessorKey: 'total',
                 header: 'Grand Total',
                 size: 150,
             },

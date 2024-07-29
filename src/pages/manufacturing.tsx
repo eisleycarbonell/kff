@@ -2,7 +2,7 @@
 import type { ReactElement } from 'react'
 import Layout from '../components/layout'
 import type { NextPageWithLayout } from './_app'
-import SupplierTable from '../components/supplier-table'
+import SupplierTable from '../components/supplier'
  
 const Page: NextPageWithLayout = () => {
   	return <SupplierTable/>
