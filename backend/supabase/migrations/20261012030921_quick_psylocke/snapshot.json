@@ -1,0 +1,5891 @@
+{
+  "version": "8",
+  "dialect": "postgres",
+  "id": "5b80a714-c85a-4576-ae61-ec18036c6ed5",
+  "prevIds": [
+    "cd6a9467-d055-4d7b-b9ab-e52719eb173e"
+  ],
+  "ddl": [
+    {
+      "values": [
+        "Raw Material - Bulk",
+        "Packaging - Hardware",
+        "Packaging - Label",
+        "Finished Good"
+      ],
+      "name": "item_type_enum",
+      "entityType": "enums",
+      "schema": "public"
+    },
+    {
+      "values": [
+        "Warehouse",
+        "Packing",
+        "Branch",
+        "Store",
+        "Quarantine",
+        "Scrap",
+        "In Transit"
+      ],
+      "name": "location_type_enum",
+      "entityType": "enums",
+      "schema": "public"
+    },
+    {
+      "values": [
+        "Draft",
+        "Planned",
+        "In Progress",
+        "Completed",
+        "Cancelled"
+      ],
+      "name": "packing_order_status_enum",
+      "entityType": "enums",
+      "schema": "public"
+    },
+    {
+      "values": [
+        "Draft",
+        "Sent",
+        "Partially Received",
+        "Completed",
+        "Cancelled"
+      ],
+      "name": "po_status_enum",
+      "entityType": "enums",
+      "schema": "public"
+    },
+    {
+      "values": [
+        "Quarantine",
+        "Approved",
+        "Rejected",
+        "Expired"
+      ],
+      "name": "qc_status_enum",
+      "entityType": "enums",
+      "schema": "public"
+    },
+    {
+      "values": [
+        "Material Defect",
+        "Packing Damage",
+        "Spoilage",
+        "Expired",
+        "Inventory Adjustment",
+        "Other"
+      ],
+      "name": "scrap_category_enum",
+      "entityType": "enums",
+      "schema": "public"
+    },
+    {
+      "values": [
+        "Receive",
+        "Consume",
+        "Produce",
+        "Transfer",
+        "Scrap",
+        "Adjustment"
+      ],
+      "name": "transaction_type_enum",
+      "entityType": "enums",
+      "schema": "public"
+    },
+    {
+      "values": [
+        "Draft",
+        "In Transit",
+        "Completed",
+        "Cancelled"
+      ],
+      "name": "transfer_status_enum",
+      "entityType": "enums",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "bill_of_materials",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "inventory_reservations",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "inventory_stock",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "inventory_transactions",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "item_packaging",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "items",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "locations",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "lots",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "packing_order_materials",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "packing_orders",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "purchase_order_lines",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "purchase_orders",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "roles",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "scrap_reason_codes",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "stock_transfer_lines",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "stock_transfers",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "supplier_items",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "suppliers",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "uom_classes",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "uoms",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "users",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": {
+        "type": "byDefault",
+        "name": "bill_of_materials_bom_id_seq",
+        "increment": "1",
+        "startWith": "1",
+        "minValue": "1",
+        "maxValue": "2147483647",
+        "cache": 1,
+        "cycle": false
+      },
+      "name": "bom_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "bill_of_materials"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "parent_item_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "bill_of_materials"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "component_item_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "bill_of_materials"
+    },
+    {
+      "type": "numeric(14,6)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "quantity",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "bill_of_materials"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "uom_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "bill_of_materials"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "created_by",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "bill_of_materials"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "bill_of_materials"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "updated_by",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "bill_of_materials"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "bill_of_materials"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": {
+        "type": "byDefault",
+        "name": "inventory_reservations_reservation_id_seq",
+        "increment": "1",
+        "startWith": "1",
+        "minValue": "1",
+        "maxValue": "2147483647",
+        "cache": 1,
+        "cycle": false
+      },
+      "name": "reservation_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "inventory_reservations"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "packing_order_material_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "inventory_reservations"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "item_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "inventory_reservations"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "lot_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "inventory_reservations"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "location_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "inventory_reservations"
+    },
+    {
+      "type": "numeric(14,4)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "qty_reserved",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "inventory_reservations"
+    },
+    {
+      "type": "numeric(14,4)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'0'",
+      "generated": null,
+      "identity": null,
+      "name": "qty_consumed",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "inventory_reservations"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "released_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "inventory_reservations"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "created_by",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "inventory_reservations"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "inventory_reservations"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "updated_by",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "inventory_reservations"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "inventory_reservations"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": {
+        "type": "byDefault",
+        "name": "inventory_stock_stock_id_seq",
+        "increment": "1",
+        "startWith": "1",
+        "minValue": "1",
+        "maxValue": "2147483647",
+        "cache": 1,
+        "cycle": false
+      },
+      "name": "stock_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "inventory_stock"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "item_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "inventory_stock"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "lot_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "inventory_stock"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "location_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "inventory_stock"
+    },
+    {
+      "type": "numeric(14,4)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'0'",
+      "generated": null,
+      "identity": null,
+      "name": "qty_on_hand",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "inventory_stock"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "last_updated",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "inventory_stock"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": {
+        "type": "byDefault",
+        "name": "inventory_transactions_transaction_id_seq",
+        "increment": "1",
+        "startWith": "1",
+        "minValue": "1",
+        "maxValue": "2147483647",
+        "cache": 1,
+        "cycle": false
+      },
+      "name": "transaction_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "inventory_transactions"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "item_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "inventory_transactions"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "lot_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "inventory_transactions"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "location_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "inventory_transactions"
+    },
+    {
+      "type": "numeric(14,4)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "qty_change",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "inventory_transactions"
+    },
+    {
+      "type": "transaction_type_enum",
+      "typeSchema": "public",
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "transaction_type",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "inventory_transactions"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "packing_order_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "inventory_transactions"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "reason_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "inventory_transactions"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "po_line_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "inventory_transactions"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "transfer_line_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "inventory_transactions"
+    },
+    {
+      "type": "varchar(60)",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "reference_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "inventory_transactions"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "authorized_by_user_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "inventory_transactions"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "inventory_transactions"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": {
+        "type": "byDefault",
+        "name": "item_packaging_packaging_id_seq",
+        "increment": "1",
+        "startWith": "1",
+        "minValue": "1",
+        "maxValue": "2147483647",
+        "cache": 1,
+        "cycle": false
+      },
+      "name": "packaging_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "item_packaging"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "item_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "item_packaging"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "uom_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "item_packaging"
+    },
+    {
+      "type": "numeric(14,4)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "base_qty",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "item_packaging"
+    },
+    {
+      "type": "varchar(50)",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "barcode",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "item_packaging"
+    },
+    {
+      "type": "numeric(12,4)",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "gross_weight_g",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "item_packaging"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "created_by",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "item_packaging"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "item_packaging"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "updated_by",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "item_packaging"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "item_packaging"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": {
+        "type": "byDefault",
+        "name": "items_item_id_seq",
+        "increment": "1",
+        "startWith": "1",
+        "minValue": "1",
+        "maxValue": "2147483647",
+        "cache": 1,
+        "cycle": false
+      },
+      "name": "item_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "items"
+    },
+    {
+      "type": "varchar(50)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "sku",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "items"
+    },
+    {
+      "type": "varchar(120)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "name",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "items"
+    },
+    {
+      "type": "item_type_enum",
+      "typeSchema": "public",
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "item_type",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "items"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "primary_uom_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "items"
+    },
+    {
+      "type": "numeric(12,4)",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "net_weight_g",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "items"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "shelf_life_days",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "items"
+    },
+    {
+      "type": "boolean",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "false",
+      "generated": null,
+      "identity": null,
+      "name": "requires_qc",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "items"
+    },
+    {
+      "type": "numeric(14,4)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'0'",
+      "generated": null,
+      "identity": null,
+      "name": "unit_cost",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "items"
+    },
+    {
+      "type": "boolean",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "true",
+      "generated": null,
+      "identity": null,
+      "name": "is_active",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "items"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "created_by",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "items"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "items"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "updated_by",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "items"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "items"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": {
+        "type": "byDefault",
+        "name": "locations_location_id_seq",
+        "increment": "1",
+        "startWith": "1",
+        "minValue": "1",
+        "maxValue": "2147483647",
+        "cache": 1,
+        "cycle": false
+      },
+      "name": "location_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "locations"
+    },
+    {
+      "type": "varchar(30)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "code",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "locations"
+    },
+    {
+      "type": "varchar(100)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "name",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "locations"
+    },
+    {
+      "type": "location_type_enum",
+      "typeSchema": "public",
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "location_type",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "locations"
+    },
+    {
+      "type": "boolean",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "true",
+      "generated": null,
+      "identity": null,
+      "name": "is_active",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "locations"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "created_by",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "locations"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "locations"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "updated_by",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "locations"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "locations"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": {
+        "type": "byDefault",
+        "name": "lots_lot_id_seq",
+        "increment": "1",
+        "startWith": "1",
+        "minValue": "1",
+        "maxValue": "2147483647",
+        "cache": 1,
+        "cycle": false
+      },
+      "name": "lot_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "lots"
+    },
+    {
+      "type": "varchar(100)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "lot_number",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "lots"
+    },
+    {
+      "type": "varchar(100)",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "supplier_lot_number",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "lots"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "item_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "lots"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "po_line_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "lots"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "packing_order_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "lots"
+    },
+    {
+      "type": "date",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "manufacture_date",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "lots"
+    },
+    {
+      "type": "date",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "expiration_date",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "lots"
+    },
+    {
+      "type": "qc_status_enum",
+      "typeSchema": "public",
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'Quarantine'",
+      "generated": null,
+      "identity": null,
+      "name": "qc_status",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "lots"
+    },
+    {
+      "type": "numeric(14,4)",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "unit_cost",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "lots"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "created_by",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "lots"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "lots"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "updated_by",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "lots"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "lots"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": {
+        "type": "byDefault",
+        "name": "packing_order_materials_packing_order_material_id_seq",
+        "increment": "1",
+        "startWith": "1",
+        "minValue": "1",
+        "maxValue": "2147483647",
+        "cache": 1,
+        "cycle": false
+      },
+      "name": "packing_order_material_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "packing_order_materials"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "packing_order_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "packing_order_materials"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "item_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "packing_order_materials"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "uom_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "packing_order_materials"
+    },
+    {
+      "type": "numeric(14,4)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "required_qty",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "packing_order_materials"
+    },
+    {
+      "type": "numeric(14,4)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'0'",
+      "generated": null,
+      "identity": null,
+      "name": "consumed_qty",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "packing_order_materials"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "created_by",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "packing_order_materials"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "packing_order_materials"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "updated_by",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "packing_order_materials"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "packing_order_materials"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": {
+        "type": "byDefault",
+        "name": "packing_orders_packing_order_id_seq",
+        "increment": "1",
+        "startWith": "1",
+        "minValue": "1",
+        "maxValue": "2147483647",
+        "cache": 1,
+        "cycle": false
+      },
+      "name": "packing_order_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "packing_orders"
+    },
+    {
+      "type": "varchar(30)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "packing_order_number",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "packing_orders"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "item_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "packing_orders"
+    },
+    {
+      "type": "numeric(14,4)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "target_qty",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "packing_orders"
+    },
+    {
+      "type": "numeric(14,4)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'0'",
+      "generated": null,
+      "identity": null,
+      "name": "actual_qty",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "packing_orders"
+    },
+    {
+      "type": "packing_order_status_enum",
+      "typeSchema": "public",
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'Draft'",
+      "generated": null,
+      "identity": null,
+      "name": "status",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "packing_orders"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "source_location_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "packing_orders"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "destination_location_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "packing_orders"
+    },
+    {
+      "type": "date",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "scheduled_date",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "packing_orders"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "started_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "packing_orders"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "completed_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "packing_orders"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "notes",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "packing_orders"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "created_by",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "packing_orders"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "packing_orders"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "updated_by",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "packing_orders"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "packing_orders"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": {
+        "type": "byDefault",
+        "name": "purchase_order_lines_po_line_id_seq",
+        "increment": "1",
+        "startWith": "1",
+        "minValue": "1",
+        "maxValue": "2147483647",
+        "cache": 1,
+        "cycle": false
+      },
+      "name": "po_line_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "purchase_order_lines"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "po_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "purchase_order_lines"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "item_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "purchase_order_lines"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "uom_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "purchase_order_lines"
+    },
+    {
+      "type": "numeric(14,4)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "qty_ordered",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "purchase_order_lines"
+    },
+    {
+      "type": "numeric(14,4)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'0'",
+      "generated": null,
+      "identity": null,
+      "name": "qty_received",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "purchase_order_lines"
+    },
+    {
+      "type": "numeric(14,4)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "unit_price",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "purchase_order_lines"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "created_by",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "purchase_order_lines"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "purchase_order_lines"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "updated_by",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "purchase_order_lines"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "purchase_order_lines"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": {
+        "type": "byDefault",
+        "name": "purchase_orders_po_id_seq",
+        "increment": "1",
+        "startWith": "1",
+        "minValue": "1",
+        "maxValue": "2147483647",
+        "cache": 1,
+        "cycle": false
+      },
+      "name": "po_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "purchase_orders"
+    },
+    {
+      "type": "varchar(30)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "po_number",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "purchase_orders"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "supplier_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "purchase_orders"
+    },
+    {
+      "type": "po_status_enum",
+      "typeSchema": "public",
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'Draft'",
+      "generated": null,
+      "identity": null,
+      "name": "status",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "purchase_orders"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "order_date",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "purchase_orders"
+    },
+    {
+      "type": "date",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "expected_delivery_date",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "purchase_orders"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "notes",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "purchase_orders"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "created_by",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "purchase_orders"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "purchase_orders"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "updated_by",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "purchase_orders"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "purchase_orders"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": {
+        "type": "byDefault",
+        "name": "roles_role_id_seq",
+        "increment": "1",
+        "startWith": "1",
+        "minValue": "1",
+        "maxValue": "2147483647",
+        "cache": 1,
+        "cycle": false
+      },
+      "name": "role_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "roles"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "name",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "roles"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "description",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "roles"
+    },
+    {
+      "type": "jsonb",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'{}'",
+      "generated": null,
+      "identity": null,
+      "name": "settings",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "roles"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "created_by",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "roles"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "roles"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "updated_by",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "roles"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "roles"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": {
+        "type": "byDefault",
+        "name": "scrap_reason_codes_reason_id_seq",
+        "increment": "1",
+        "startWith": "1",
+        "minValue": "1",
+        "maxValue": "2147483647",
+        "cache": 1,
+        "cycle": false
+      },
+      "name": "reason_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "scrap_reason_codes"
+    },
+    {
+      "type": "varchar(50)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "code_name",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "scrap_reason_codes"
+    },
+    {
+      "type": "scrap_category_enum",
+      "typeSchema": "public",
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "category",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "scrap_reason_codes"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "description",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "scrap_reason_codes"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "created_by",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "scrap_reason_codes"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "scrap_reason_codes"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "updated_by",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "scrap_reason_codes"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "scrap_reason_codes"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": {
+        "type": "byDefault",
+        "name": "stock_transfer_lines_transfer_line_id_seq",
+        "increment": "1",
+        "startWith": "1",
+        "minValue": "1",
+        "maxValue": "2147483647",
+        "cache": 1,
+        "cycle": false
+      },
+      "name": "transfer_line_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "stock_transfer_lines"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "transfer_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "stock_transfer_lines"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "item_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "stock_transfer_lines"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "lot_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "stock_transfer_lines"
+    },
+    {
+      "type": "numeric(14,4)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "qty_requested",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "stock_transfer_lines"
+    },
+    {
+      "type": "numeric(14,4)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'0'",
+      "generated": null,
+      "identity": null,
+      "name": "qty_shipped",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "stock_transfer_lines"
+    },
+    {
+      "type": "numeric(14,4)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'0'",
+      "generated": null,
+      "identity": null,
+      "name": "qty_received",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "stock_transfer_lines"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "created_by",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "stock_transfer_lines"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "stock_transfer_lines"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "updated_by",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "stock_transfer_lines"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "stock_transfer_lines"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": {
+        "type": "byDefault",
+        "name": "stock_transfers_transfer_id_seq",
+        "increment": "1",
+        "startWith": "1",
+        "minValue": "1",
+        "maxValue": "2147483647",
+        "cache": 1,
+        "cycle": false
+      },
+      "name": "transfer_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "stock_transfers"
+    },
+    {
+      "type": "varchar(30)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "transfer_number",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "stock_transfers"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "source_location_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "stock_transfers"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "destination_location_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "stock_transfers"
+    },
+    {
+      "type": "transfer_status_enum",
+      "typeSchema": "public",
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'Draft'",
+      "generated": null,
+      "identity": null,
+      "name": "status",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "stock_transfers"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "requested_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "stock_transfers"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "dispatched_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "stock_transfers"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "received_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "stock_transfers"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "notes",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "stock_transfers"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "created_by",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "stock_transfers"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "stock_transfers"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "updated_by",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "stock_transfers"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "stock_transfers"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": {
+        "type": "byDefault",
+        "name": "supplier_items_supplier_item_id_seq",
+        "increment": "1",
+        "startWith": "1",
+        "minValue": "1",
+        "maxValue": "2147483647",
+        "cache": 1,
+        "cycle": false
+      },
+      "name": "supplier_item_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "supplier_items"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "supplier_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "supplier_items"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "item_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "supplier_items"
+    },
+    {
+      "type": "varchar(100)",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "supplier_item_code",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "supplier_items"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "default_uom_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "supplier_items"
+    },
+    {
+      "type": "numeric(14,4)",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "default_price",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "supplier_items"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "lead_time_days",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "supplier_items"
+    },
+    {
+      "type": "boolean",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "false",
+      "generated": null,
+      "identity": null,
+      "name": "is_preferred",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "supplier_items"
+    },
+    {
+      "type": "boolean",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "true",
+      "generated": null,
+      "identity": null,
+      "name": "is_active",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "supplier_items"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "created_by",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "supplier_items"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "supplier_items"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "updated_by",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "supplier_items"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "supplier_items"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": {
+        "type": "byDefault",
+        "name": "suppliers_supplier_id_seq",
+        "increment": "1",
+        "startWith": "1",
+        "minValue": "1",
+        "maxValue": "2147483647",
+        "cache": 1,
+        "cycle": false
+      },
+      "name": "supplier_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "suppliers"
+    },
+    {
+      "type": "varchar(100)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "name",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "suppliers"
+    },
+    {
+      "type": "varchar(100)",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "email",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "suppliers"
+    },
+    {
+      "type": "boolean",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "true",
+      "generated": null,
+      "identity": null,
+      "name": "is_active",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "suppliers"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "created_by",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "suppliers"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "suppliers"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "updated_by",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "suppliers"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "suppliers"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": {
+        "type": "byDefault",
+        "name": "uom_classes_uom_class_id_seq",
+        "increment": "1",
+        "startWith": "1",
+        "minValue": "1",
+        "maxValue": "2147483647",
+        "cache": 1,
+        "cycle": false
+      },
+      "name": "uom_class_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "uom_classes"
+    },
+    {
+      "type": "varchar(30)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "name",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "uom_classes"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "created_by",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "uom_classes"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "uom_classes"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "updated_by",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "uom_classes"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "uom_classes"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": {
+        "type": "byDefault",
+        "name": "uoms_uom_id_seq",
+        "increment": "1",
+        "startWith": "1",
+        "minValue": "1",
+        "maxValue": "2147483647",
+        "cache": 1,
+        "cycle": false
+      },
+      "name": "uom_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "uoms"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "uom_class_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "uoms"
+    },
+    {
+      "type": "varchar(20)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "name",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "uoms"
+    },
+    {
+      "type": "numeric(18,8)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "factor_to_base",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "uoms"
+    },
+    {
+      "type": "boolean",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "false",
+      "generated": null,
+      "identity": null,
+      "name": "is_base",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "uoms"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "created_by",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "uoms"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "uoms"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "updated_by",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "uoms"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "uoms"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": {
+        "type": "byDefault",
+        "name": "users_user_id_seq",
+        "increment": "1",
+        "startWith": "1",
+        "minValue": "1",
+        "maxValue": "2147483647",
+        "cache": 1,
+        "cycle": false
+      },
+      "name": "user_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "users"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "first_name",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "users"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "middle_name",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "users"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "last_name",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "users"
+    },
+    {
+      "type": "date",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "date_of_birth",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "users"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "avatar_url",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "users"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "mobile_number",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "users"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "address",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "users"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "email",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "users"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "password_hash",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "users"
+    },
+    {
+      "type": "boolean",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "false",
+      "generated": null,
+      "identity": null,
+      "name": "is_email_verified",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "users"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "role_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "users"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "last_login_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "users"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "deleted_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "users"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "created_by",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "users"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "users"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "updated_by",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "users"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "users"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "uom_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "bom_uom_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "bill_of_materials"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "component_item_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "bom_component_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "bill_of_materials"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "item_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "location_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "reservation_item_location_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "inventory_reservations"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "lot_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "reservation_lot_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "inventory_reservations"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "lot_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "location_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": "\"released_at\" is null",
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "reservation_active_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "inventory_reservations"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "item_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "location_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "stock_item_location_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "inventory_stock"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "location_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "stock_location_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "inventory_stock"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "lot_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "created_at",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "txn_lot_created_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "inventory_transactions"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "item_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "created_at",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "txn_item_created_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "inventory_transactions"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "location_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "created_at",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "txn_location_created_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "inventory_transactions"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "packing_order_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "txn_packing_order_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "inventory_transactions"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "po_line_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "txn_po_line_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "inventory_transactions"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "transfer_line_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "txn_transfer_line_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "inventory_transactions"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "reason_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "txn_reason_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "inventory_transactions"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "authorized_by_user_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "txn_user_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "inventory_transactions"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "uom_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "item_packaging_uom_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "item_packaging"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "item_type",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "items_type_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "items"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "primary_uom_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "items_primary_uom_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "items"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "location_type",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "locations_type_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "locations"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "item_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "lots_item_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "lots"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "supplier_lot_number",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "lots_supplier_lot_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "lots"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "po_line_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "lots_po_line_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "lots"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "packing_order_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "lots_packing_order_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "lots"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "expiration_date",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "lots_expiry_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "lots"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "qc_status",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "lots_qc_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "lots"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "uom_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "packing_material_uom_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "packing_order_materials"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "item_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "packing_material_item_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "packing_order_materials"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "item_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "packing_item_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "packing_orders"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "source_location_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "packing_source_location_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "packing_orders"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "destination_location_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "packing_destination_location_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "packing_orders"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "status",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "packing_status_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "packing_orders"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "scheduled_date",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "packing_scheduled_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "packing_orders"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "item_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "pol_item_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "purchase_order_lines"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "uom_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "pol_uom_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "purchase_order_lines"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "supplier_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "po_supplier_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "purchase_orders"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "status",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "po_status_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "purchase_orders"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "order_date",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "po_order_date_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "purchase_orders"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "item_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "transfer_line_item_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "stock_transfer_lines"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "lot_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "transfer_line_lot_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "stock_transfer_lines"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "source_location_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "transfer_source_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "stock_transfers"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "destination_location_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "transfer_destination_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "stock_transfers"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "status",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "transfer_status_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "stock_transfers"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "requested_at",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "transfer_requested_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "stock_transfers"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "item_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": true,
+      "where": "\"is_preferred\" and \"is_active\"",
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "supplier_items_one_preferred_per_item_uq",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "supplier_items"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "item_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "supplier_items_item_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "supplier_items"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "default_uom_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "supplier_items_uom_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "supplier_items"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "uom_class_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": true,
+      "where": "\"is_base\"",
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "uoms_one_base_per_class_uq",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "uoms"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "uom_class_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "uoms_class_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "uoms"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "lower(\"email\")",
+          "isExpression": true,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": true,
+      "where": "\"deleted_at\" is null",
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "users_email_active_uq",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "users"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "role_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "users_role_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "users"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "parent_item_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "items",
+      "columnsTo": [
+        "item_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "bill_of_materials_parent_item_id_items_item_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "bill_of_materials"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "component_item_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "items",
+      "columnsTo": [
+        "item_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "bill_of_materials_component_item_id_items_item_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "bill_of_materials"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "uom_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "uoms",
+      "columnsTo": [
+        "uom_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "bill_of_materials_uom_id_uoms_uom_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "bill_of_materials"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "packing_order_material_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "packing_order_materials",
+      "columnsTo": [
+        "packing_order_material_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "inventory_reservations_l1VUrBqTqdKy_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "inventory_reservations"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "location_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "locations",
+      "columnsTo": [
+        "location_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "inventory_reservations_location_id_locations_location_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "inventory_reservations"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "lot_id",
+        "item_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "lots",
+      "columnsTo": [
+        "lot_id",
+        "item_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "name": "reservation_lot_item_fk",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "inventory_reservations"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "location_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "locations",
+      "columnsTo": [
+        "location_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "inventory_stock_location_id_locations_location_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "inventory_stock"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "lot_id",
+        "item_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "lots",
+      "columnsTo": [
+        "lot_id",
+        "item_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "name": "stock_lot_item_fk",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "inventory_stock"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "location_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "locations",
+      "columnsTo": [
+        "location_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "inventory_transactions_location_id_locations_location_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "inventory_transactions"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "packing_order_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "packing_orders",
+      "columnsTo": [
+        "packing_order_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "inventory_transactions_sYb9CcP7zcc4_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "inventory_transactions"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "reason_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "scrap_reason_codes",
+      "columnsTo": [
+        "reason_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "inventory_transactions_Ew8m7CqIPoqC_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "inventory_transactions"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "po_line_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "purchase_order_lines",
+      "columnsTo": [
+        "po_line_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "inventory_transactions_FHXEayzcii4N_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "inventory_transactions"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "transfer_line_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "stock_transfer_lines",
+      "columnsTo": [
+        "transfer_line_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "inventory_transactions_2cYPtstLcS0b_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "inventory_transactions"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "authorized_by_user_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "users",
+      "columnsTo": [
+        "user_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "inventory_transactions_authorized_by_user_id_users_user_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "inventory_transactions"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "lot_id",
+        "item_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "lots",
+      "columnsTo": [
+        "lot_id",
+        "item_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "name": "txn_lot_item_fk",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "inventory_transactions"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "item_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "items",
+      "columnsTo": [
+        "item_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "item_packaging_item_id_items_item_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "item_packaging"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "uom_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "uoms",
+      "columnsTo": [
+        "uom_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "item_packaging_uom_id_uoms_uom_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "item_packaging"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "primary_uom_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "uoms",
+      "columnsTo": [
+        "uom_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "items_primary_uom_id_uoms_uom_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "items"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "item_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "items",
+      "columnsTo": [
+        "item_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "lots_item_id_items_item_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "lots"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "po_line_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "purchase_order_lines",
+      "columnsTo": [
+        "po_line_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "lots_po_line_id_purchase_order_lines_po_line_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "lots"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "packing_order_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "packing_orders",
+      "columnsTo": [
+        "packing_order_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "lots_packing_order_id_packing_orders_packing_order_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "lots"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "packing_order_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "packing_orders",
+      "columnsTo": [
+        "packing_order_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "packing_order_materials_XjydZHx4Iqgr_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "packing_order_materials"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "item_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "items",
+      "columnsTo": [
+        "item_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "packing_order_materials_item_id_items_item_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "packing_order_materials"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "uom_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "uoms",
+      "columnsTo": [
+        "uom_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "packing_order_materials_uom_id_uoms_uom_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "packing_order_materials"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "item_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "items",
+      "columnsTo": [
+        "item_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "packing_orders_item_id_items_item_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "packing_orders"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "source_location_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "locations",
+      "columnsTo": [
+        "location_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "packing_orders_source_location_id_locations_location_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "packing_orders"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "destination_location_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "locations",
+      "columnsTo": [
+        "location_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "packing_orders_ZSLLyrULc6z7_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "packing_orders"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "po_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "purchase_orders",
+      "columnsTo": [
+        "po_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "purchase_order_lines_po_id_purchase_orders_po_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "purchase_order_lines"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "item_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "items",
+      "columnsTo": [
+        "item_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "purchase_order_lines_item_id_items_item_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "purchase_order_lines"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "uom_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "uoms",
+      "columnsTo": [
+        "uom_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "purchase_order_lines_uom_id_uoms_uom_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "purchase_order_lines"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "supplier_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "suppliers",
+      "columnsTo": [
+        "supplier_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "purchase_orders_supplier_id_suppliers_supplier_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "purchase_orders"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "transfer_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "stock_transfers",
+      "columnsTo": [
+        "transfer_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "stock_transfer_lines_HlLkHGJj6s5g_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "stock_transfer_lines"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "lot_id",
+        "item_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "lots",
+      "columnsTo": [
+        "lot_id",
+        "item_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "name": "transfer_line_lot_item_fk",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "stock_transfer_lines"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "source_location_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "locations",
+      "columnsTo": [
+        "location_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "stock_transfers_source_location_id_locations_location_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "stock_transfers"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "destination_location_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "locations",
+      "columnsTo": [
+        "location_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "stock_transfers_Ub7LwacTS6vb_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "stock_transfers"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "supplier_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "suppliers",
+      "columnsTo": [
+        "supplier_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "supplier_items_supplier_id_suppliers_supplier_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "supplier_items"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "item_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "items",
+      "columnsTo": [
+        "item_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "supplier_items_item_id_items_item_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "supplier_items"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "default_uom_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "uoms",
+      "columnsTo": [
+        "uom_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "supplier_items_default_uom_id_uoms_uom_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "supplier_items"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "uom_class_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "uom_classes",
+      "columnsTo": [
+        "uom_class_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "uoms_uom_class_id_uom_classes_uom_class_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "uoms"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "role_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "roles",
+      "columnsTo": [
+        "role_id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "users_role_id_roles_role_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "users"
+    },
+    {
+      "columns": [
+        "bom_id"
+      ],
+      "nameExplicit": false,
+      "name": "bill_of_materials_pkey",
+      "schema": "public",
+      "table": "bill_of_materials",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "reservation_id"
+      ],
+      "nameExplicit": false,
+      "name": "inventory_reservations_pkey",
+      "schema": "public",
+      "table": "inventory_reservations",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "stock_id"
+      ],
+      "nameExplicit": false,
+      "name": "inventory_stock_pkey",
+      "schema": "public",
+      "table": "inventory_stock",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "transaction_id"
+      ],
+      "nameExplicit": false,
+      "name": "inventory_transactions_pkey",
+      "schema": "public",
+      "table": "inventory_transactions",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "packaging_id"
+      ],
+      "nameExplicit": false,
+      "name": "item_packaging_pkey",
+      "schema": "public",
+      "table": "item_packaging",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "item_id"
+      ],
+      "nameExplicit": false,
+      "name": "items_pkey",
+      "schema": "public",
+      "table": "items",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "location_id"
+      ],
+      "nameExplicit": false,
+      "name": "locations_pkey",
+      "schema": "public",
+      "table": "locations",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "lot_id"
+      ],
+      "nameExplicit": false,
+      "name": "lots_pkey",
+      "schema": "public",
+      "table": "lots",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "packing_order_material_id"
+      ],
+      "nameExplicit": false,
+      "name": "packing_order_materials_pkey",
+      "schema": "public",
+      "table": "packing_order_materials",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "packing_order_id"
+      ],
+      "nameExplicit": false,
+      "name": "packing_orders_pkey",
+      "schema": "public",
+      "table": "packing_orders",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "po_line_id"
+      ],
+      "nameExplicit": false,
+      "name": "purchase_order_lines_pkey",
+      "schema": "public",
+      "table": "purchase_order_lines",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "po_id"
+      ],
+      "nameExplicit": false,
+      "name": "purchase_orders_pkey",
+      "schema": "public",
+      "table": "purchase_orders",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "role_id"
+      ],
+      "nameExplicit": false,
+      "name": "roles_pkey",
+      "schema": "public",
+      "table": "roles",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "reason_id"
+      ],
+      "nameExplicit": false,
+      "name": "scrap_reason_codes_pkey",
+      "schema": "public",
+      "table": "scrap_reason_codes",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "transfer_line_id"
+      ],
+      "nameExplicit": false,
+      "name": "stock_transfer_lines_pkey",
+      "schema": "public",
+      "table": "stock_transfer_lines",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "transfer_id"
+      ],
+      "nameExplicit": false,
+      "name": "stock_transfers_pkey",
+      "schema": "public",
+      "table": "stock_transfers",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "supplier_item_id"
+      ],
+      "nameExplicit": false,
+      "name": "supplier_items_pkey",
+      "schema": "public",
+      "table": "supplier_items",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "supplier_id"
+      ],
+      "nameExplicit": false,
+      "name": "suppliers_pkey",
+      "schema": "public",
+      "table": "suppliers",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "uom_class_id"
+      ],
+      "nameExplicit": false,
+      "name": "uom_classes_pkey",
+      "schema": "public",
+      "table": "uom_classes",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "uom_id"
+      ],
+      "nameExplicit": false,
+      "name": "uoms_pkey",
+      "schema": "public",
+      "table": "uoms",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "user_id"
+      ],
+      "nameExplicit": false,
+      "name": "users_pkey",
+      "schema": "public",
+      "table": "users",
+      "entityType": "pks"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "parent_item_id",
+        "component_item_id"
+      ],
+      "nullsNotDistinct": false,
+      "name": "bom_parent_component_uq",
+      "entityType": "uniques",
+      "schema": "public",
+      "table": "bill_of_materials"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "packing_order_material_id",
+        "lot_id",
+        "location_id"
+      ],
+      "nullsNotDistinct": false,
+      "name": "reservation_material_lot_location_uq",
+      "entityType": "uniques",
+      "schema": "public",
+      "table": "inventory_reservations"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "lot_id",
+        "location_id"
+      ],
+      "nullsNotDistinct": false,
+      "name": "stock_lot_location_uq",
+      "entityType": "uniques",
+      "schema": "public",
+      "table": "inventory_stock"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "item_id",
+        "uom_id"
+      ],
+      "nullsNotDistinct": false,
+      "name": "item_packaging_item_uom_uq",
+      "entityType": "uniques",
+      "schema": "public",
+      "table": "item_packaging"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "lot_id",
+        "item_id"
+      ],
+      "nullsNotDistinct": false,
+      "name": "lots_lot_item_uq",
+      "entityType": "uniques",
+      "schema": "public",
+      "table": "lots"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "packing_order_id",
+        "item_id"
+      ],
+      "nullsNotDistinct": false,
+      "name": "packing_material_order_item_uq",
+      "entityType": "uniques",
+      "schema": "public",
+      "table": "packing_order_materials"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "po_id",
+        "item_id",
+        "uom_id"
+      ],
+      "nullsNotDistinct": false,
+      "name": "pol_po_item_uom_uq",
+      "entityType": "uniques",
+      "schema": "public",
+      "table": "purchase_order_lines"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "transfer_id",
+        "lot_id"
+      ],
+      "nullsNotDistinct": false,
+      "name": "transfer_line_transfer_lot_uq",
+      "entityType": "uniques",
+      "schema": "public",
+      "table": "stock_transfer_lines"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        "supplier_id",
+        "item_id"
+      ],
+      "nullsNotDistinct": false,
+      "name": "supplier_items_supplier_item_uq",
+      "entityType": "uniques",
+      "schema": "public",
+      "table": "supplier_items"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "barcode"
+      ],
+      "nullsNotDistinct": false,
+      "name": "item_packaging_barcode_key",
+      "schema": "public",
+      "table": "item_packaging",
+      "entityType": "uniques"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "sku"
+      ],
+      "nullsNotDistinct": false,
+      "name": "items_sku_key",
+      "schema": "public",
+      "table": "items",
+      "entityType": "uniques"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "code"
+      ],
+      "nullsNotDistinct": false,
+      "name": "locations_code_key",
+      "schema": "public",
+      "table": "locations",
+      "entityType": "uniques"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "lot_number"
+      ],
+      "nullsNotDistinct": false,
+      "name": "lots_lot_number_key",
+      "schema": "public",
+      "table": "lots",
+      "entityType": "uniques"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "packing_order_number"
+      ],
+      "nullsNotDistinct": false,
+      "name": "packing_orders_packing_order_number_key",
+      "schema": "public",
+      "table": "packing_orders",
+      "entityType": "uniques"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "po_number"
+      ],
+      "nullsNotDistinct": false,
+      "name": "purchase_orders_po_number_key",
+      "schema": "public",
+      "table": "purchase_orders",
+      "entityType": "uniques"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "name"
+      ],
+      "nullsNotDistinct": false,
+      "name": "roles_name_key",
+      "schema": "public",
+      "table": "roles",
+      "entityType": "uniques"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "code_name"
+      ],
+      "nullsNotDistinct": false,
+      "name": "scrap_reason_codes_code_name_key",
+      "schema": "public",
+      "table": "scrap_reason_codes",
+      "entityType": "uniques"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "transfer_number"
+      ],
+      "nullsNotDistinct": false,
+      "name": "stock_transfers_transfer_number_key",
+      "schema": "public",
+      "table": "stock_transfers",
+      "entityType": "uniques"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "name"
+      ],
+      "nullsNotDistinct": false,
+      "name": "suppliers_name_key",
+      "schema": "public",
+      "table": "suppliers",
+      "entityType": "uniques"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "name"
+      ],
+      "nullsNotDistinct": false,
+      "name": "uom_classes_name_key",
+      "schema": "public",
+      "table": "uom_classes",
+      "entityType": "uniques"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "name"
+      ],
+      "nullsNotDistinct": false,
+      "name": "uoms_name_key",
+      "schema": "public",
+      "table": "uoms",
+      "entityType": "uniques"
+    },
+    {
+      "value": "\"quantity\" > 0",
+      "name": "bom_qty_positive",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "bill_of_materials"
+    },
+    {
+      "value": "\"parent_item_id\" <> \"component_item_id\"",
+      "name": "bom_no_self_reference",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "bill_of_materials"
+    },
+    {
+      "value": "\"qty_reserved\" > 0",
+      "name": "reservation_qty_pos",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "inventory_reservations"
+    },
+    {
+      "value": "\"qty_consumed\" >= 0",
+      "name": "reservation_consumed_nonneg",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "inventory_reservations"
+    },
+    {
+      "value": "\"qty_consumed\" <= \"qty_reserved\"",
+      "name": "reservation_consumed_lte_reserved",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "inventory_reservations"
+    },
+    {
+      "value": "\"qty_on_hand\" >= 0",
+      "name": "stock_on_hand_nonneg",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "inventory_stock"
+    },
+    {
+      "value": "\"qty_change\" <> 0",
+      "name": "txn_qty_nonzero",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "inventory_transactions"
+    },
+    {
+      "value": "(\n                (\"transaction_type\" in ('Receive', 'Produce') and \"qty_change\" > 0)\n                or (\"transaction_type\" in ('Consume', 'Scrap') and \"qty_change\" < 0)\n                or (\"transaction_type\" in ('Transfer', 'Adjustment'))\n            )",
+      "name": "txn_sign_matches_type",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "inventory_transactions"
+    },
+    {
+      "value": "(\n                (\"transaction_type\" <> 'Receive' or \"po_line_id\" is not null)\n                and (\"transaction_type\" not in ('Consume', 'Produce') or \"packing_order_id\" is not null)\n                and (\"transaction_type\" not in ('Scrap', 'Adjustment') or \"reason_id\" is not null)\n                and (\"transaction_type\" <> 'Transfer' or \"transfer_line_id\" is not null)\n            )",
+      "name": "txn_required_links",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "inventory_transactions"
+    },
+    {
+      "value": "\"base_qty\" > 0",
+      "name": "item_packaging_base_qty_pos",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "item_packaging"
+    },
+    {
+      "value": "\"gross_weight_g\" is null or \"gross_weight_g\" >= 0",
+      "name": "item_packaging_gross_weight_nonneg",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "item_packaging"
+    },
+    {
+      "value": "\"net_weight_g\" is null or \"net_weight_g\" >= 0",
+      "name": "items_net_weight_nonneg",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "items"
+    },
+    {
+      "value": "\"shelf_life_days\" is null or \"shelf_life_days\" > 0",
+      "name": "items_shelf_life_pos",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "items"
+    },
+    {
+      "value": "\"unit_cost\" >= 0",
+      "name": "items_unit_cost_nonneg",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "items"
+    },
+    {
+      "value": "\"expiration_date\" is null or \"manufacture_date\" is null or \"expiration_date\" > \"manufacture_date\"",
+      "name": "lots_dates_valid",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "lots"
+    },
+    {
+      "value": "num_nonnulls(\"po_line_id\", \"packing_order_id\") <= 1",
+      "name": "lots_single_source",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "lots"
+    },
+    {
+      "value": "\"unit_cost\" is null or \"unit_cost\" >= 0",
+      "name": "lots_unit_cost_nonneg",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "lots"
+    },
+    {
+      "value": "\"required_qty\" > 0",
+      "name": "packing_material_required_pos",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "packing_order_materials"
+    },
+    {
+      "value": "\"consumed_qty\" >= 0",
+      "name": "packing_material_consumed_nonneg",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "packing_order_materials"
+    },
+    {
+      "value": "\"target_qty\" > 0",
+      "name": "packing_target_qty_pos",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "packing_orders"
+    },
+    {
+      "value": "\"actual_qty\" >= 0",
+      "name": "packing_actual_qty_nonneg",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "packing_orders"
+    },
+    {
+      "value": "\"completed_at\" is null or \"started_at\" is null or \"completed_at\" >= \"started_at\"",
+      "name": "packing_dates_valid",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "packing_orders"
+    },
+    {
+      "value": "\"qty_ordered\" > 0",
+      "name": "pol_qty_ordered_pos",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "purchase_order_lines"
+    },
+    {
+      "value": "\"qty_received\" >= 0",
+      "name": "pol_qty_received_nonneg",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "purchase_order_lines"
+    },
+    {
+      "value": "\"qty_received\" <= \"qty_ordered\"",
+      "name": "pol_qty_received_lte_ordered",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "purchase_order_lines"
+    },
+    {
+      "value": "\"unit_price\" >= 0",
+      "name": "pol_unit_price_nonneg",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "purchase_order_lines"
+    },
+    {
+      "value": "\"qty_requested\" > 0",
+      "name": "transfer_line_requested_pos",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "stock_transfer_lines"
+    },
+    {
+      "value": "\"qty_shipped\" >= 0",
+      "name": "transfer_line_shipped_nonneg",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "stock_transfer_lines"
+    },
+    {
+      "value": "\"qty_received\" >= 0",
+      "name": "transfer_line_received_nonneg",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "stock_transfer_lines"
+    },
+    {
+      "value": "\"qty_shipped\" <= \"qty_requested\"",
+      "name": "transfer_line_shipped_lte_requested",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "stock_transfer_lines"
+    },
+    {
+      "value": "\"qty_received\" <= \"qty_shipped\"",
+      "name": "transfer_line_received_lte_shipped",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "stock_transfer_lines"
+    },
+    {
+      "value": "\"source_location_id\" <> \"destination_location_id\"",
+      "name": "transfer_locations_different",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "stock_transfers"
+    },
+    {
+      "value": "(\"dispatched_at\" is null or \"dispatched_at\" >= \"requested_at\")\n                and (\"received_at\" is null or \"dispatched_at\" is null or \"received_at\" >= \"dispatched_at\")",
+      "name": "transfer_dates_valid",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "stock_transfers"
+    },
+    {
+      "value": "\"default_price\" is null or \"default_price\" >= 0",
+      "name": "supplier_items_price_nonneg",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "supplier_items"
+    },
+    {
+      "value": "\"lead_time_days\" is null or \"lead_time_days\" >= 0",
+      "name": "supplier_items_lead_time_nonneg",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "supplier_items"
+    },
+    {
+      "value": "\"factor_to_base\" > 0",
+      "name": "uoms_factor_positive",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "uoms"
+    },
+    {
+      "value": "not \"is_base\" or \"factor_to_base\" = 1",
+      "name": "uoms_base_factor_is_one",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "uoms"
+    }
+  ],
+  "renames": []
+}

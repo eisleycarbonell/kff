@@ -1,0 +1,96 @@
+# ==========================================
+# Dependencies
+# ==========================================
+node_modules/
+*/node_modules/
+.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# ==========================================
+# Build & Compiled Outputs
+# ==========================================
+dist/
+build/
+out/
+.next/
+*/dist/
+*/build/
+*/out/
+*/.next/
+
+# ==========================================
+# Environment Variables & Secrets
+# ==========================================
+.env
+.env.*
+.env*.local
+*.env
+!.env.example
+!.env.sample
+
+# ==========================================
+# Logs
+# ==========================================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ==========================================
+# Testing & Coverage
+# ==========================================
+coverage/
+*/coverage/
+.nyc_output/
+test-results/
+playwright-report/
+
+# ==========================================
+# Cache & Tooling
+# ==========================================
+*.tsbuildinfo
+.cache/
+.eslintcache
+.turbo/
+.vercel/
+.aider*
+
+# ==========================================
+# Runtime & Temporary Files
+# ==========================================
+*.seed
+*.tmp
+*.temp
+tmp/
+temp/
+
+# ==========================================
+# IDE & Editor
+# ==========================================
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# ==========================================
+# Operating System
+# ==========================================
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ==========================================
+# Local Database & Uploads
+# ==========================================
+*.db
+uploads/
+storage/
+*/uploads/
+*/storage/
