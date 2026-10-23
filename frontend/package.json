@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@animate-ui/react": "^2.0.0",
     "@base-ui/react": "^1.8.0",
     "@gsap/react": "^2.1.2",
     "@tanstack/react-table": "^9.2.4",
@@ -16,6 +17,7 @@
     "cn": "^0.4.0",
     "gsap": "^3.15.0",
     "lucide-react": "^1.48.0",
+    "motion": "^14.6.0",
     "next": "16.3.6",
     "next-themes": "^0.4.6",
     "postcss": "^8.5.30",

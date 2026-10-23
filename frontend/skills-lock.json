@@ -1,6 +1,12 @@
 {
   "version": 1,
   "skills": {
+    "animate-ui": {
+      "source": "imskyleen/animate-ui",
+      "sourceType": "github",
+      "skillPath": "skills/animate-ui/SKILL.md",
+      "computedHash": "72a6e281f5099c68e3728cc506725c3561d39ae65b42e7480e67c2ff04961908"
+    },
     "gsap-core": {
       "source": "greensock/gsap-skills",
       "sourceType": "github",
