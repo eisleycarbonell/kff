@@ -1,36 +1,96 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# ==========================================
+# Dependencies
+# ==========================================
+node_modules/
+*/node_modules/
+.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
 
-# dependencies
-/node_modules
-/.pnp
-.pnp.js
-.yarn/install-state.gz
+# ==========================================
+# Build & Compiled Outputs
+# ==========================================
+dist/
+build/
+out/
+.next/
+*/dist/
+*/build/
+*/out/
+*/.next/
 
-# testing
-/coverage
+# ==========================================
+# Environment Variables & Secrets
+# ==========================================
+.env
+.env.*
+.env*.local
+*.env
+!.env.example
+!.env.sample
 
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
-.DS_Store
-*.pem
-
-# debug
+# ==========================================
+# Logs
+# ==========================================
+logs/
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
 
-# local env files
-.env*.local
+# ==========================================
+# Testing & Coverage
+# ==========================================
+coverage/
+*/coverage/
+.nyc_output/
+test-results/
+playwright-report/
 
-# vercel
-.vercel
-
-# typescript
+# ==========================================
+# Cache & Tooling
+# ==========================================
 *.tsbuildinfo
-next-env.d.ts
+.cache/
+.eslintcache
+.turbo/
+.vercel/
+.aider*
+
+# ==========================================
+# Runtime & Temporary Files
+# ==========================================
+*.seed
+*.tmp
+*.temp
+tmp/
+temp/
+
+# ==========================================
+# IDE & Editor
+# ==========================================
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# ==========================================
+# Operating System
+# ==========================================
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ==========================================
+# Local Database & Uploads
+# ==========================================
+*.db
+uploads/
+storage/
+*/uploads/
+*/storage/
