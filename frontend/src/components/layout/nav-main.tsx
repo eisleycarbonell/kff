@@ -89,8 +89,7 @@ export function NavMain({ items }: NavMainProps) {
 
     return (
         <SidebarGroup>
-            <SidebarGroupLabel>Platform</SidebarGroupLabel>
-
+            <SidebarGroupLabel>Navigation</SidebarGroupLabel>
             <SidebarMenu>
                 {items.map((item) => {
                     const hasSubItems = Boolean(item.items?.length);

@@ -1,8 +1,6 @@
 import type { Metadata } from "next"
-import { UserCog } from "lucide-react"
-
+import { UserTable } from "@/components/modules/users/user-table"
 import { PageHeader } from "@/components/shared/page-header"
-import { PagePlaceholder } from "@/components/shared/page-placeholder"
 
 export const metadata: Metadata = {
     title: "Users",
@@ -14,9 +12,9 @@ export default function UsersPage() {
         <>
             <PageHeader
                 title="Users"
-                description="Manage user accounts and access."
+                description="Manage your team, user details, and access roles."
             />
-            <PagePlaceholder icon={UserCog} />
+            <UserTable />
         </>
     )
 }
