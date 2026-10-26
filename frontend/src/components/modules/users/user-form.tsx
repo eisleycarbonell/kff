@@ -41,8 +41,9 @@ type UserFormProps = {
     onOpenChange: (open: boolean) => void
     user: User | null
     users: User[]
-    onSave: (values: UserFormValues, user: User | null) => boolean
+    onSave: (values: UserFormValues, user: User | null) => Promise<boolean>
     submitError?: string | null
+    isSaving?: boolean
 }
 
 const roleItems = USER_ROLES.map((role) => ({
@@ -56,6 +57,7 @@ function UserFormContent({
     users,
     onSave,
     submitError,
+    isSaving = false,
 }: Omit<UserFormProps, "open">) {
     const id = useId()
     const [values, setValues] = useState<UserFormValues>(() => ({
@@ -65,8 +67,12 @@ function UserFormContent({
         mobileNumber: user?.mobileNumber ?? "",
         roleId: user?.roleId ?? USER_ROLES[USER_ROLES.length - 1].id,
         isEmailVerified: user?.isEmailVerified ?? false,
+        password: "",
     }))
     const [errors, setErrors] = useState<UserFormErrors>({})
+    const availableRoles = roleItems.some((role) => role.value === values.roleId)
+        ? roleItems
+        : [...roleItems, { value: values.roleId, label: `Role ${values.roleId}` }]
 
     function updateField<Key extends keyof UserFormValues>(name: Key, value: UserFormValues[Key]) {
         setValues((current) => ({ ...current, [name]: value }))
@@ -77,8 +83,9 @@ function UserFormContent({
         })
     }
 
-    function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    async function handleSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault()
+        if (isSaving) return
 
         const normalized: UserFormValues = {
             ...values,
@@ -98,11 +105,14 @@ function UserFormContent({
             return
         }
 
-        if (onSave(normalized, user)) onOpenChange(false)
+        if (await onSave(normalized, user)) onOpenChange(false)
     }
 
     return (
-        <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg">
+        <DialogContent
+            className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg"
+            showCloseButton={!isSaving}
+        >
             <DialogHeader>
                 <DialogTitle>{user ? "Edit user" : "Add user"}</DialogTitle>
                 <DialogDescription>
@@ -114,6 +124,7 @@ function UserFormContent({
             <form
                 onSubmit={handleSubmit}
                 className="space-y-5"
+                aria-busy={isSaving}
             >
                 <FieldGroup className="gap-4">
                     <div className="grid gap-4 sm:grid-cols-2">
@@ -124,6 +135,7 @@ function UserFormContent({
                                 name="firstName"
                                 autoComplete="given-name"
                                 required
+                                disabled={isSaving}
                                 maxLength={80}
                                 value={values.firstName}
                                 onChange={(event) => updateField("firstName", event.target.value)}
@@ -144,6 +156,7 @@ function UserFormContent({
                                 name="lastName"
                                 autoComplete="family-name"
                                 required
+                                disabled={isSaving}
                                 maxLength={80}
                                 value={values.lastName}
                                 onChange={(event) => updateField("lastName", event.target.value)}
@@ -164,6 +177,7 @@ function UserFormContent({
                             type="email"
                             autoComplete="email"
                             required
+                            disabled={isSaving}
                             maxLength={254}
                             placeholder="name@company.com"
                             value={values.email}
@@ -174,6 +188,27 @@ function UserFormContent({
                         />
                         <FieldError id={`${id}-email-error`}>{errors.email}</FieldError>
                     </Field>
+                    {!user && (
+                        <Field data-invalid={Boolean(errors.password)}>
+                            <FieldLabel htmlFor={`${id}-password`}>Password</FieldLabel>
+                            <Input
+                                id={`${id}-password`}
+                                name="password"
+                                type="password"
+                                autoComplete="new-password"
+                                required
+                                disabled={isSaving}
+                                minLength={8}
+                                maxLength={128}
+                                value={values.password}
+                                onChange={(event) => updateField("password", event.target.value)}
+                                aria-invalid={Boolean(errors.password)}
+                                aria-describedby={errors.password ? `${id}-password-error` : undefined}
+                                className="h-9"
+                            />
+                            <FieldError id={`${id}-password-error`}>{errors.password}</FieldError>
+                        </Field>
+                    )}
                     <Field data-invalid={Boolean(errors.mobileNumber)}>
                         <FieldLabel htmlFor={`${id}-mobile`}>
                             Mobile number{" "}
@@ -184,6 +219,7 @@ function UserFormContent({
                             name="mobileNumber"
                             type="tel"
                             autoComplete="tel"
+                            disabled={isSaving}
                             maxLength={30}
                             placeholder="Enter a mobile number"
                             value={values.mobileNumber}
@@ -200,8 +236,9 @@ function UserFormContent({
                         <FieldLabel htmlFor={`${id}-role`}>Role</FieldLabel>
                         <Select
                             name="roleId"
-                            items={roleItems}
+                            items={availableRoles}
                             value={values.roleId}
+                            disabled={isSaving}
                             onValueChange={(value) => {
                                 if (value !== null) updateField("roleId", value)
                             }}
@@ -216,7 +253,7 @@ function UserFormContent({
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                                {roleItems.map((role) => (
+                                {availableRoles.map((role) => (
                                     <SelectItem
                                         key={role.value}
                                         value={role.value}
@@ -236,6 +273,7 @@ function UserFormContent({
                             id={`${id}-verified`}
                             name="isEmailVerified"
                             checked={values.isEmailVerified}
+                            disabled={isSaving}
                             onCheckedChange={(checked) => updateField("isEmailVerified", checked)}
                             aria-describedby={`${id}-verified-description`}
                         />
@@ -259,11 +297,14 @@ function UserFormContent({
                     <Button
                         type="button"
                         variant="outline"
+                        disabled={isSaving}
                         onClick={() => onOpenChange(false)}
                     >
                         Cancel
                     </Button>
-                    <Button type="submit">{user ? "Save changes" : "Create user"}</Button>
+                    <Button type="submit" disabled={isSaving}>
+                        {isSaving ? "Saving..." : user ? "Save changes" : "Create user"}
+                    </Button>
                 </DialogFooter>
             </form>
         </DialogContent>
@@ -274,7 +315,9 @@ export function UserForm({ open, onOpenChange, ...props }: UserFormProps) {
     return (
         <Dialog
             open={open}
-            onOpenChange={onOpenChange}
+            onOpenChange={(nextOpen) => {
+                if (!props.isSaving) onOpenChange(nextOpen)
+            }}
         >
             {open && (
                 <UserFormContent

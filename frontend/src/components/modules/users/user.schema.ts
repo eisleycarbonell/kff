@@ -7,19 +7,40 @@ export const USER_ROLES = [
 export type User = {
     userId: number
     firstName: string
+    middleName: string | null
     lastName: string
+    /** Calendar date in YYYY-MM-DD format. */
+    dateOfBirth: string | null
+    avatarUrl: string | null
+    mobileNumber: string | null
+    address: string | null
     email: string
-    mobileNumber: string
     roleId: number
     isEmailVerified: boolean
-    createdAt: string
     lastLoginAt: string | null
+    deletedAt: string | null
+    createdBy: number | null
+    createdAt: string
+    updatedBy: number | null
+    updatedAt: string
 }
+
+export type UserWriteInput = Pick<
+    User,
+    "firstName" | "lastName" | "email" | "mobileNumber" | "roleId" | "isEmailVerified"
+> & Partial<Pick<User, "middleName" | "dateOfBirth" | "avatarUrl" | "address">>
+
+export type CreateUserInput = UserWriteInput & { password: string }
+
+export type UpdateUserInput = Partial<UserWriteInput>
 
 export type UserFormValues = Pick<
     User,
-    "firstName" | "lastName" | "email" | "mobileNumber" | "roleId" | "isEmailVerified"
->
+    "firstName" | "lastName" | "email" | "roleId" | "isEmailVerified"
+> & {
+    mobileNumber: string
+    password: string
+}
 
 export type UserFormErrors = Partial<Record<keyof UserFormValues, string>>
 
@@ -69,8 +90,16 @@ export function validateUser(
         errors.mobileNumber = "Use 30 characters or fewer."
     }
 
-    if (!USER_ROLES.some((role) => role.id === values.roleId)) {
+    if (!Number.isInteger(values.roleId) || values.roleId <= 0) {
         errors.roleId = "Select a valid role."
+    }
+
+    if (excludeId === undefined) {
+        if (values.password.length < 8) {
+            errors.password = "Use a password with at least 8 characters."
+        } else if (values.password.length > 128) {
+            errors.password = "Use a password with 128 characters or fewer."
+        }
     }
 
     return errors
