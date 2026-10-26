@@ -1,36 +1,109 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# KFF frontend
 
-## Getting Started
+Install dependencies, copy `.env.example` to `.env.local`, then run `npm run dev`.
 
-First, run the development server:
-
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```env
+NEXT_PUBLIC_API_BASE_URL=http://localhost:3001/api
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The value is the backend API prefix, including `/api`. Restart the development
+server after changing it, or rebuild the frontend for production. The default users URL is
+`http://localhost:3001/api/user`, matching the existing backend route prefix.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Users API contract
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The frontend assumes these endpoints exist. This change does not implement the
+backend handlers; the current backend list service still returns mock data.
 
-## Learn More
+| Method | Path relative to API base | Request | Response |
+| --- | --- | --- | --- |
+| GET | `/user` | None | `{ "success": true, "data": User[] }` |
+| POST | `/user` | `CreateUserInput` | `{ "success": true, "data": User }` |
+| PATCH | `/user/:userId` | `UpdateUserInput` | `{ "success": true, "data": User }` |
+| DELETE | `/user/:userId` | None | HTTP 204, or `{ "success": true }` |
 
-To learn more about Next.js, take a look at the following resources:
+Use camelCase JSON keys, matching the Drizzle property names. Return all active
+users as an array; table filtering and pagination currently run in the browser.
+The backend should exclude soft-deleted records from GET and implement DELETE
+by setting `deletedAt` if using the schema's soft-delete convention.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Example public user returned by GET, POST, and PATCH:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```json
+{
+  "userId": 1,
+  "firstName": "Maria",
+  "middleName": null,
+  "lastName": "Santos",
+  "dateOfBirth": null,
+  "avatarUrl": null,
+  "mobileNumber": null,
+  "address": null,
+  "email": "maria@example.com",
+  "isEmailVerified": false,
+  "roleId": 2,
+  "lastLoginAt": null,
+  "deletedAt": null,
+  "createdBy": null,
+  "createdAt": "2026-10-26T08:00:00.000Z",
+  "updatedBy": null,
+  "updatedAt": "2026-10-26T08:00:00.000Z"
+}
+```
 
-## Deploy on Vercel
+`dateOfBirth` is `YYYY-MM-DD` or null. Timestamps are ISO strings or null where
+the database allows null. The backend generates IDs and audit fields.
+`passwordHash` must stay on the backend and must not appear in API responses.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Example POST body:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```json
+{
+  "firstName": "Maria",
+  "lastName": "Santos",
+  "email": "maria@example.com",
+  "mobileNumber": null,
+  "roleId": 2,
+  "isEmailVerified": false,
+  "password": "example-password"
+}
+```
+
+The backend hashes `password` into `passwordHash`. The creation form currently
+requires 8–128 characters. PATCH accepts partial writable profile fields and
+does not send a password. Optional `middleName`, `dateOfBirth`, `avatarUrl`, and
+`address` are supported by the API input types; the current form edits the core
+name, email, mobile, role, and verification fields. Omitted profile fields must
+remain unchanged on PATCH; nullable fields can explicitly be set to null.
+
+Role IDs must reference existing backend roles. The dropdown uses the local
+`USER_ROLES` options; align those IDs with your roles table.
+
+Return errors in the existing backend envelope, with an appropriate HTTP status:
+
+```json
+{
+  "success": false,
+  "error": { "message": "A user with this email address already exists." }
+}
+```
+
+Requests include browser credentials. For a separate backend origin, configure
+backend CORS for the frontend origin and credentialed requests.
+
+## Data flow and checks
+
+`use-users.ts` contains the endpoint URLs, HTTP requests, and TanStack Query
+loading, caching, mutations, and refetching. Statistics and the table share
+the same query result. Successful mutations update the cache and invalidate the
+users query. A partially failed bulk delete retains only failed users for retry.
+There is no demo-data or localStorage fallback.
+
+```bash
+npm run test:api
+npm run lint
+npm run build
+```
+
+The API tests use Node's built-in test runner and TypeScript stripping, requiring
+Node 22.18+ or Node 24+. They mock fetch and do not contact the backend.
