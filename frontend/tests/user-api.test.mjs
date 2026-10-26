@@ -1,5 +1,15 @@
 import assert from "node:assert/strict"
+import { registerHooks } from "node:module"
 import { afterEach, test } from "node:test"
+
+registerHooks({
+    resolve(specifier, context, nextResolve) {
+        const resolved = specifier === "@/components/modules/users/user.schema"
+            ? new URL("../src/components/modules/users/user.schema.ts", import.meta.url).href
+            : specifier
+        return nextResolve(resolved, context)
+    },
+})
 
 const originalFetch = globalThis.fetch
 let importCount = 0
@@ -11,7 +21,7 @@ async function importApi(baseUrl) {
 
     try {
         return await import(
-            `../src/hooks/modules/user/use-users.ts?test=${++importCount}`
+            `../src/hooks/modules/users/use-users.ts?test=${++importCount}`
         )
     } finally {
         if (previous === undefined) delete process.env.NEXT_PUBLIC_API_BASE_URL

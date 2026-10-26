@@ -1,7 +1,7 @@
 "use client"
 
 import dynamic from "next/dynamic"
-import { CheckCircle2, Trash2, X } from "lucide-react"
+import { Trash2 } from "lucide-react"
 
 import { UserStatistics } from "@/components/modules/users/user-statistics"
 import { UserTable } from "@/components/modules/users/user-table"
@@ -29,16 +29,12 @@ export default function UsersPage() {
     const {
         users,
         loadStatus,
-        error,
-        notice,
         formOpen,
         formRequested,
         editingUser,
         deletingUsers,
         setFormOpen,
         setDeletingUsers,
-        dismissError,
-        dismissNotice,
         openAdd,
         openEdit,
         openDelete,
@@ -47,6 +43,7 @@ export default function UsersPage() {
         retry,
         isSaving,
         isDeleting,
+        isFetching,
     } = useUsers()
 
     return (
@@ -60,48 +57,14 @@ export default function UsersPage() {
                 title="Users"
                 description="Manage your team, user details, and access roles."
             />
-            {error && !formOpen && !deletingUsers.length && (
-                <div
-                    role="alert"
-                    className="flex items-start justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
-                >
-                    <p>{error}</p>
-                    {loadStatus === "error" ? (
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={retry}
-                        >
-                            Retry
-                        </Button>
-                    ) : (
-                        <Button
-                            variant="ghost"
-                            size="icon-xs"
-                            aria-label="Dismiss error"
-                            onClick={dismissError}
-                        >
-                            <X />
-                        </Button>
-                    )}
-                </div>
-            )}
-            {notice && (
-                <div
-                    role="status"
-                    className="flex items-center justify-between gap-3 rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm"
-                >
-                    <span className="flex items-center gap-2">
-                        <CheckCircle2 className="size-4 text-primary" />
-                        {notice}
-                    </span>
+            {loadStatus === "error" && (
+                <div className="flex justify-center py-8">
                     <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        aria-label="Dismiss notification"
-                        onClick={dismissNotice}
+                        variant="outline"
+                        onClick={retry}
+                        disabled={isFetching}
                     >
-                        <X />
+                        {isFetching ? "Retrying..." : "Retry loading users"}
                     </Button>
                 </div>
             )}
@@ -141,7 +104,6 @@ export default function UsersPage() {
                     user={editingUser}
                     users={users}
                     onSave={handleSave}
-                    submitError={error}
                     isSaving={isSaving}
                 />
             )}
@@ -164,14 +126,6 @@ export default function UsersPage() {
                             This action cannot be undone.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
-                    {error && (
-                        <p
-                            role="alert"
-                            className="text-sm text-destructive"
-                        >
-                            {error}
-                        </p>
-                    )}
                     <AlertDialogFooter>
                         <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
                         <AlertDialogAction
@@ -180,7 +134,9 @@ export default function UsersPage() {
                             disabled={isDeleting}
                         >
                             <Trash2 />
-                            {isDeleting ? "Deleting..." : `Delete ${deletingUsers.length === 1 ? "user" : "users"}`}
+                            {isDeleting
+                                ? "Deleting..."
+                                : `Delete ${deletingUsers.length === 1 ? "user" : "users"}`}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

@@ -20,7 +20,11 @@ const protectAuth = async (request: Request, response: Response, next: NextFunct
             return sendBadRequestResponse(response, 'Unauthorized - user account invalid');
         }
 
-        request.user = authUser;
+        request.user = {
+            id: String(authUser.userId),
+            roleId: authUser.roleId,
+            username: authUser.email,
+        };
         next();
     } catch (error: any) {
         // Catch specific token errors to return 401s instead of 500 server crashes

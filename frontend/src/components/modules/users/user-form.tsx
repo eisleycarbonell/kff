@@ -42,7 +42,6 @@ type UserFormProps = {
     user: User | null
     users: User[]
     onSave: (values: UserFormValues, user: User | null) => Promise<boolean>
-    submitError?: string | null
     isSaving?: boolean
 }
 
@@ -56,7 +55,6 @@ function UserFormContent({
     user,
     users,
     onSave,
-    submitError,
     isSaving = false,
 }: Omit<UserFormProps, "open">) {
     const id = useId()
@@ -285,14 +283,6 @@ function UserFormContent({
                         </FieldContent>
                     </Field>
                 </FieldGroup>
-                {submitError && (
-                    <p
-                        role="alert"
-                        className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive"
-                    >
-                        {submitError}
-                    </p>
-                )}
                 <DialogFooter>
                     <Button
                         type="button"
