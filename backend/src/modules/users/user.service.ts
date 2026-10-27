@@ -1,24 +1,9 @@
 import { and, asc, eq, isNull, sql } from 'drizzle-orm';
 
-import { db } from '../db/index.ts';
-import { users } from '../db/schema.ts';
-import { hashPassword } from '../utils/hashHandler.ts';
-
-export type CreateUserInput = {
-    firstName: string;
-    middleName?: string | null;
-    lastName: string;
-    dateOfBirth?: string | null;
-    avatarUrl?: string | null;
-    mobileNumber?: string | null;
-    address?: string | null;
-    email: string;
-    password: string;
-    isEmailVerified?: boolean;
-    roleId: number;
-};
-
-export type UpdateUserInput = Partial<Omit<CreateUserInput, 'password'>>;
+import { db } from '../../db/index.ts';
+import { users } from '../../db/schema.ts';
+import { hashPassword } from '../../utils/hashHandler.ts';
+import type { CreateUserInput, UpdateUserInput } from './user.schema.ts';
 
 const publicUserFields = {
     userId: users.userId,
@@ -40,7 +25,7 @@ const publicUserFields = {
     updatedAt: users.updatedAt,
 };
 
-const parseUserId = (id: string) => {
+const parseUserId = (id: string | number) => {
     const userId = Number(id);
     return Number.isSafeInteger(userId) && userId > 0 ? userId : null;
 };
@@ -58,7 +43,7 @@ export const listUsers = async () => {
         .orderBy(asc(users.lastName), asc(users.firstName), asc(users.userId));
 };
 
-export const getUserByID = async (id: string) => {
+export const getUserByID = async (id: string | number) => {
     const userId = parseUserId(id);
     if (userId === null) return null;
 
@@ -94,7 +79,7 @@ export const createUser = async (input: CreateUserInput) => {
     return user;
 };
 
-export const updateUser = async (id: string, input: UpdateUserInput) => {
+export const updateUser = async (id: string | number, input: UpdateUserInput) => {
     const userId = parseUserId(id);
     if (userId === null) return null;
 
@@ -126,7 +111,7 @@ export const updateUser = async (id: string, input: UpdateUserInput) => {
     return user ?? null;
 };
 
-export const deleteUser = async (id: string) => {
+export const deleteUser = async (id: string | number) => {
     const userId = parseUserId(id);
     if (userId === null) return null;
 

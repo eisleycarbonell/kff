@@ -1,7 +1,7 @@
 "use client"
 
 import dynamic from "next/dynamic"
-import { Trash2 } from "lucide-react"
+import { Plus, Trash2 } from "lucide-react"
 
 import { UserStatistics } from "@/components/modules/users/user-statistics"
 import { UserTable } from "@/components/modules/users/user-table"
@@ -56,6 +56,12 @@ export default function UsersPage() {
             <PageHeader
                 title="Users"
                 description="Manage your team, user details, and access roles."
+                actions={
+                    <Button className="h-10 gap-2 px-4" onClick={openAdd}>
+                        <Plus />
+                        Add user
+                    </Button>
+                }
             />
             {loadStatus === "error" && (
                 <div className="flex justify-center py-8">

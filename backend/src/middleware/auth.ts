@@ -1,4 +1,4 @@
-import * as UserService from '../services/user.service.ts';
+import * as UserService from '../modules/users/user.service.ts';
 import type { NextFunction, Request, Response } from 'express';
 import { sendBadRequestResponse } from '../utils/responseHandler.ts';
 import { verifyToken } from '../utils/jwtHandler.ts';

@@ -69,16 +69,15 @@ export function UserTable({ users, onAdd, onEdit, onDelete }: UserTableProps) {
     }
 
     return (
-        <div className="min-w-0 overflow-hidden rounded-xl border bg-card">
+        <div className="min-w-0 overflow-hidden rounded-xl border bg-card text-card-foreground shadow-xs">
             <UserTableToolbar
                 table={table}
                 hasFilters={hasFilters}
                 onClearFilters={clearFilters}
-                onAdd={onAdd}
                 onDelete={onDelete}
             />
             <Table>
-                <TableHeader className="bg-muted/40">
+                <TableHeader className="bg-muted/50">
                     {table.getHeaderGroups().map((group) => (
                         <TableRow key={group.id}>
                             {group.headers.map((header) => (
@@ -86,10 +85,10 @@ export function UserTable({ users, onAdd, onEdit, onDelete }: UserTableProps) {
                                     key={header.id}
                                     className={
                                         header.column.id === "select"
-                                            ? "w-12 pl-4"
+                                            ? "h-12 w-14 pl-5"
                                             : header.column.id === "actions"
-                                              ? "w-12 pr-4"
-                                              : "px-3"
+                                              ? "h-12 w-14 pr-5"
+                                              : "h-12 px-3"
                                     }
                                     aria-sort={
                                         header.column.getCanSort()
@@ -133,6 +132,7 @@ export function UserTable({ users, onAdd, onEdit, onDelete }: UserTableProps) {
                         table.getRowModel().rows.map((row) => (
                             <TableRow
                                 key={row.id}
+                                className="hover:bg-primary/5 data-[state=selected]:bg-primary/10"
                                 data-state={
                                     row.getIsSelected() ? "selected" : undefined
                                 }
@@ -142,10 +142,10 @@ export function UserTable({ users, onAdd, onEdit, onDelete }: UserTableProps) {
                                         key={cell.id}
                                         className={
                                             cell.column.id === "select"
-                                                ? "pl-4"
+                                                ? "pl-5"
                                                 : cell.column.id === "actions"
-                                                  ? "pr-4 text-right"
-                                                  : "px-3 py-3"
+                                                  ? "pr-5 text-right"
+                                                  : "px-3 py-4"
                                         }
                                     >
                                         <table.FlexRender cell={cell} />
@@ -182,7 +182,7 @@ export function UserTable({ users, onAdd, onEdit, onDelete }: UserTableProps) {
                     )}
                 </TableBody>
             </Table>
-            <div className="flex flex-col gap-3 border-t px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-4 border-t bg-muted/15 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-sm text-muted-foreground" aria-live="polite">
                     {filteredRows.length
                         ? `${pageIndex * pageSize + 1}–${Math.min((pageIndex + 1) * pageSize, filteredRows.length)}`
