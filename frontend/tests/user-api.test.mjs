@@ -4,8 +4,8 @@ import { afterEach, test } from "node:test"
 
 registerHooks({
     resolve(specifier, context, nextResolve) {
-        const resolved = specifier === "@/components/modules/users/user.schema"
-            ? new URL("../src/components/modules/users/user.schema.ts", import.meta.url).href
+        const resolved = specifier.startsWith("@/")
+            ? new URL(`../src/${specifier.slice(2)}.ts`, import.meta.url).href
             : specifier
         return nextResolve(resolved, context)
     },
@@ -20,9 +20,7 @@ async function importApi(baseUrl) {
     else process.env.NEXT_PUBLIC_API_BASE_URL = baseUrl
 
     try {
-        return await import(
-            `../src/hooks/modules/users/use-users.ts?test=${++importCount}`
-        )
+        return await import(`../src/hooks/modules/users/use-users.ts?test=${++importCount}`)
     } finally {
         if (previous === undefined) delete process.env.NEXT_PUBLIC_API_BASE_URL
         else process.env.NEXT_PUBLIC_API_BASE_URL = previous
@@ -131,7 +129,10 @@ test("PATCH sends only changed fields without a password", async () => {
 
 for (const [name, response] of [
     ["204", () => new Response(null, { status: 204 })],
-    ["a success envelope without data", () => Response.json({ success: true, message: "Deleted." })],
+    [
+        "a success envelope without data",
+        () => Response.json({ success: true, message: "Deleted." }),
+    ],
 ]) {
     test(`DELETE accepts ${name}`, async () => {
         globalThis.fetch = async (url, options) => {
@@ -148,10 +149,11 @@ for (const [name, response] of [
 
 for (const status of [200, 409]) {
     test(`backend errors preserve their message for HTTP ${status}`, async () => {
-        globalThis.fetch = async () => Response.json(
-            { success: false, error: { message: "  This email is already registered.  " } },
-            { status },
-        )
+        globalThis.fetch = async () =>
+            Response.json(
+                { success: false, error: { message: "  This email is already registered.  " } },
+                { status },
+            )
         await assert.rejects(api.getUsers(), {
             message: "This email is already registered.",
         })
@@ -164,10 +166,7 @@ test("non-JSON HTTP failures report the response status", async () => {
 })
 
 test("an HTTP error cannot be masked by a success envelope", async () => {
-    globalThis.fetch = async () => Response.json(
-        { success: true, data: [user] },
-        { status: 500 },
-    )
+    globalThis.fetch = async () => Response.json({ success: true, data: [user] }, { status: 500 })
     await assert.rejects(api.getUsers(), /HTTP 500/)
 })
 
@@ -225,10 +224,11 @@ test("GET rejects invalid field types and IDs", async () => {
         ["updatedBy", -1],
         ["updatedBy", 1.5],
     ]) {
-        globalThis.fetch = async () => Response.json({
-            success: true,
-            data: [{ ...user, [field]: value }],
-        })
+        globalThis.fetch = async () =>
+            Response.json({
+                success: true,
+                data: [{ ...user, [field]: value }],
+            })
         await assert.rejects(api.getUsers(), /invalid user record/, `invalid ${field}`)
     }
 })
@@ -243,10 +243,11 @@ test("GET rejects unusable timestamps and non-calendar dates", async () => {
             "2026-10-26T00:00:00",
             1792972800000,
         ]) {
-            globalThis.fetch = async () => Response.json({
-                success: true,
-                data: [{ ...user, [field]: value }],
-            })
+            globalThis.fetch = async () =>
+                Response.json({
+                    success: true,
+                    data: [{ ...user, [field]: value }],
+                })
             await assert.rejects(api.getUsers(), /invalid user record/, `invalid ${field}`)
         }
     }
@@ -258,10 +259,11 @@ test("GET rejects unusable timestamps and non-calendar dates", async () => {
         ["dateOfBirth", "2026-10-26T00:00:00.000Z"],
         ["dateOfBirth", 20261026],
     ]) {
-        globalThis.fetch = async () => Response.json({
-            success: true,
-            data: [{ ...user, [field]: value }],
-        })
+        globalThis.fetch = async () =>
+            Response.json({
+                success: true,
+                data: [{ ...user, [field]: value }],
+            })
         await assert.rejects(api.getUsers(), /invalid user record/, `invalid ${field}`)
     }
 })
@@ -288,15 +290,19 @@ test("GET accepts populated nullable fields, ISO offsets, leap dates and unknown
 
 for (const [method, invoke] of [
     ["GET", () => api.getUsers()],
-    ["POST", () => api.createUser({
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        mobileNumber: null,
-        roleId: user.roleId,
-        isEmailVerified: false,
-        password: "Create-password-123!",
-    })],
+    [
+        "POST",
+        () =>
+            api.createUser({
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+                mobileNumber: null,
+                roleId: user.roleId,
+                isEmailVerified: false,
+                password: "Create-password-123!",
+            }),
+    ],
     ["PATCH", () => api.updateUser(42, { firstName: user.firstName })],
 ]) {
     test(`${method} returns only public user fields and strips extra server secrets`, async () => {
@@ -306,10 +312,11 @@ for (const [method, invoke] of [
             password: "must-also-be-stripped",
             internalToken: "another-private-server-field",
         }
-        globalThis.fetch = async () => Response.json({
-            success: true,
-            data: method === "GET" ? [serverUser] : serverUser,
-        })
+        globalThis.fetch = async () =>
+            Response.json({
+                success: true,
+                data: method === "GET" ? [serverUser] : serverUser,
+            })
         assert.deepEqual(await invoke(), method === "GET" ? [user] : user)
     })
 }
@@ -323,7 +330,9 @@ test("network failures produce a usable connection error", async () => {
 
 test("fetch AbortError is preserved for cancellation handling", async () => {
     const aborted = new DOMException("The operation was aborted.", "AbortError")
-    globalThis.fetch = async () => { throw aborted }
+    globalThis.fetch = async () => {
+        throw aborted
+    }
     await assert.rejects(api.getUsers(), (error) => error === aborted)
 })
 
@@ -343,7 +352,9 @@ test("AbortError during JSON reading is preserved", async () => {
     globalThis.fetch = async () => ({
         ok: true,
         status: 200,
-        json: async () => { throw aborted },
+        json: async () => {
+            throw aborted
+        },
     })
     await assert.rejects(api.getUsers(), (error) => error === aborted)
 })

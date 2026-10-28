@@ -1,6 +1,8 @@
 "use client"
 
 import dynamic from "next/dynamic"
+import Link from "next/link"
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
 import { Plus, Trash2 } from "lucide-react"
 
 import { UserStatistics } from "@/components/modules/users/user-statistics"
@@ -28,6 +30,7 @@ const UserForm = dynamic(() =>
 export default function UsersPage() {
     const {
         users,
+        canManage,
         loadStatus,
         formOpen,
         formRequested,
@@ -49,43 +52,49 @@ export default function UsersPage() {
     return (
         <>
             <title>Users</title>
-            <meta
-                name="description"
-                content="Manage user accounts and access."
-            />
+            <meta name="description" content="Manage user accounts and access." />
             <PageHeader
                 title="Users"
                 description="Manage your team, user details, and access roles."
                 actions={
-                    <Button className="h-10 gap-2 px-4" onClick={openAdd}>
-                        <Plus />
-                        Add user
-                    </Button>
+                    canManage && (
+                        <Button className="h-10 gap-2 px-4" onClick={openAdd}>
+                            <Plus />
+                            Add user
+                        </Button>
+                    )
                 }
             />
+            {loadStatus === "signed-out" && (
+                <Alert>
+                    <AlertTitle>Sign in to manage users</AlertTitle>
+                    <AlertDescription>
+                        <Button className="mt-2" render={<Link href="/" />} nativeButton={false}>
+                            Sign in
+                        </Button>
+                    </AlertDescription>
+                </Alert>
+            )}
+            {loadStatus === "forbidden" && (
+                <Alert>
+                    <AlertTitle>User management access required</AlertTitle>
+                    <AlertDescription>
+                        Your role does not have permission to manage users.
+                    </AlertDescription>
+                </Alert>
+            )}
             {loadStatus === "error" && (
                 <div className="flex justify-center py-8">
-                    <Button
-                        variant="outline"
-                        onClick={retry}
-                        disabled={isFetching}
-                    >
+                    <Button variant="outline" onClick={retry} disabled={isFetching}>
                         {isFetching ? "Retrying..." : "Retry loading users"}
                     </Button>
                 </div>
             )}
             {loadStatus === "loading" && (
-                <div
-                    className="space-y-4"
-                    aria-busy="true"
-                    aria-label="Loading users"
-                >
+                <div className="space-y-4" aria-busy="true" aria-label="Loading users">
                     <div className="grid gap-4 sm:grid-cols-3">
                         {[0, 1, 2].map((index) => (
-                            <Skeleton
-                                key={index}
-                                className="h-28 rounded-xl"
-                            />
+                            <Skeleton key={index} className="h-28 rounded-xl" />
                         ))}
                     </div>
                     <Skeleton className="h-96 rounded-xl" />
@@ -105,7 +114,7 @@ export default function UsersPage() {
             {/* Keep the lazy form mounted after first use for closing animations and focus restoration. */}
             {formRequested && (
                 <UserForm
-                    open={formOpen}
+                    open={formOpen && canManage}
                     onOpenChange={setFormOpen}
                     user={editingUser}
                     users={users}
@@ -114,7 +123,7 @@ export default function UsersPage() {
                 />
             )}
             <AlertDialog
-                open={deletingUsers.length > 0}
+                open={canManage && deletingUsers.length > 0}
                 onOpenChange={(open) => {
                     if (!open && !isDeleting) setDeletingUsers([])
                 }}

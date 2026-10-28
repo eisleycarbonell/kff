@@ -29,6 +29,42 @@ folders under `frontend/src/`; reference links are relative to `frontend/`.
 If repository-root skill discovery finds no packages, repeat the skill check
 from `frontend/` so its installed dependencies are discovered.
 
+## Shared system flow and frontend business rules
+
+Read the [shared agent instructions](../AGENTS.md) and the
+[complete system flow](../docs/system-flow.md) before changing a business
+feature. The system-flow document defines the business requirements; the users
+module below remains the reference for frontend structure and presentation.
+
+- Follow the documented purchasing, receiving, packing, inventory, transfer,
+  reporting, and administration workflows. Use section 21 for the intended
+  sidebar grouping and the documented route names. Keep sidebar and breadcrumb
+  changes coordinated with the feature being implemented.
+- Show on-hand, reserved, and available stock distinctly, with the item's UOM
+  and relevant lot/location. Obtain authoritative availability and production
+  limits from the backend; client calculations serve as previews.
+- Packing screens show the selected product, target quantity, material
+  requirements, reservations, source, destination, and supported statuses.
+  Historical packing orders display their material snapshot even when the
+  master BOM changes.
+- Support partial PO receiving and remaining quantities. Preserve links from
+  received lots to PO lines and from finished lots to packing orders. Make
+  manufacture/expiration dates optional where the business flow allows it.
+- Reflect dispatch, In Transit, and confirmed receipt as distinct transfer
+  steps. Keep warehouse and branch stock views on the shared inventory model.
+- Apply supported role settings to visible/disabled actions and handle backend
+  authorization failures. Server-managed audit identities are supplied by the
+  authenticated backend rather than editable form fields.
+- Show workflow actions according to the record's backend-supported state and
+  permissions. Await server confirmation before displaying successful stock
+  changes, then refresh affected operational data and metrics.
+- Build reports and dashboards from operational API data. Keep placeholder or
+  unavailable features distinguishable from implemented workflows.
+
+The shared business document's route-handler/server-action diagram maps to the
+existing frontend hook -> Express API -> backend service architecture. Keep
+complex inventory logic and database writes in the backend.
+
 ## Reference implementation
 
 Use the current users module as the reference for the architecture, layout, and
@@ -239,3 +275,23 @@ substantial; do not create empty files to match this tree.
   sorting, selection, row menus, export, and pagination when available. Check
   loading, errors, empty results, and failed submissions. Report any browser or
   backend verification that could not be completed.
+
+## Inventory Stocks boundary
+
+Inventory Management -> Inventory Stocks (`/inventory`) owns on-hand, reserved,
+and available quantities. Master Data -> Items (`/items`) owns catalog fields.
+Use the [stock contract](../docs/inventory-stocks-module.md). Keep quantities as
+exact decimal strings and group summary totals by primary UOM. Count adjustments
+require lot, location, reason, and a preserved expected balance. Expose actions
+only to inventory managers, preserve failed counts, and refresh stock after a
+committed adjustment. Stock balances and ledger history have no delete action.
+
+## UOM and Locations boundary
+
+Use [the UOM and Locations contract](../docs/uom-locations-modules.md) for `/uom`
+and `/locations`. Keep UOM factors as exact 8-place decimal strings, use real
+classes, and protect referenced conversions. Location master data manages type
+and active status; stock stays in Inventory Stocks. Disable inactive adjustment
+locations. Invalidate item unit options and inventory labels/options after the
+corresponding metadata changes. Use the Users layout and each feature’s own
+schema, hook, forms, and table.

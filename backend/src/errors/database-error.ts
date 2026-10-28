@@ -1,18 +1,42 @@
 import { AppError } from './app-error.ts';
 import HttpStatusCode from '../utils/statusCodeHandler.ts';
 
-/** Drizzle wraps driver errors in `cause`; postgres.js and pg expose SQLSTATE as `code`. */
+const connectionErrorCodes = new Set([
+    'CONNECT_TIMEOUT',
+    'CONNECTION_CLOSED',
+    'CONNECTION_ENDED',
+    'CONNECTION_DESTROYED',
+    'ETIMEDOUT',
+    'ECONNREFUSED',
+    'ECONNRESET',
+    'ECONNABORTED',
+    'EHOSTUNREACH',
+    'ENETUNREACH',
+    'ENOTFOUND',
+    'EAI_AGAIN',
+    'EPIPE',
+]);
+
+/** Inspect Drizzle causes and aggregated socket errors without exposing driver details. */
 export function getDatabaseErrorCode(error: unknown): string | undefined {
     const visited = new Set<object>();
-    let current = error;
+    const pending: unknown[] = [error];
 
-    while (typeof current === 'object' && current !== null && !visited.has(current)) {
+    while (pending.length) {
+        const current = pending.pop();
+        if (typeof current !== 'object' || current === null || visited.has(current)) continue;
         visited.add(current);
-        const candidate = current as { code?: unknown; cause?: unknown };
-        if (typeof candidate.code === 'string' && /^[0-9A-Z]{5}$/.test(candidate.code)) {
+        const candidate = current as { code?: unknown; cause?: unknown; errors?: unknown };
+        if (
+            typeof candidate.code === 'string' &&
+            (/^[0-9A-Z]{5}$/.test(candidate.code) || connectionErrorCodes.has(candidate.code))
+        ) {
             return candidate.code;
         }
-        current = candidate.cause;
+        if (Array.isArray(candidate.errors)) {
+            for (const nested of candidate.errors) pending.push(nested);
+        }
+        pending.push(candidate.cause);
     }
 
     return undefined;
@@ -53,7 +77,10 @@ export function mapDatabaseError(error: unknown): AppError | undefined {
                 'A numeric value is outside the allowed range.',
             );
         default:
-            if (code?.startsWith('08') || code === '53300') {
+            if (
+                code &&
+                (code.startsWith('08') || code === '53300' || connectionErrorCodes.has(code))
+            ) {
                 return new AppError(
                     HttpStatusCode.SERVICE_UNAVAILABLE,
                     'The database is temporarily unavailable. Please try again later.',

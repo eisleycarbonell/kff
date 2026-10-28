@@ -8,7 +8,9 @@ import type { CreateUserInput, UpdateUserInput } from '../src/modules/users/user
 // These environment changes are isolated to this test worker. No database module is imported.
 process.env.NODE_ENV = 'production';
 process.env.LOG_LEVEL = 'silent';
+process.env.JWT_SECRET = 'test-only-user-management-session-key';
 const { createApp } = await import('../src/app.ts');
+const { generateToken } = await import('../src/utils/jwtHandler.ts');
 
 const user: Awaited<ReturnType<UserService['createUser']>> = {
     userId: 42,
@@ -42,13 +44,32 @@ function fakeService(overrides: Partial<UserService> = {}): UserService {
 }
 
 async function withApi(service: UserService, run: (origin: string) => Promise<void>) {
-    const server = createApp(service).listen(0, '127.0.0.1');
+    const admin = {
+        userId: 7,
+        firstName: 'Admin',
+        lastName: 'User',
+        email: 'admin@example.com',
+        roleId: 1,
+        permissions: { canManageUsers: true },
+    };
+    const server = createApp({
+        userService: service,
+        authService: { login: async () => admin, getSessionUser: async () => admin },
+    }).listen(0, '127.0.0.1');
     await once(server, 'listening');
     const address = server.address();
     assert.ok(address && typeof address !== 'string');
+    const originalFetch = globalThis.fetch;
+    const token = await generateToken({ id: '7' }, '5m');
+    globalThis.fetch = (input, options = {}) => {
+        const headers = new Headers(options.headers);
+        headers.set('Cookie', `jwt=${token}`);
+        return originalFetch(input, { ...options, headers });
+    };
     try {
         await run(`http://127.0.0.1:${address.port}`);
     } finally {
+        globalThis.fetch = originalFetch;
         await new Promise<void>((resolve, reject) => {
             server.close((error) => (error ? reject(error) : resolve()));
             server.closeAllConnections();

@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import { useSession, SESSION_QUERY_KEY } from "@/hooks/use-session"
 import { Toast } from "@base-ui/react/toast"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
@@ -115,15 +116,20 @@ const EMPTY_USERS: User[] = []
 
 export function useUsers() {
     const queryClient = useQueryClient()
+    const session = useSession()
+    const canManage = session.data?.permissions.canManageUsers === true
     const { add: showToast, close: closeToast } = Toast.useToastManager()
+    const queryKey = [...USERS_QUERY_KEY, session.data?.userId]
     const usersQuery = useQuery({
-        queryKey: USERS_QUERY_KEY,
+        queryKey,
+        enabled: canManage,
         queryFn: ({ signal }) => getUsers(signal),
     })
     const { error: loadError, refetch } = usersQuery
 
     useEffect(() => {
         if (!loadError) return
+        void queryClient.invalidateQueries({ queryKey: SESSION_QUERY_KEY })
         const id = "users-load-error"
         showToast({
             id,
@@ -140,7 +146,7 @@ export function useUsers() {
             },
         })
         return () => closeToast(id)
-    }, [loadError, refetch, showToast, closeToast])
+    }, [loadError, refetch, showToast, closeToast, queryClient])
 
     const users = usersQuery.data ?? EMPTY_USERS
     const [formOpen, setFormOpen] = useState(false)
@@ -148,8 +154,9 @@ export function useUsers() {
     const [editingUser, setEditingUser] = useState<User | null>(null)
     const [deletingUsers, setDeletingUsers] = useState<User[]>([])
 
-    const { mutateAsync: saveUser, isPending: isSaving } = useMutation({
+    const save = useMutation({
         mutationFn: ({ values, userId }: { values: UserFormValues; userId?: number }) => {
+            if (!canManage) throw new Error("Your role does not allow managing users.")
             const input: UserWriteInput = {
                 firstName: values.firstName.trim(),
                 lastName: values.lastName.trim(),
@@ -163,7 +170,7 @@ export function useUsers() {
                 : updateUser(userId, input)
         },
         onSuccess: (savedUser, { userId }) => {
-            queryClient.setQueryData<User[]>(USERS_QUERY_KEY, (current = []) =>
+            queryClient.setQueryData<User[]>(queryKey, (current = []) =>
                 current.some((user) => user.userId === savedUser.userId)
                     ? current.map((user) => (user.userId === savedUser.userId ? savedUser : user))
                     : [...current, savedUser],
@@ -181,9 +188,11 @@ export function useUsers() {
                 description: error.message,
             }),
     })
+    const { mutateAsync: saveUser, isPending: isSaving, reset: resetSave } = save
 
-    const { mutate: removeUsers, isPending: isDeleting } = useMutation({
+    const remove = useMutation({
         mutationFn: async (selectedUsers: User[]) => {
+            if (!canManage) throw new Error("Your role does not allow managing users.")
             const results = await Promise.allSettled(
                 selectedUsers.map((user) => deleteUser(user.userId)),
             )
@@ -196,7 +205,7 @@ export function useUsers() {
             setDeletingUsers(failedUsers)
 
             if (deletedIds.size) {
-                queryClient.setQueryData<User[]>(USERS_QUERY_KEY, (current = []) =>
+                queryClient.setQueryData<User[]>(queryKey, (current = []) =>
                     current.filter((user) => !deletedIds.has(user.userId)),
                 )
                 void queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY })
@@ -219,43 +228,70 @@ export function useUsers() {
                 description: error.message,
             }),
     })
+    const { mutate: removeUsers, isPending: isDeleting, reset: resetDelete } = remove
 
     // Keep cached rows visible when a background refetch fails.
-    const loadStatus =
-        usersQuery.data !== undefined ? "ready" : usersQuery.isError ? "error" : "loading"
+    const loadStatus = session.isPending
+        ? "loading"
+        : session.data === undefined
+          ? "error"
+          : !session.data
+            ? "signed-out"
+            : !canManage
+              ? "forbidden"
+              : usersQuery.data !== undefined
+                ? "ready"
+                : usersQuery.isError
+                  ? "error"
+                  : "loading"
+
     const openAdd = useCallback(() => {
+        resetSave()
         setFormRequested(true)
         setEditingUser(null)
         setFormOpen(true)
-    }, [])
+    }, [resetSave])
+
     const openEdit = useCallback((user: User) => {
+        resetSave()
         setFormRequested(true)
         setEditingUser(user)
         setFormOpen(true)
-    }, [])
+    }, [resetSave])
+
     const openDelete = useCallback((selectedUsers: User[]) => {
+        resetDelete()
         setDeletingUsers(selectedUsers)
-    }, [])
+    }, [resetDelete])
 
-    async function handleSave(values: UserFormValues, user: User | null): Promise<boolean> {
-        if (isSaving) return false
-        try {
-            await saveUser({ values, userId: user?.userId })
-            return true
-        } catch {
-            // onError shows the toast; keep the form open with its current values.
-            return false
-        }
-    }
+    const handleSave = useCallback(
+        async (values: UserFormValues, user: User | null): Promise<boolean> => {
+            if (isSaving) return false
+            try {
+                await saveUser({ values, userId: user?.userId })
+                return true
+            } catch {
+                // onError shows the toast; keep the form open with its current values.
+                return false
+            }
+        },
+        [isSaving, saveUser],
+    )
 
-    function handleDelete() {
+    const handleDelete = useCallback(() => {
         if (!isDeleting && deletingUsers.length) {
             removeUsers(deletingUsers)
         }
-    }
+    }, [isDeleting, deletingUsers, removeUsers])
+
+    const retry = useCallback(() => {
+        void session.refetch()
+        if (canManage) void refetch()
+    }, [session, canManage, refetch])
 
     return {
         users,
+        canManage,
         loadStatus,
         formOpen,
         formRequested,
@@ -268,8 +304,8 @@ export function useUsers() {
         openDelete,
         handleSave,
         handleDelete,
-        retry: () => void refetch(),
-        isFetching: usersQuery.isFetching,
+        retry,
+        isFetching: session.isFetching || usersQuery.isFetching,
         isSaving,
         isDeleting,
     }

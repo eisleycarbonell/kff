@@ -4,6 +4,49 @@ These rules apply to `backend/`. Run commands from this directory. Use the
 users API as the reference for new modules and module refactors. Adapt its
 fields and behavior to the feature and the actual database schema.
 
+## Shared system flow and backend business rules
+
+Read the [shared agent instructions](../AGENTS.md) and the
+[complete system flow](../docs/system-flow.md) before changing a business
+feature. The system-flow document defines the business requirements; the users
+API below remains the reference for backend module structure.
+
+- Implement inventory operations in backend business services using the shared
+  Drizzle client and the actual database schema. Validate request shape with
+  Zod, then enforce permissions, workflow state, relationships, quantities, and
+  availability in the service or appropriate authorization middleware.
+- Run receiving, reservation creation, packing start/completion, adjustments,
+  scrap, and transfer dispatch/receipt inside PostgreSQL transactions. Commit
+  related operational records, ledger entries, balances, reservation changes,
+  and statuses together, or roll the entire operation back.
+- Enforce availability under concurrency with appropriate database-level
+  locking or atomic checks. Account for other active reservations when
+  calculating available stock and maximum producible quantity.
+- Snapshot BOM requirements into packing-order materials at creation and
+  require a valid BOM before planning. Preserve those snapshots for historical
+  orders. Consume reservations and release unused quantities as documented.
+- Receiving creates a lot linked to the PO line, records the Receive ledger
+  entry, updates stock, and supports partial receiving. Packing completion
+  creates a finished lot linked to the packing order, records Consume/Produce
+  entries, and updates source and destination stock atomically.
+- Treat inventory transactions as append-only. Correct errors with additional
+  transactions. Track balances by item/lot/location and use compatible UOM
+  conversions into the item's primary UOM with appropriate decimal precision.
+- Require distinct transfer locations. Dispatch posts source-to-In-Transit
+  movements; receipt posts In-Transit-to-destination movements. Branches and
+  stores use the same stock and ledger services as warehouses.
+- Preserve foreign-key integrity and lot provenance. Support optional lot dates
+  where appropriate. Populate `createdBy` and `updatedBy` from authenticated
+  identity and enforce role permissions independently of frontend controls.
+- Derive reports from operational data and use the documented statuses and
+  relationships. Compare requested workflows with existing schema/contracts
+  and coordinate necessary changes within the feature's scope.
+
+The general service-layer diagram in the business document uses the existing
+Express route -> controller -> service -> transaction/Drizzle architecture.
+Keep services focused on the requested business operation and reuse shared
+validation, response, authorization, and error handling.
+
 ## Stack and conventions
 
 - Node.js 24+, Express 5, TypeScript, ESM, Drizzle ORM with postgres.js, and Zod 4.
@@ -29,15 +72,29 @@ backend/
         user.routes.ts             # Router factory and validation middleware
         user.controller.ts         # Controller factory and HTTP responses
         user.service.ts            # Business rules and Drizzle queries
+      items/
+        item.schema.ts             # Catalog validation and exact decimal strings
+        item.routes.ts             # Authenticated catalog routes
+        item.controller.ts         # Catalog responses and authenticated audit IDs
+        item.service.ts            # Catalog persistence and relationship protection
+      inventory-stocks/
+        inventory-stock.schema.ts  # Stock filters and counted-adjustment inputs
+        inventory-stock.routes.ts  # Authenticated stock reads and protected counts
+        inventory-stock.controller.ts # HTTP contract and server actor
+        inventory-stock.service.ts # Balances, reservations, atomic ledger writes
+        inventory-stock.rules.ts   # Exact decimal and count invariants
       auth/
-        auth.controller.ts         # Existing login/logout implementation
+        auth.schema.ts             # Login validation and public session types
+        auth.routes.ts             # Login/logout/session routes
+        auth.controller.ts         # Cookie/session responses
+        auth.service.ts            # Credentials and current role settings
     errors/
       app-error.ts                 # Expected failures with safe client messages
       database-error.ts            # Shared SQLSTATE extraction and translation
     middleware/
       validate-request.ts          # Parse body/params/query into response.locals
       error-handler.ts             # One API error response boundary
-      auth.ts                      # Existing authentication middleware
+      auth.ts                      # Session authentication and role permission checks
       httpLogger.ts                # Shared HTTP logging
     db/
       index.ts                     # Shared database client
@@ -81,14 +138,17 @@ is unnecessary for the current modules.
    response objects out of services. Use explicit projections and writable
    fields, parameterized Drizzle queries, and transactions for operations that
    must succeed together. Other features may call a service's intentional
-   exported operations, as auth uses the users lookup; avoid importing another
+   exported operations; avoid importing another
    feature's controller or router.
 
 5. **Application composition stays in the entry files.** Read
    [app.ts](src/app.ts) and [index.ts](src/index.ts). Register feature routers in
-   `createApp`; supply real services and call `listen` in `index.ts`. Extend this
-   pattern when adding a module. Tests import the app factory with fake services
-   instead of importing the startup file or connecting to the database.
+   `createApp`; supply real services and call `listen` in `index.ts`. Pass every
+   service, including Users, in the same modules object:
+   `createApp({ userService, authService, itemService, stockService, uomService, locationService })`.
+   Do not give a feature service a separate positional argument. Extend the
+   modules object when adding a module. Tests use the same factory signature
+   with fake services instead of importing startup or connecting to the database.
 
 ## Validation rules
 
@@ -146,9 +206,15 @@ is unnecessary for the current modules.
 - The current users list returns a complete collection for frontend filtering
   and pagination. Coordinate any future server pagination contract with the
   frontend, including statistics and export scope.
-- Preserve existing authentication and CORS behavior during structural changes.
-  The existing auth controller is retained under its module; login/logout
-  endpoints are not currently registered by the app factory.
+- User-management routes require authenticated `canManageUsers` access. Enforce
+  permissions in backend middleware even when the frontend hides actions.
+- Authentication routes are registered under `/api/auth`. Catalog routes under
+  `/api/items` require an authenticated session; writes require
+  `canManageInventory`. Use the shared authentication/permission middleware and
+  server-derived audit identities for new protected features.
+- Read [the items module contract](../docs/items-module.md) for exact decimal
+  fields, deactivation, and the primary-UOM/type lock on referenced catalog items.
+  Register real item and auth services through the app factory in `index.ts`.
 
 ## Verification
 
@@ -166,6 +232,31 @@ Use fake services for HTTP tests; verify real persistence separately when a
 database test environment is part of the task. Report checks that could not run.
 Documentation-only changes need a consistency review rather than runtime tests.
 
+For inventory workflows, also verify atomic rollback, concurrent reservation
+limits, lot and source-document traceability, primary-UOM quantities, ledger
+and balance consistency, and authorization. Cover receiving/packing/transfer
+state transitions and failed/repeated operations according to the business flow.
+
 API references: [Zod schemas](https://zod.dev/api),
 [Express 5 error handling](https://expressjs.com/en/5x/guide/error-handling/), and
 [PostgreSQL SQLSTATE codes](https://www.postgresql.org/docs/current/errcodes-appendix.html).
+
+## Inventory Stocks boundary
+
+Stock quantities belong to [Inventory Stocks](../docs/inventory-stocks-module.md),
+not item master data. Count adjustments require `canManageInventory`, an existing
+lot/location, an Inventory Adjustment reason, an expected on-hand value, and the
+counted value. Update balances and append the ledger entry in one transaction.
+Lock lots first, then balances, then reservations; lock multiple lots in ascending
+ID order. Recheck active outstanding reservations and reject stale counts or a
+count below reservations. Do not create direct balance-edit or delete endpoints.
+
+## UOM and Locations boundary
+
+Read [the UOM and Locations contract](../docs/uom-locations-modules.md) before
+changing these modules. Preserve exact 8-place UOM factors, one base per nonempty
+class, reference locks, and empty-class deletion. Locations deactivate without
+hard deletion and must have no stock, outstanding reservations, or open work.
+Inventory writers use `requireActiveLocation(transaction, id)` from the locations
+service before writes and hold that transaction through ledger/balance commit.
+Lock multiple locations in ascending ID order. Metadata APIs never edit stock.

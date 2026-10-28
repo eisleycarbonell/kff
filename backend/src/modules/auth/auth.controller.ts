@@ -1,73 +1,41 @@
-import type { Request, Response, NextFunction } from 'express';
-import * as UserService from '../users/user.service.ts';
-import {
-    sendUnauthorizedResponse,
-    sendSuccessResponse,
-    sendSuccessNoDataResponse,
-} from '../../utils/responseHandler.ts';
+import type { Request, Response } from 'express';
+import type * as authService from './auth.service.ts';
+import type { loginRequestSchema } from './auth.schema.ts';
+import type { ValidatedResponse } from '../../middleware/validate-request.ts';
+import { AppError } from '../../errors/app-error.ts';
 import { generateToken } from '../../utils/jwtHandler.ts';
-import { comparePasswords } from '../../utils/hashHandler.ts';
-import logger from '../../utils/logger.ts';
-import { auditLoginSuccess, auditLoginFailure, auditLogout } from '../../utils/auditLogger.ts';
+import { sendSuccessResponse, sendSuccessNoDataResponse } from '../../utils/responseHandler.ts';
+import { auditLoginFailure, auditLoginSuccess, auditLogout } from '../../utils/auditLogger.ts';
 
-export const login = async (request: Request, response: Response, next: NextFunction) => {
-    try {
-        const { username, password } = request.body;
-        const user = await UserService.getUserByUsername(username);
+export type AuthService = Pick<typeof authService, 'login' | 'getSessionUser'>;
+const cookieOptions = () => ({
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict' as const,
+    path: '/',
+});
 
-        // 1. Check if user exists
-        if (!user) {
-            auditLoginFailure(request, username, 'User not found');
-            return sendUnauthorizedResponse(response, 'Invalid credentials');
-        }
-
-        // 2. Check password
-        const isPasswordValid = await comparePasswords(password, user.password);
-
-        if (!isPasswordValid) {
-            auditLoginFailure(request, username, 'Incorrect password');
-            return sendUnauthorizedResponse(response, 'Invalid credentials');
-        }
-
-        // 3. Generate token
-        const token = await generateToken({ id: user.id }, '30d');
-
-        // 4. Set cookie
-        response.cookie('jwt', token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
-            maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-        });
-
-        auditLoginSuccess(request, user.id, user.username);
-
-        // 5. Send flat success response
-        return sendSuccessResponse(response, {
-            fullName: user.fullName,
-            username: user.username,
-            email: user.email,
-        });
-    } catch (error: any) {
-        logger.error({ err: error }, 'Unexpected error during login');
-        next(error);
-    }
-};
-
-export const logout = async (request: Request, response: Response, next: NextFunction) => {
-    try {
-        response.cookie('jwt', '', {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
-            expires: new Date(0),
-        });
-
-        auditLogout(request);
-
-        return sendSuccessNoDataResponse(response, 'Logout Successful');
-    } catch (error) {
-        logger.error({ err: error }, 'Unexpected error during logout');
-        next(error);
-    }
-};
+export function createAuthController(service: AuthService) {
+    return {
+        async login(request: Request, response: ValidatedResponse<typeof loginRequestSchema>) {
+            const input = response.locals.validated.body;
+            const user = await service.login(input);
+            if (!user) {
+                auditLoginFailure(request, input.username, 'Invalid credentials');
+                throw new AppError(401, 'Invalid email or password.');
+            }
+            const token = await generateToken({ id: String(user.userId) }, '30d');
+            response.cookie('jwt', token, { ...cookieOptions(), maxAge: 30 * 24 * 60 * 60 * 1000 });
+            auditLoginSuccess(request, String(user.userId), user.email);
+            return sendSuccessResponse(response, user);
+        },
+        logout(request: Request, response: Response) {
+            response.clearCookie('jwt', cookieOptions());
+            auditLogout(request);
+            return sendSuccessNoDataResponse(response, 'Signed out.');
+        },
+        session(_request: Request, response: Response) {
+            return sendSuccessResponse(response, response.locals.session);
+        },
+    };
+}
