@@ -1,29 +1,32 @@
-import express, { type Express } from 'express';
-import userRouter from './routes/user.router.ts';
-import httpLogger from './middleware/httpLogger.ts';
-import logger from './utils/logger.ts';
-import cors from 'cors';
+import * as UomService from './modules/uoms/uom.service.ts';
+import * as LocationService from './modules/locations/location.service.ts';
+import 'dotenv/config';
+import * as StockService from './modules/inventory-stocks/inventory-stock.service.ts';
 
-const app: Express = express();
+import { createApp } from './app.ts';
+import * as UserService from './modules/users/user.service.ts';
+import logger from './utils/logger.ts';
+import * as ItemService from './modules/items/item.service.ts';
+import * as AuthService from './modules/auth/auth.service.ts';
+import * as SupplierService from './modules/suppliers/supplier.service.ts';
+import * as PurchaseOrderService from './modules/purchase-orders/purchase-order.service.ts';
+import * as ReceivingService from './modules/receiving/receiving.service.ts';
+import * as LotService from './modules/lots/lot.service.ts';
+
+const app = createApp({
+    userService: UserService,
+    itemService: ItemService,
+    authService: AuthService,
+    stockService: StockService,
+    uomService: UomService,
+    locationService: LocationService,
+    supplierService: SupplierService,
+    purchaseOrderService: PurchaseOrderService,
+    receivingService: ReceivingService,
+    lotService: LotService,
+});
 const port = process.env.PORT ? Number(process.env.PORT) : 3001;
 
-// ── Middleware ────────────────────────────────────────────────────────────────
-app.use(httpLogger);        // HTTP request/response logging (must be first)
-app.use(express.json());
-app.use(
-    cors({
-        origin: ['http://localhost:3000'],
-        credentials: true,
-        methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
-        allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
-    })
-);
-
-
-// ── Routes ────────────────────────────────────────────────────────────────────
-app.use('/api/user', userRouter);
-
-// ── Start ─────────────────────────────────────────────────────────────────────
 app.listen(port, () => {
     logger.info({ port, env: process.env.NODE_ENV ?? 'development' }, 'Server started');
 });

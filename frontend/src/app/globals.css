@@ -57,7 +57,7 @@
     --secondary: oklch(0.967 0.001 286.375);
     --secondary-foreground: oklch(0.21 0.006 285.885);
     --muted: oklch(0.966 0.005 106.5);
-    --muted-foreground: oklch(0.58 0.031 107.3);
+    --muted-foreground: oklch(0.46 0.018 260);
     --accent: oklch(0.966 0.005 106.5);
     --accent-foreground: oklch(0.228 0.013 107.4);
     --destructive: oklch(0.577 0.245 27.325);
@@ -126,4 +126,45 @@
   html {
     @apply font-sans;
     }
+}
+
+/* Keep notifications above dialogs and stack them down from the top center. */
+[data-slot="toast-viewport"] {
+    inset: 1rem 0 auto;
+    z-index: 100;
+    width: 24rem;
+    max-width: calc(100vw - 2rem);
+    margin-inline: auto;
+    pointer-events: none;
+}
+[data-slot="toast"] {
+    top: 0;
+    bottom: auto;
+    transform-origin: top center;
+    pointer-events: auto;
+    --offset-y: calc(var(--toast-offset-y) + var(--toast-index) * var(--gap) + var(--toast-swipe-movement-y));
+    transform: translateX(var(--toast-swipe-movement-x)) translateY(calc(var(--toast-swipe-movement-y) + var(--toast-index) * var(--peek) + var(--shrink) * var(--height))) scale(var(--scale));
+}
+[data-slot="toast"]::after {
+    top: auto;
+    bottom: 100%;
+}
+[data-slot="toast"][data-expanded] {
+    transform: translateX(var(--toast-swipe-movement-x)) translateY(var(--offset-y));
+}
+[data-slot="toast"][data-starting-style],
+[data-slot="toast"][data-ending-style]:not([data-limited]):not([data-swipe-direction]) {
+    transform: translateY(-150%);
+}
+[data-slot="toast"][data-ending-style][data-swipe-direction="down"] {
+    transform: translateY(calc(var(--toast-swipe-movement-y) + 150%));
+}
+[data-slot="toast"][data-ending-style][data-swipe-direction="up"] {
+    transform: translateY(calc(var(--toast-swipe-movement-y) - 150%));
+}
+[data-slot="toast"][data-ending-style][data-swipe-direction="left"] {
+    transform: translateX(calc(var(--toast-swipe-movement-x) - 150%)) translateY(var(--offset-y));
+}
+[data-slot="toast"][data-ending-style][data-swipe-direction="right"] {
+    transform: translateX(calc(var(--toast-swipe-movement-x) + 150%)) translateY(var(--offset-y));
 }

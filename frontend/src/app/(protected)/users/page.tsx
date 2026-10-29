@@ -1,7 +1,9 @@
 "use client"
 
 import dynamic from "next/dynamic"
-import { CheckCircle2, Trash2, X } from "lucide-react"
+import Link from "next/link"
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
+import { Plus, Trash2 } from "lucide-react"
 
 import { UserStatistics } from "@/components/modules/users/user-statistics"
 import { UserTable } from "@/components/modules/users/user-table"
@@ -28,17 +30,14 @@ const UserForm = dynamic(() =>
 export default function UsersPage() {
     const {
         users,
+        canManage,
         loadStatus,
-        error,
-        notice,
         formOpen,
         formRequested,
         editingUser,
         deletingUsers,
         setFormOpen,
         setDeletingUsers,
-        dismissError,
-        dismissNotice,
         openAdd,
         openEdit,
         openDelete,
@@ -47,76 +46,55 @@ export default function UsersPage() {
         retry,
         isSaving,
         isDeleting,
+        isFetching,
     } = useUsers()
 
     return (
         <>
             <title>Users</title>
-            <meta
-                name="description"
-                content="Manage user accounts and access."
-            />
+            <meta name="description" content="Manage user accounts and access." />
             <PageHeader
                 title="Users"
                 description="Manage your team, user details, and access roles."
+                actions={
+                    canManage && (
+                        <Button className="h-10 gap-2 px-4" onClick={openAdd}>
+                            <Plus />
+                            Add user
+                        </Button>
+                    )
+                }
             />
-            {error && !formOpen && !deletingUsers.length && (
-                <div
-                    role="alert"
-                    className="flex items-start justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
-                >
-                    <p>{error}</p>
-                    {loadStatus === "error" ? (
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={retry}
-                        >
-                            Retry
+            {loadStatus === "signed-out" && (
+                <Alert>
+                    <AlertTitle>Sign in to manage users</AlertTitle>
+                    <AlertDescription>
+                        <Button className="mt-2" render={<Link href="/" />} nativeButton={false}>
+                            Sign in
                         </Button>
-                    ) : (
-                        <Button
-                            variant="ghost"
-                            size="icon-xs"
-                            aria-label="Dismiss error"
-                            onClick={dismissError}
-                        >
-                            <X />
-                        </Button>
-                    )}
-                </div>
+                    </AlertDescription>
+                </Alert>
             )}
-            {notice && (
-                <div
-                    role="status"
-                    className="flex items-center justify-between gap-3 rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm"
-                >
-                    <span className="flex items-center gap-2">
-                        <CheckCircle2 className="size-4 text-primary" />
-                        {notice}
-                    </span>
-                    <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        aria-label="Dismiss notification"
-                        onClick={dismissNotice}
-                    >
-                        <X />
+            {loadStatus === "forbidden" && (
+                <Alert>
+                    <AlertTitle>User management access required</AlertTitle>
+                    <AlertDescription>
+                        Your role does not have permission to manage users.
+                    </AlertDescription>
+                </Alert>
+            )}
+            {loadStatus === "error" && (
+                <div className="flex justify-center py-8">
+                    <Button variant="outline" onClick={retry} disabled={isFetching}>
+                        {isFetching ? "Retrying..." : "Retry loading users"}
                     </Button>
                 </div>
             )}
             {loadStatus === "loading" && (
-                <div
-                    className="space-y-4"
-                    aria-busy="true"
-                    aria-label="Loading users"
-                >
+                <div className="space-y-4" aria-busy="true" aria-label="Loading users">
                     <div className="grid gap-4 sm:grid-cols-3">
                         {[0, 1, 2].map((index) => (
-                            <Skeleton
-                                key={index}
-                                className="h-28 rounded-xl"
-                            />
+                            <Skeleton key={index} className="h-28 rounded-xl" />
                         ))}
                     </div>
                     <Skeleton className="h-96 rounded-xl" />
@@ -136,17 +114,16 @@ export default function UsersPage() {
             {/* Keep the lazy form mounted after first use for closing animations and focus restoration. */}
             {formRequested && (
                 <UserForm
-                    open={formOpen}
+                    open={formOpen && canManage}
                     onOpenChange={setFormOpen}
                     user={editingUser}
                     users={users}
                     onSave={handleSave}
-                    submitError={error}
                     isSaving={isSaving}
                 />
             )}
             <AlertDialog
-                open={deletingUsers.length > 0}
+                open={canManage && deletingUsers.length > 0}
                 onOpenChange={(open) => {
                     if (!open && !isDeleting) setDeletingUsers([])
                 }}
@@ -164,14 +141,6 @@ export default function UsersPage() {
                             This action cannot be undone.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
-                    {error && (
-                        <p
-                            role="alert"
-                            className="text-sm text-destructive"
-                        >
-                            {error}
-                        </p>
-                    )}
                     <AlertDialogFooter>
                         <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
                         <AlertDialogAction
@@ -180,7 +149,9 @@ export default function UsersPage() {
                             disabled={isDeleting}
                         >
                             <Trash2 />
-                            {isDeleting ? "Deleting..." : `Delete ${deletingUsers.length === 1 ? "user" : "users"}`}
+                            {isDeleting
+                                ? "Deleting..."
+                                : `Delete ${deletingUsers.length === 1 ? "user" : "users"}`}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

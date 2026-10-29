@@ -12,8 +12,9 @@ server after changing it, or rebuild the frontend for production. The default us
 
 ## Users API contract
 
-The frontend assumes these endpoints exist. This change does not implement the
-backend handlers; the current backend list service still returns mock data.
+The backend implements these endpoints in `backend/src/modules/users/`.
+The Items / Products module and login/session integration are documented in
+[the items module contract](../docs/items-module.md).
 
 | Method | Path relative to API base | Request | Response |
 | --- | --- | --- | --- |
@@ -107,3 +108,5 @@ npm run build
 
 The API tests use Node's built-in test runner and TypeScript stripping, requiring
 Node 22.18+ or Node 24+. They mock fetch and do not contact the backend.
+
+Inventory Stocks: [module contract and adjustment rules](../docs/inventory-stocks-module.md).

@@ -1,4 +1,4 @@
-import { Download, Plus, Search, Settings2, Trash2, X } from "lucide-react"
+import { Download, Search, Settings2, Trash2, X } from "lucide-react"
 
 import { USER_ROLES, getRoleName, type User } from "@/components/modules/users/user.schema"
 import type { UserTableInstance } from "@/components/modules/users/user-table-columns"
@@ -42,7 +42,6 @@ type UserTableToolbarProps = {
     table: UserTableInstance
     hasFilters: boolean
     onClearFilters: () => void
-    onAdd: () => void
     onDelete: (users: User[]) => void
 }
 
@@ -79,120 +78,139 @@ export function UserTableToolbar({
     table,
     hasFilters,
     onClearFilters,
-    onAdd,
     onDelete,
 }: UserTableToolbarProps) {
     const filteredRows = table.getFilteredRowModel().rows
     const selectedRows = table.getFilteredSelectedRowModel().rows
 
     return (
-        <div className="flex flex-col gap-4 p-4">
-            <div className="flex flex-wrap items-end justify-end gap-3">
-                <div className="flex items-center gap-2">
-                    <Button
-                        variant="outline"
-                        onClick={() =>
-                            exportUsers(
-                                (selectedRows.length ? selectedRows : filteredRows).map(
-                                    (row) => row.original,
-                                ),
-                            )
-                        }
-                        disabled={!filteredRows.length}
-                    >
-                        <Download />
-                        {selectedRows.length ? "Export selected" : "Export CSV"}
-                    </Button>
-                    <Button onClick={onAdd}>
-                        <Plus />
-                        Add user
-                    </Button>
-                </div>
+        <div
+            role="group"
+            aria-label="User table controls"
+            className="flex flex-wrap items-center gap-3 border-b p-4 sm:p-5"
+        >
+            <div className="relative w-full sm:w-56 lg:w-64 xl:w-72">
+                <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                    aria-label="Search users"
+                    placeholder="Search users..."
+                    value={table.state.globalFilter ?? ""}
+                    onChange={(event) => {
+                        table.setGlobalFilter(event.target.value)
+                        table.resetRowSelection()
+                        table.setPageIndex(0)
+                    }}
+                    className="h-10 bg-card pl-10"
+                />
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-                <div className="relative w-full sm:max-w-72">
-                    <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                        aria-label="Search users"
-                        placeholder="Search name, email, or role..."
-                        value={table.state.globalFilter ?? ""}
-                        onChange={(event) => {
-                            table.setGlobalFilter(event.target.value)
-                            table.resetRowSelection()
-                            table.setPageIndex(0)
-                        }}
-                        className="pl-8"
-                    />
-                </div>
-                <Select
-                    items={roleItems}
-                    value={(table.getColumn("role")?.getFilterValue() as string) ?? "all"}
-                    onValueChange={(value) => {
-                        table.getColumn("role")?.setFilterValue(value === "all" ? undefined : value)
-                        table.resetRowSelection()
-                        table.setPageIndex(0)
-                    }}
+            <Select
+                items={roleItems}
+                value={(table.getColumn("role")?.getFilterValue() as string) ?? "all"}
+                onValueChange={(value) => {
+                    table.getColumn("role")?.setFilterValue(value === "all" ? undefined : value)
+                    table.resetRowSelection()
+                    table.setPageIndex(0)
+                }}
+            >
+                <SelectTrigger
+                    aria-label="Filter by role"
+                    className="min-w-36 bg-card data-[size=default]:h-10"
                 >
-                    <SelectTrigger
-                        aria-label="Filter by role"
-                        className="min-w-36"
-                    >
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {roleItems.map((item) => (
-                            <SelectItem
-                                key={item.value}
-                                value={item.value}
-                            >
-                                {item.label}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-                <Select
-                    items={verificationItems}
-                    value={(table.getColumn("verification")?.getFilterValue() as string) ?? "all"}
-                    onValueChange={(value) => {
-                        table
-                            .getColumn("verification")
-                            ?.setFilterValue(value === "all" ? undefined : value)
-                        table.resetRowSelection()
-                        table.setPageIndex(0)
-                    }}
+                    <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                    {roleItems.map((item) => (
+                        <SelectItem
+                            key={item.value}
+                            value={item.value}
+                        >
+                            {item.label}
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+            <Select
+                items={verificationItems}
+                value={(table.getColumn("verification")?.getFilterValue() as string) ?? "all"}
+                onValueChange={(value) => {
+                    table
+                        .getColumn("verification")
+                        ?.setFilterValue(value === "all" ? undefined : value)
+                    table.resetRowSelection()
+                    table.setPageIndex(0)
+                }}
+            >
+                <SelectTrigger
+                    aria-label="Filter by email status"
+                    className="min-w-44 bg-card data-[size=default]:h-10"
                 >
-                    <SelectTrigger
-                        aria-label="Filter by email status"
-                        className="min-w-40"
-                    >
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {verificationItems.map((item) => (
-                            <SelectItem
-                                key={item.value}
-                                value={item.value}
-                            >
-                                {item.label}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-                {hasFilters && (
+                    <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                    {verificationItems.map((item) => (
+                        <SelectItem
+                            key={item.value}
+                            value={item.value}
+                        >
+                            {item.label}
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+            {hasFilters && (
+                <Button
+                    variant="ghost"
+                    className="h-10"
+                    onClick={onClearFilters}
+                >
+                    <X />
+                    Reset
+                </Button>
+            )}
+            {selectedRows.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2 text-sm">
+                    <span className="font-medium text-primary" aria-live="polite">
+                        {selectedRows.length} selected
+                    </span>
                     <Button
                         variant="ghost"
-                        onClick={onClearFilters}
+                        className="h-10"
+                        onClick={() => table.resetRowSelection()}
                     >
-                        <X />
-                        Reset
+                        Clear selection
                     </Button>
-                )}
+                    <Button
+                        variant="destructive"
+                        className="h-10"
+                        onClick={() => onDelete(selectedRows.map((row) => row.original))}
+                    >
+                        <Trash2 />
+                        Delete selected
+                    </Button>
+                </div>
+            )}
+            <div className="flex flex-wrap items-center gap-3 sm:ml-auto">
+                <Button
+                    variant="outline"
+                    className="h-10 gap-2 px-3"
+                    onClick={() =>
+                        exportUsers(
+                            (selectedRows.length ? selectedRows : filteredRows).map(
+                                (row) => row.original,
+                            ),
+                        )
+                    }
+                    disabled={!filteredRows.length}
+                >
+                    <Download />
+                    {selectedRows.length ? "Export selected" : "Export CSV"}
+                </Button>
                 <DropdownMenu>
                     <DropdownMenuTrigger
                         render={
                             <Button
                                 variant="outline"
-                                className="sm:ml-auto"
+                                className="h-10 gap-2 px-3"
                             />
                         }
                     >
@@ -224,30 +242,6 @@ export function UserTableToolbar({
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
-            {selectedRows.length > 0 && (
-                <div className="flex flex-wrap items-center gap-3 rounded-lg bg-muted/60 px-3 py-2 text-sm">
-                    <span className="font-medium">
-                        {selectedRows.length} user
-                        {selectedRows.length === 1 ? "" : "s"} selected
-                    </span>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => table.resetRowSelection()}
-                    >
-                        Clear selection
-                    </Button>
-                    <Button
-                        variant="destructive"
-                        size="sm"
-                        className="ml-auto"
-                        onClick={() => onDelete(selectedRows.map((row) => row.original))}
-                    >
-                        <Trash2 />
-                        Delete selected
-                    </Button>
-                </div>
-            )}
         </div>
     )
 }

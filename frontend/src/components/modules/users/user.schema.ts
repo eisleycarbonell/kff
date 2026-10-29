@@ -1,34 +1,42 @@
+import { z } from "zod"
+
 export const USER_ROLES = [
     { id: 1, name: "Administrator" },
     { id: 2, name: "Warehouse Manager" },
     { id: 3, name: "Purchasing" },
 ] as const
 
-export type User = {
-    userId: number
-    firstName: string
-    middleName: string | null
-    lastName: string
+const idSchema = z.int().positive()
+const timestampSchema = z.iso.datetime({ offset: true })
+
+export const userSchema = z.object({
+    userId: idSchema,
+    firstName: z.string(),
+    middleName: z.string().nullable(),
+    lastName: z.string(),
     /** Calendar date in YYYY-MM-DD format. */
-    dateOfBirth: string | null
-    avatarUrl: string | null
-    mobileNumber: string | null
-    address: string | null
-    email: string
-    roleId: number
-    isEmailVerified: boolean
-    lastLoginAt: string | null
-    deletedAt: string | null
-    createdBy: number | null
-    createdAt: string
-    updatedBy: number | null
-    updatedAt: string
-}
+    dateOfBirth: z.iso.date().nullable(),
+    avatarUrl: z.string().nullable(),
+    mobileNumber: z.string().nullable(),
+    address: z.string().nullable(),
+    email: z.string(),
+    roleId: idSchema,
+    isEmailVerified: z.boolean(),
+    lastLoginAt: timestampSchema.nullable(),
+    deletedAt: timestampSchema.nullable(),
+    createdBy: idSchema.nullable(),
+    createdAt: timestampSchema,
+    updatedBy: idSchema.nullable(),
+    updatedAt: timestampSchema,
+})
+
+export type User = z.infer<typeof userSchema>
 
 export type UserWriteInput = Pick<
     User,
     "firstName" | "lastName" | "email" | "mobileNumber" | "roleId" | "isEmailVerified"
-> & Partial<Pick<User, "middleName" | "dateOfBirth" | "avatarUrl" | "address">>
+> &
+    Partial<Pick<User, "middleName" | "dateOfBirth" | "avatarUrl" | "address">>
 
 export type CreateUserInput = UserWriteInput & { password: string }
 

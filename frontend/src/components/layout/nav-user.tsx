@@ -1,19 +1,11 @@
 "use client"
 
-import {
-    BadgeCheck,
-    Bell,
-    ChevronsUpDown,
-    CreditCard,
-    LogOut,
-    Sparkles,
-} from "lucide-react"
+import { useRouter } from "next/navigation"
+import { useLogout, useSession } from "@/hooks/use-session"
 
-import {
-    Avatar,
-    AvatarFallback,
-    AvatarImage,
-} from "@/components/ui/avatar"
+import { BadgeCheck, Bell, ChevronsUpDown, CreditCard, LogOut, Sparkles } from "lucide-react"
+
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -31,7 +23,7 @@ import {
 } from "@/components/ui/sidebar"
 
 export function NavUser({
-    user,
+    user: fallbackUser,
 }: {
     user: {
         name: string
@@ -40,6 +32,22 @@ export function NavUser({
     }
 }) {
     const { isMobile } = useSidebar()
+    const session = useSession()
+    const logout = useLogout()
+    const router = useRouter()
+    const user = session.data
+        ? {
+              ...fallbackUser,
+              name: `${session.data.firstName} ${session.data.lastName}`,
+              email: session.data.email,
+          }
+        : fallbackUser
+    const initials = user.name
+        .split(" ")
+        .map((part) => part[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase()
 
     return (
         <SidebarMenu>
@@ -55,7 +63,7 @@ export function NavUser({
                     >
                         <Avatar className="h-8 w-8 rounded-lg">
                             <AvatarImage src={user.avatar} alt={user.name} />
-                            <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                            <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
                         </Avatar>
                         <div className="grid flex-1 text-left text-sm leading-tight">
                             <span className="truncate font-medium">{user.name}</span>
@@ -74,7 +82,9 @@ export function NavUser({
                                 <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                                     <Avatar className="h-8 w-8 rounded-lg">
                                         <AvatarImage src={user.avatar} alt={user.name} />
-                                        <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                                        <AvatarFallback className="rounded-lg">
+                                            {initials}
+                                        </AvatarFallback>
                                     </Avatar>
                                     <div className="grid flex-1 text-left text-sm leading-tight">
                                         <span className="truncate font-medium">{user.name}</span>
@@ -106,10 +116,28 @@ export function NavUser({
                             </DropdownMenuItem>
                         </DropdownMenuGroup>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem>
-                            <LogOut />
-                            Log out
-                        </DropdownMenuItem>
+                        <DropdownMenuGroup>
+                            <DropdownMenuItem
+                                disabled={logout.isPending}
+                                onClick={() => {
+                                    if (!session.data) {
+                                        router.push("/")
+                                        return
+                                    }
+                                    void logout
+                                        .mutateAsync()
+                                        .then(() => router.push("/"))
+                                        .catch(() => undefined)
+                                }}
+                            >
+                                <LogOut />
+                                {logout.isPending
+                                    ? "Signing out..."
+                                    : session.data
+                                      ? "Log out"
+                                      : "Sign in"}
+                            </DropdownMenuItem>
+                        </DropdownMenuGroup>
                     </DropdownMenuContent>
                 </DropdownMenu>
             </SidebarMenuItem>

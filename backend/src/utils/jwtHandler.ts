@@ -1,20 +1,18 @@
-import { jwtVerify } from 'jose';
-import { SignJWT } from 'jose';
+import { jwtVerify, SignJWT } from 'jose';
 
-// Initialize the secret once, not on every request
-const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'your-secret-key');
-
-export const verifyToken = async (token: string) => {
-    const { payload } = await jwtVerify(token, secret);
+function signingKey() {
+    const secret = process.env.JWT_SECRET;
+    if (!secret) throw new Error('JWT_SECRET must be configured before using authentication.');
+    return new TextEncoder().encode(secret);
+}
+export async function verifyToken(token: string) {
+    const { payload } = await jwtVerify(token, signingKey(), { algorithms: ['HS256'] });
     return payload;
-};
-
-export const generateToken = async (payload: { id: string }, expiresIn: string | number) => {
-    const token = await new SignJWT(payload)
+}
+export async function generateToken(payload: { id: string }, expiresIn: string | number) {
+    return new SignJWT(payload)
         .setProtectedHeader({ alg: 'HS256' })
         .setIssuedAt()
         .setExpirationTime(expiresIn)
-        .sign(secret);
-
-    return token;
-};
+        .sign(signingKey());
+}
