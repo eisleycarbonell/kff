@@ -94,8 +94,8 @@ export function createUserColumns({ onEdit, onDelete }: UserColumnActions) {
             filterFn: "includesString",
             cell: ({ row }) => (
                 <div className="flex items-center gap-3 py-1">
-                    <Avatar>
-                        <AvatarFallback className="bg-primary/10 text-xs font-medium text-primary">
+                    <Avatar className="size-10">
+                        <AvatarFallback className="bg-primary/10 text-sm font-semibold text-primary">
                             {row.original.firstName[0]}
                             {row.original.lastName[0]}
                         </AvatarFallback>
@@ -108,9 +108,11 @@ export function createUserColumns({ onEdit, onDelete }: UserColumnActions) {
                         >
                             {getUserName(row.original)}
                         </button>
-                        <div className="text-xs text-muted-foreground">
-                            {row.original.mobileNumber || "No mobile number"}
-                        </div>
+                        {row.original.mobileNumber && (
+                            <div className="mt-0.5 text-xs text-muted-foreground">
+                                {row.original.mobileNumber}
+                            </div>
+                        )}
                     </div>
                 </div>
             ),
@@ -126,7 +128,11 @@ export function createUserColumns({ onEdit, onDelete }: UserColumnActions) {
             header: "Role",
             sortFn: "text",
             filterFn: "equalsString",
-            cell: ({ getValue }) => <Badge variant="outline">{getValue()}</Badge>,
+            cell: ({ getValue }) => (
+                <Badge variant="outline" className="bg-muted/40 px-2.5 py-1 font-normal">
+                    {getValue()}
+                </Badge>
+            ),
         }),
         helper.accessor((user) => (user.isEmailVerified ? "Verified" : "Unverified"), {
             id: "verification",
@@ -136,8 +142,8 @@ export function createUserColumns({ onEdit, onDelete }: UserColumnActions) {
             enableGlobalFilter: false,
             cell: ({ row }) =>
                 row.original.isEmailVerified ? (
-                    <Badge variant="secondary" className="gap-1 bg-primary/10 text-primary">
-                        <Check className="size-3" />
+                    <Badge variant="secondary" className="gap-1.5 bg-primary/10 px-2.5 py-1 text-primary">
+                        <Check className="size-3.5" />
                         Verified
                     </Badge>
                 ) : (

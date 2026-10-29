@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronRight, type LucideIcon } from "lucide-react";
@@ -65,16 +65,15 @@ export function NavMain({ items }: NavMainProps) {
         () => (activeGroup ? [activeGroup] : [])
     );
 
-    // Automatically open the active group without closing others.
-    useEffect(() => {
-        if (!activeGroup) return;
+    const [previousPathname, setPreviousPathname] = useState(pathname);
 
-        setOpenGroups((prev) =>
-            prev.includes(activeGroup)
-                ? prev
-                : [...prev, activeGroup]
-        );
-    }, [pathname, activeGroup]);
+    // Reopen the active group on navigation while preserving other open groups.
+    if (pathname !== previousPathname) {
+        setPreviousPathname(pathname);
+        if (activeGroup && !openGroups.includes(activeGroup)) {
+            setOpenGroups([...openGroups, activeGroup]);
+        }
+    }
 
     // Toggle only the selected dropdown.
     const toggleGroup = (title: string, open: boolean) => {
@@ -107,6 +106,8 @@ export function NavMain({ items }: NavMainProps) {
                                     render={<Link href={item.url} />}
                                     tooltip={item.title}
                                     isActive={isActive}
+                                    aria-current={isActive ? "page" : undefined}
+                                    className="h-10 border-l-3 border-transparent data-active:border-primary data-active:bg-primary/12 data-active:font-semibold data-active:text-primary"
                                 >
                                     {item.icon && <item.icon />}
                                     <span>{item.title}</span>
@@ -131,6 +132,7 @@ export function NavMain({ items }: NavMainProps) {
                                     <SidebarMenuButton
                                         tooltip={item.title}
                                         isActive={isGroupActive}
+                                        className="h-10 data-active:bg-primary/5 data-active:font-semibold data-active:text-primary"
                                     />
                                 }
                             >
@@ -160,6 +162,8 @@ export function NavMain({ items }: NavMainProps) {
                                                         />
                                                     }
                                                     isActive={isSubActive}
+                                                    aria-current={isSubActive ? "page" : undefined}
+                                                    className="h-10 border-l-3 border-transparent pl-3 data-active:border-primary data-active:bg-primary/12 data-active:font-semibold data-active:text-primary"
                                                 >
                                                     <span>
                                                         {subItem.title}

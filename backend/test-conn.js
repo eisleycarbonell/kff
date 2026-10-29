@@ -1,19 +1,19 @@
-const { Client } = require('pg');
+import { config } from 'dotenv';
+import postgres from 'postgres';
 
-const url = "postgresql://postgres.jxxhmerspdtfvodaxfsh:%40Du3li3n301@aws-0-ap-northeast-1.pooler.supabase.com:5432/postgres";
+config({ path: '.env' });
 
-async function testConnection() {
-  const client = new Client({ connectionString: url });
-  try {
-    await client.connect();
-    console.log("Connected successfully to pooler on 5432!");
-    const res = await client.query('SELECT current_user, version()');
-    console.log(res.rows);
-  } catch (err) {
-    console.error("Connection error on 5432:", err);
-  } finally {
-    await client.end();
-  }
+const databaseUrl = process.env.DATABASE_URL;
+if (!databaseUrl) throw new Error('DATABASE_URL is not configured.');
+
+const sql = postgres(databaseUrl);
+
+try {
+    await sql`select 1`;
+    console.log('Database connection successful.');
+} catch {
+    console.error('Database connection failed.');
+    process.exitCode = 1;
+} finally {
+    await sql.end();
 }
-
-testConnection();

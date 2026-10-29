@@ -1,3 +1,5 @@
+import AnimatedLogo from "@/components/shared/animated-logo";
+
 export function LoginPanelCard() {
     return (
         <aside className="relative isolate flex h-full w-full flex-col overflow-hidden bg-[#102E2F] p-6 text-white lg:p-8">
@@ -16,10 +18,10 @@ export function LoginPanelCard() {
 
             {/* Logo */}
             <div className="flex shrink-0 items-center gap-3">
-                <img
-                    src="/images/kffLogo.png"
-                    alt="KFF logo"
-                    className="h-12 w-auto shrink-0 object-contain lg:h-14"
+                <AnimatedLogo
+                    width={100}
+                    speed={1.5}
+                    showReplay={false}
                 />
             </div>
 

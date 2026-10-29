@@ -8,9 +8,10 @@ import {
     Command,
     Boxes,
     ClipboardList,
+    ShoppingCart,
     Database,
-    Settings
-} from "lucide-react";
+    Settings,
+} from "lucide-react"
 import { NavMain } from "@/components/layout/nav-main"
 import { NavUser } from "@/components/layout/nav-user"
 import {
@@ -41,15 +42,7 @@ const data = {
             icon: Boxes,
             items: [
                 {
-                    title: "Items / Products",
-                    url: "/items",
-                },
-                {
-                    title: "Receiving & Lots",
-                    url: "/receiving",
-                },
-                {
-                    title: "Inventory Stock",
+                    title: "Inventory Stocks",
                     url: "/inventory",
                 },
                 {
@@ -63,14 +56,29 @@ const data = {
             ],
         },
         {
-            title: "Orders & Operations",
+            title: "Purchasing",
             url: "#",
-            icon: ClipboardList,
+            icon: ShoppingCart,
             items: [
                 {
                     title: "Purchase Orders",
                     url: "/purchase-orders",
                 },
+                {
+                    title: "Receiving",
+                    url: "/receiving",
+                },
+                {
+                    title: "Lots / Batches",
+                    url: "/lots",
+                },
+            ],
+        },
+        {
+            title: "Orders & Operations",
+            url: "#",
+            icon: ClipboardList,
+            items: [
                 {
                     title: "Packing Orders",
                     url: "/packing-orders",
@@ -86,6 +94,14 @@ const data = {
             url: "#",
             icon: Database,
             items: [
+                {
+                    title: "Items / Products",
+                    url: "/items",
+                },
+                {
+                    title: "Suppliers",
+                    url: "/suppliers",
+                },
                 {
                     title: "Locations",
                     url: "/locations",
@@ -105,10 +121,6 @@ const data = {
             url: "#",
             icon: UsersRound,
             items: [
-                {
-                    title: "Suppliers",
-                    url: "/suppliers",
-                },
                 {
                     title: "Customers",
                     url: "/customers",

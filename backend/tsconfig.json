@@ -11,5 +11,6 @@
         "forceConsistentCasingInFileNames": true,
         "noUnusedLocals": true,
         "strictNullChecks": true
-    }
+    },
+    "include": ["src/**/*.ts", "tests/**/*.ts", "drizzle.config.ts"]
 }

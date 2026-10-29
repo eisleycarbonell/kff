@@ -1,0 +1,27 @@
+import { Download, Search, Settings2, X } from "lucide-react"
+import { LOT_SOURCE_TYPES, QC_STATUSES, type Lot } from "@/components/modules/lots/lot.schema"
+import type { LotTableInstance } from "@/components/modules/lots/lot-table-columns"
+import { Button } from "@/components/ui/button"
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuGroup, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+
+const columnLabels: Record<string, string> = { item: "Item", qcStatus: "Quality status", sourceType: "Source", sourceReference: "Source reference", qtyOnHand: "On hand", qtyReserved: "Reserved", qtyAvailable: "Available", expirationDate: "Expiration date", supplierLotNumber: "Supplier lot", createdAt: "Date created" }
+function exportLots(lots: Lot[]) {
+    const escape = (value: string) => `"${(/^[\s]*[=+\-@]/.test(value) ? "'" + value : value).replaceAll('"', '""')}"`
+    const rows = [["Lot number", "Supplier lot", "Item SKU", "Item", "Primary unit", "Quality status", "Source", "Purchase order", "Packing order", "Manufacture date", "Expiration date", "On hand", "Reserved", "Available", "Unit cost per primary unit"], ...lots.map((lot) => [lot.lotNumber, lot.supplierLotNumber ?? "", lot.itemSku, lot.itemName, lot.primaryUomName, lot.qcStatus, lot.sourceType, lot.poNumber ?? "", lot.packingOrderNumber ?? "", lot.manufactureDate ?? "", lot.expirationDate ?? "", lot.qtyOnHand, lot.qtyReserved, lot.qtyAvailable, lot.unitCost ?? ""])]
+    const url = URL.createObjectURL(new Blob(["\uFEFF" + rows.map((row) => row.map(escape).join(",")).join("\r\n")], { type: "text/csv;charset=utf-8;" }))
+    const link = document.createElement("a"); link.href = url; link.download = "kff-lots.csv"; document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+export function LotTableToolbar({ table, lots, hasFilters, onClearFilters }: { table: LotTableInstance; lots: Lot[]; hasFilters: boolean; onClearFilters: () => void }) {
+    const filtered = table.getFilteredRowModel().rows
+    const selected = table.getFilteredSelectedRowModel().rows
+    const filters = [{ column: "qcStatus", label: "quality statuses", values: [...QC_STATUSES] as string[] }, { column: "sourceType", label: "sources", values: [...LOT_SOURCE_TYPES] as string[] }, { column: "item", label: "items", values: Array.from(new Map(lots.map((lot) => [lot.itemId, `${lot.itemSku} · ${lot.itemName}`])).values()).sort() }]
+    return <div role="group" aria-label="Lot table controls" className="flex flex-wrap items-center gap-3 border-b p-4 sm:p-5">
+        <div className="relative w-full sm:w-64"><Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" /><Input aria-label="Search lots" placeholder="Search lots, items, or references..." className="h-10 bg-card pl-10" value={table.state.globalFilter ?? ""} onChange={(event) => { table.setGlobalFilter(event.target.value); table.resetRowSelection(); table.setPageIndex(0) }} /></div>
+        {filters.map((filter) => { const items = [{ value: "all", label: `All ${filter.label}` }, ...filter.values.map((value) => ({ value: `value:${value}`, label: value }))]; const value = table.getColumn(filter.column)?.getFilterValue() as string | undefined; return <Select key={filter.column} items={items} value={value === undefined ? "all" : `value:${value}`} onValueChange={(next) => { table.getColumn(filter.column)?.setFilterValue(!next || next === "all" ? undefined : next.slice(6)); table.resetRowSelection(); table.setPageIndex(0) }}><SelectTrigger aria-label={`Filter lots by ${filter.label}`} className="w-full bg-card data-[size=default]:h-10 sm:w-44"><SelectValue className="min-w-0" /></SelectTrigger><SelectContent><SelectGroup>{items.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectGroup></SelectContent></Select> })}
+        {hasFilters && <Button variant="ghost" className="h-10" onClick={onClearFilters}><X />Reset</Button>}
+        {selected.length > 0 && <div className="flex flex-wrap items-center gap-2 text-sm"><span className="font-medium text-primary" aria-live="polite">{selected.length} selected</span><Button variant="ghost" className="h-10" onClick={() => table.resetRowSelection()}>Clear selection</Button></div>}
+        <div className="flex flex-wrap items-center gap-3 sm:ml-auto"><Button variant="outline" className="h-10" disabled={!filtered.length} onClick={() => exportLots((selected.length ? selected : filtered).map((row) => row.original))}><Download />{selected.length ? "Export selected" : "Export CSV"}</Button><DropdownMenu><DropdownMenuTrigger render={<Button variant="outline" className="h-10" />}><Settings2 />Columns</DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuGroup><DropdownMenuLabel>Visible columns</DropdownMenuLabel>{table.getAllLeafColumns().filter((column) => column.getCanHide()).map((column) => <DropdownMenuCheckboxItem key={column.id} checked={column.getIsVisible()} onCheckedChange={(checked) => column.toggleVisibility(checked)} closeOnClick={false}>{columnLabels[column.id] ?? column.id}</DropdownMenuCheckboxItem>)}</DropdownMenuGroup></DropdownMenuContent></DropdownMenu></div>
+    </div>
+}

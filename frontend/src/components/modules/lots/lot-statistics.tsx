@@ -1,0 +1,10 @@
+import { BadgeCheck, Boxes, ShieldAlert } from "lucide-react"
+import { formatLotDecimal, sumLotQuantities, type Lot } from "@/components/modules/lots/lot.schema"
+import { Card, CardContent } from "@/components/ui/card"
+
+export function LotStatistics({ lots }: { lots: Lot[] }) {
+    const quantities = new Map<number, { name: string; values: string[] }>()
+    for (const lot of lots) { const group = quantities.get(lot.primaryUomId) ?? { name: lot.primaryUomName, values: [] }; group.values.push(lot.qtyOnHand); quantities.set(lot.primaryUomId, group) }
+    const counts = [{ label: "Total lots", value: lots.length, description: "Purchased, packed, and opening lots", icon: Boxes }, { label: "Approved lots", value: lots.filter((lot) => lot.qcStatus === "Approved").length, description: "Lots with approved quality status", icon: BadgeCheck }, { label: "In quarantine", value: lots.filter((lot) => lot.qcStatus === "Quarantine").length, description: "Lots awaiting quality clearance", icon: ShieldAlert }]
+    return <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{counts.map(({ label, value, description, icon: Icon }) => <Card key={label} className="border py-5 ring-0"><CardContent className="flex items-start gap-4 px-5"><Icon className="mt-0.5 size-6 shrink-0 text-primary" aria-hidden="true" /><div className="min-w-0"><p className="text-sm font-medium text-muted-foreground">{label}</p><p className="mt-2 text-3xl font-semibold tracking-tight tabular-nums">{value}</p><p className="mt-1 text-sm text-muted-foreground">{description}</p></div></CardContent></Card>)}<Card className="border py-5 ring-0"><CardContent className="px-5"><p className="text-sm font-medium text-muted-foreground">On hand by unit</p><div className="mt-2 flex flex-col gap-1">{Array.from(quantities.entries()).map(([unitId, group]) => <p key={unitId} className="break-words text-lg font-semibold tabular-nums">{formatLotDecimal(sumLotQuantities(group.values) ?? "")} <span className="text-sm font-normal text-muted-foreground">{group.name}</span></p>)}{!quantities.size && <p className="text-sm text-muted-foreground">No lots yet</p>}</div></CardContent></Card></div>
+}
