@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Toast } from "@base-ui/react/toast"
 import { apiRequest, ApiError } from "@/lib/api-request"
@@ -119,10 +119,6 @@ export function useSuppliers() {
     const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null)
     const [deactivatingSupplier, setDeactivatingSupplier] = useState<Supplier | null>(null)
     const loadError = suppliersQuery.error ?? session.error
-    useEffect(() => {
-        if (loadError instanceof ApiError && loadError.status === 401)
-            client.setQueryData(SESSION_QUERY_KEY, null)
-    }, [loadError, client])
 
     function cacheSupplier(saved: Supplier) {
         client.setQueryData<Supplier[]>(queryKey, (current = []) =>
@@ -142,8 +138,6 @@ export function useSuppliers() {
         void client.invalidateQueries({ queryKey: [...SUPPLIER_ITEMS_QUERY_KEY, saved.supplierId] })
     }
     function mutationError(error: Error) {
-        if (error instanceof ApiError && error.status === 401)
-            client.setQueryData(SESSION_QUERY_KEY, null)
         if (error instanceof ApiError && error.status === 403)
             void client.invalidateQueries({ queryKey: SESSION_QUERY_KEY })
         showToast({
@@ -323,14 +317,8 @@ export function useSupplierItems(supplierId: number | null) {
     const [state, setState] = useState(() => emptyItemDialog(supplierId))
     if (state.supplierId !== supplierId) setState(emptyItemDialog(supplierId, state.scope + 1))
     const loadError = itemsQuery.error ?? optionsQuery.error ?? session.error
-    useEffect(() => {
-        if (loadError instanceof ApiError && loadError.status === 401)
-            client.setQueryData(SESSION_QUERY_KEY, null)
-    }, [loadError, client])
 
     function mutationError(error: Error) {
-        if (error instanceof ApiError && error.status === 401)
-            client.setQueryData(SESSION_QUERY_KEY, null)
         if (error instanceof ApiError && error.status === 403)
             void client.invalidateQueries({ queryKey: SESSION_QUERY_KEY })
         showToast({

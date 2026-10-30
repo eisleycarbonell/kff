@@ -26,6 +26,12 @@ import { createReceivingRouter } from './modules/receiving/receiving.routes.ts';
 import type { ReceivingService } from './modules/receiving/receiving.controller.ts';
 import { createLotRouter } from './modules/lots/lot.routes.ts';
 import type { LotService } from './modules/lots/lot.controller.ts';
+import { createPackingOrderRouter } from './modules/packing-orders/packing-order.routes.ts';
+import type { PackingOrderService } from './modules/packing-orders/packing-order.controller.ts';
+import { createTransferRouter } from './modules/transfers/transfer.routes.ts';
+import type { TransferService } from './modules/transfers/transfer.controller.ts';
+import { createDashboardRouter } from './modules/dashboard/dashboard.routes.ts';
+import type { DashboardService } from './modules/dashboard/dashboard.controller.ts';
 
 /** Build the HTTP app without opening a port or importing a live database client. */
 export function createApp(modules: {
@@ -39,13 +45,16 @@ export function createApp(modules: {
     purchaseOrderService?: PurchaseOrderService;
     receivingService?: ReceivingService;
     lotService?: LotService;
+    packingOrderService?: PackingOrderService;
+    transferService?: TransferService;
+    dashboardService?: DashboardService;
 }) {
     const app = express();
 
     app.use(httpLogger);
     app.use(
         cors({
-            origin: ['http://localhost:3000'],
+            origin: [process.env.CORS_ORIGIN || 'http://localhost:3000'],
             credentials: true,
             methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
             allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
@@ -78,6 +87,15 @@ export function createApp(modules: {
     if (modules.receivingService)
         app.use('/api/receiving', createReceivingRouter(modules.receivingService, authenticate));
     if (modules.lotService) app.use('/api/lots', createLotRouter(modules.lotService, authenticate));
+    if (modules.packingOrderService)
+        app.use(
+            '/api/packing-orders',
+            createPackingOrderRouter(modules.packingOrderService, authenticate),
+        );
+    if (modules.transferService)
+        app.use('/api/transfers', createTransferRouter(modules.transferService, authenticate));
+    if (modules.dashboardService)
+        app.use('/api/dashboard', createDashboardRouter(modules.dashboardService, authenticate));
     app.use((_request, _response, next) => {
         next(new AppError(HttpStatusCode.NOT_FOUND, 'Route not found.'));
     });

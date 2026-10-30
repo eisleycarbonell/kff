@@ -1,6 +1,8 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
+import { z } from "zod"
+import { apiRequest } from "@/lib/api-request"
 import { useSession, SESSION_QUERY_KEY } from "@/hooks/use-session"
 import { Toast } from "@base-ui/react/toast"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -14,101 +16,38 @@ import {
     type UserWriteInput,
 } from "@/components/modules/users/user.schema"
 
-const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001/api").replace(
-    /\/+$/,
-    "",
-)
+const USERS_PATH = "/user"
 
-export const USERS_ENDPOINT = `${API_BASE_URL}/user`
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-    return typeof value === "object" && value !== null && !Array.isArray(value)
-}
-
-async function request(path: string, options: RequestInit, allowEmpty = false): Promise<unknown> {
-    let response: Response | undefined
-    let payload: unknown
-    try {
-        response = await fetch(`${USERS_ENDPOINT}${path}`, {
-            ...options,
-            credentials: "include",
-            headers: {
-                Accept: "application/json",
-                ...(options.body ? { "Content-Type": "application/json" } : {}),
-            },
-        })
-        if (response.ok && response.status === 204 && allowEmpty) return
-        payload = await response.json()
-    } catch (cause) {
-        if (options.signal?.aborted || (cause instanceof Error && cause.name === "AbortError")) {
-            throw cause
-        }
-        if (!response) {
-            throw new Error("Unable to reach the user API. Check your connection and try again.")
-        }
-        throw new Error(
-            response.ok
-                ? "The user API returned invalid JSON."
-                : `The user API request failed (HTTP ${response.status}).`,
-        )
-    }
-
-    if (!response.ok || !isRecord(payload) || payload.success !== true) {
-        const message =
-            isRecord(payload) &&
-            isRecord(payload.error) &&
-            typeof payload.error.message === "string"
-                ? payload.error.message.trim()
-                : ""
-        throw new Error(
-            message ||
-                (response.ok
-                    ? "The user API returned an invalid response."
-                    : `The user API request failed (HTTP ${response.status}).`),
-        )
-    }
-
-    if (allowEmpty) return
-    if (!("data" in payload) || payload.data === null || payload.data === undefined) {
-        throw new Error("The user API returned an invalid response: user data is missing.")
-    }
-    return payload.data
-}
-
-function parseUser(value: unknown): User {
-    const result = userSchema.safeParse(value)
-    if (!result.success) {
-        throw new Error("The user API returned an invalid user record.")
-    }
+/** Parse a response with its schema so malformed records never reach components or the cache. */
+function parse<T>(schema: z.ZodType<T>, data: unknown): T {
+    const result = schema.safeParse(data)
+    if (!result.success) throw new Error("The user API returned an invalid user record.")
     return result.data
 }
 
 export async function getUsers(signal?: AbortSignal): Promise<User[]> {
-    const data = await request("", { method: "GET", signal })
-    if (!Array.isArray(data)) {
-        throw new Error("The user API returned an invalid response: expected a list of users.")
-    }
-    return data.map(parseUser)
+    return parse(userSchema.array(), await apiRequest(USERS_PATH, { method: "GET", signal }))
 }
 
 export async function createUser(input: CreateUserInput): Promise<User> {
-    const data = await request("", {
-        method: "POST",
-        body: JSON.stringify(input),
-    })
-    return parseUser(data)
+    return parse(
+        userSchema,
+        await apiRequest(USERS_PATH, { method: "POST", body: JSON.stringify(input) }),
+    )
 }
 
 export async function updateUser(userId: number, input: UpdateUserInput): Promise<User> {
-    const data = await request(`/${userId}`, {
-        method: "PATCH",
-        body: JSON.stringify(input),
-    })
-    return parseUser(data)
+    return parse(
+        userSchema,
+        await apiRequest(`${USERS_PATH}/${userId}`, {
+            method: "PATCH",
+            body: JSON.stringify(input),
+        }),
+    )
 }
 
 export async function deleteUser(userId: number): Promise<void> {
-    await request(`/${userId}`, { method: "DELETE" }, true)
+    await apiRequest(`${USERS_PATH}/${userId}`, { method: "DELETE" }, true)
 }
 
 export const USERS_QUERY_KEY = ["users"] as const

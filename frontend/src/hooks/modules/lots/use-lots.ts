@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Toast } from "@base-ui/react/toast"
 import { apiRequest, ApiError } from "@/lib/api-request"
@@ -38,7 +38,6 @@ const EMPTY_LOTS: Lot[] = []
 
 export function useLotDetail(lotId: number | null) {
     const session = useSession()
-    const client = useQueryClient()
     const query = useQuery({
         queryKey: [...LOT_DETAIL_QUERY_KEY, lotId, session.data?.userId],
         queryFn: ({ signal }) => getLot(lotId!, signal),
@@ -46,10 +45,6 @@ export function useLotDetail(lotId: number | null) {
         staleTime: 0,
     })
     const loadError = query.error ?? session.error
-    useEffect(() => {
-        if (loadError instanceof ApiError && loadError.status === 401)
-            client.setQueryData(SESSION_QUERY_KEY, null)
-    }, [client, loadError])
     const { refetch } = query,
         { refetch: refetchSession } = session
     const signedIn = Boolean(session.data)
@@ -94,10 +89,6 @@ export function useLots() {
         [formRequested, setFormRequested] = useState(false)
     const [editingLot, setEditingLot] = useState<Lot | null>(null)
     const loadError = query.error ?? session.error
-    useEffect(() => {
-        if (loadError instanceof ApiError && loadError.status === 401)
-            client.setQueryData(SESSION_QUERY_KEY, null)
-    }, [client, loadError])
     const save = useMutation({
         mutationFn: ({ values, lot }: { values: LotFormValues; lot: Lot | null }) => {
             if (!canManage) throw new Error("Your role does not allow editing lot details.")
@@ -122,8 +113,6 @@ export function useLots() {
             showToast({ type: "success", title: "Lot details updated." })
         },
         onError: (error) => {
-            if (error instanceof ApiError && error.status === 401)
-                client.setQueryData(SESSION_QUERY_KEY, null)
             if (error instanceof ApiError && error.status === 403)
                 void client.invalidateQueries({ queryKey: SESSION_QUERY_KEY })
             if (error instanceof ApiError && error.status === 409) {

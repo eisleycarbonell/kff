@@ -47,7 +47,7 @@ export function LotTable({ lots, canManage, isBusy, onView, onEdit }: LotTablePr
         globalFilterFn: "includesString",
         initialState: {
             pagination: { pageIndex: 0, pageSize: 10 },
-            columnVisibility: { supplierLotNumber: false, qtyReserved: false, createdAt: false, sourceReference: false },
+            columnVisibility: { supplierLotNumber: false, createdAt: false, sourceReference: false },
             sorting: [{ id: "createdAt", desc: true }],
         },
     })

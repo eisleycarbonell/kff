@@ -88,12 +88,12 @@ async function readReceipts(database: Reader, ids?: number[]) {
         qtyReceived: inverseReceiptQuantity(row.qtyPrimary, purchaseUomFactor, primaryUomFactor),
     }));
 }
-export async function listReceipts() {
-    return readReceipts(db);
+export async function listReceipts(database: Reader = db) {
+    return readReceipts(database);
 }
-export async function getReceivingOptions() {
+export async function getReceivingOptions(database: Reader = db) {
     const [orders, lines, locationRows] = await Promise.all([
-        db
+        database
             .select({
                 poId: purchaseOrders.poId,
                 poNumber: purchaseOrders.poNumber,
@@ -105,7 +105,7 @@ export async function getReceivingOptions() {
             .innerJoin(suppliers, eq(purchaseOrders.supplierId, suppliers.supplierId))
             .where(inArray(purchaseOrders.status, ['Sent', 'Partially Received']))
             .orderBy(desc(purchaseOrders.orderDate), desc(purchaseOrders.poId)),
-        db
+        database
             .select({
                 poId: purchaseOrderLines.poId,
                 poLineId: purchaseOrderLines.poLineId,
@@ -137,7 +137,7 @@ export async function getReceivingOptions() {
                 ),
             )
             .orderBy(asc(purchaseOrderLines.poLineId)),
-        db
+        database
             .select({
                 locationId: locations.locationId,
                 code: locations.code,

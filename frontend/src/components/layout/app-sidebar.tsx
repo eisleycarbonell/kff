@@ -11,6 +11,7 @@ import {
     ShoppingCart,
     Database,
     Settings,
+    ArrowLeftRight,
 } from "lucide-react"
 import { NavMain } from "@/components/layout/nav-main"
 import { NavUser } from "@/components/layout/nav-user"
@@ -45,14 +46,15 @@ const data = {
                     title: "Inventory Stocks",
                     url: "/inventory",
                 },
-                {
-                    title: "Inventory Reservations",
-                    url: "/packing-orders/reservations",
-                },
-                {
-                    title: "Stock Transfers",
-                    url: "/transfers",
-                },
+            ],
+        },
+        {
+            title: "Transfers",
+            url: "#",
+            icon: ArrowLeftRight,
+            items: [
+                { title: "Stock Transfers", url: "/transfers" },
+                { title: "In Transit", url: "/transfers/in-transit" },
             ],
         },
         {
@@ -75,7 +77,7 @@ const data = {
             ],
         },
         {
-            title: "Orders & Operations",
+            title: "Packing",
             url: "#",
             icon: ClipboardList,
             items: [
@@ -83,6 +85,17 @@ const data = {
                     title: "Packing Orders",
                     url: "/packing-orders",
                 },
+                {
+                    title: "Material Reservations",
+                    url: "/packing-orders/reservations",
+                },
+            ],
+        },
+        {
+            title: "Orders & Operations",
+            url: "#",
+            icon: ClipboardList,
+            items: [
                 {
                     title: "Sales Orders",
                     url: "/sales-orders",
