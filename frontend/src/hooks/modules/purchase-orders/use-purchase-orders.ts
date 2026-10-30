@@ -89,7 +89,6 @@ export type PurchaseOrderTransitionTarget = { order: PurchaseOrder; action: "sen
 
 export function usePurchaseOrderDetail(poId: number | null) {
     const session = useSession()
-    const client = useQueryClient()
     const query = useQuery({
         queryKey: [...PURCHASE_ORDER_DETAIL_QUERY_KEY, poId, session.data?.userId],
         queryFn: ({ signal }) => getPurchaseOrder(poId!, signal),
@@ -97,10 +96,6 @@ export function usePurchaseOrderDetail(poId: number | null) {
         staleTime: 0,
     })
     const loadError = query.error ?? session.error
-    useEffect(() => {
-        if (loadError instanceof ApiError && loadError.status === 401)
-            client.setQueryData(SESSION_QUERY_KEY, null)
-    }, [client, loadError])
     const { refetch } = query
     const { refetch: refetchSession } = session
     const signedIn = Boolean(session.data)
@@ -185,8 +180,6 @@ export function usePurchaseOrders() {
         void client.invalidateQueries({ queryKey: ["uoms"] })
     }
     function mutationError(error: Error) {
-        if (error instanceof ApiError && error.status === 401)
-            client.setQueryData(SESSION_QUERY_KEY, null)
         if (error instanceof ApiError && error.status === 403)
             void client.invalidateQueries({ queryKey: SESSION_QUERY_KEY })
         if (error instanceof ApiError && error.status === 409) {

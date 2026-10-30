@@ -12,6 +12,9 @@ import * as SupplierService from './modules/suppliers/supplier.service.ts';
 import * as PurchaseOrderService from './modules/purchase-orders/purchase-order.service.ts';
 import * as ReceivingService from './modules/receiving/receiving.service.ts';
 import * as LotService from './modules/lots/lot.service.ts';
+import * as PackingOrderService from './modules/packing-orders/packing-order.service.ts';
+import * as TransferService from './modules/transfers/transfer.service.ts';
+import * as DashboardService from './modules/dashboard/dashboard.service.ts';
 
 const app = createApp({
     userService: UserService,
@@ -24,9 +27,12 @@ const app = createApp({
     purchaseOrderService: PurchaseOrderService,
     receivingService: ReceivingService,
     lotService: LotService,
+    packingOrderService: PackingOrderService,
+    transferService: TransferService,
+    dashboardService: DashboardService,
 });
 const port = process.env.PORT ? Number(process.env.PORT) : 3001;
 
-app.listen(port, () => {
+app.listen(port, '0.0.0.0', () => {
     logger.info({ port, env: process.env.NODE_ENV ?? 'development' }, 'Server started');
 });

@@ -105,8 +105,6 @@ export function useReceiving() {
             showToast({ type: "success", title: `${saved.receipts.length} lot(s) received.` })
         },
         onError: (error) => {
-            if (error instanceof ApiError && error.status === 401)
-                client.setQueryData(SESSION_QUERY_KEY, null)
             if (error instanceof ApiError && error.status === 403)
                 void client.invalidateQueries({ queryKey: SESSION_QUERY_KEY })
             if (error instanceof ApiError && error.status === 409) {

@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Toast } from "@base-ui/react/toast"
 import { apiRequest, ApiError } from "@/lib/api-request"
@@ -64,10 +64,6 @@ export function useItems() {
     const [deactivatingItems, setDeactivatingItems] = useState<Item[]>([])
     const canManage = session.data?.permissions.canManageInventory === true
     const loadError = itemsQuery.error ?? uomsQuery.error ?? session.error
-    useEffect(() => {
-        if (loadError instanceof ApiError && loadError.status === 401)
-            client.setQueryData(SESSION_QUERY_KEY, null)
-    }, [loadError, client])
 
     function cacheItem(saved: Item) {
         client.setQueryData<Item[]>(queryKey, (current = []) =>
@@ -77,8 +73,6 @@ export function useItems() {
         )
     }
     function mutationError(error: Error) {
-        if (error instanceof ApiError && error.status === 401)
-            client.setQueryData(SESSION_QUERY_KEY, null)
         if (error instanceof ApiError && error.status === 403)
             void client.invalidateQueries({ queryKey: SESSION_QUERY_KEY })
         showToast({

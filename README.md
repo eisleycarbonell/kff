@@ -12,6 +12,8 @@ Kusina filipino food
 - [Suppliers module contract](docs/suppliers-module.md)
 - [Purchase Orders module contract](docs/purchase-orders-module.md)
 - [Receiving and Lots module contract](docs/receiving-lots-modules.md)
+- [Packing Orders and Material Reservations module contract](docs/packing-orders-module.md)
+- [Stock Transfers and In Transit module contract](docs/stock-transfers-module.md)
 
 Inventory Stocks: [module contract and adjustment rules](docs/inventory-stocks-module.md).
 

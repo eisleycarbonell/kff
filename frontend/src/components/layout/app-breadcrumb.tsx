@@ -54,10 +54,11 @@ const routeConfig: Record<string, BreadcrumbConfig> = {
     },
     "/transfers": {
         label: "Stock Transfers",
-        group: "Inventory Management",
+        group: "Transfers",
     },
     "/transfers/in-transit": {
         label: "In Transit",
+        group: "Transfers",
     },
 
     // Orders & Operations
@@ -67,11 +68,11 @@ const routeConfig: Record<string, BreadcrumbConfig> = {
     },
     "/packing-orders": {
         label: "Packing Orders",
-        group: "Orders & Operations",
+        group: "Packing",
     },
     "/packing-orders/reservations": {
-        label: "Inventory Reservations",
-        group: "Inventory Management",
+        label: "Material Reservations",
+        group: "Packing",
     },
     "/sales-orders": {
         label: "Sales Orders",
