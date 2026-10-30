@@ -13,6 +13,7 @@ import httpLogger from './middleware/httpLogger.ts';
 import type { UserService } from './modules/users/user.controller.ts';
 import { createUserRouter } from './modules/users/user.routes.ts';
 import HttpStatusCode from './utils/statusCodeHandler.ts';
+import { sendSuccessResponse } from './utils/responseHandler.ts';
 import type { ItemService } from './modules/items/item.controller.ts';
 import type { AuthService } from './modules/auth/auth.controller.ts';
 import { createItemRouter } from './modules/items/item.routes.ts';
@@ -61,6 +62,14 @@ export function createApp(modules: {
         }),
     );
     app.use(express.json());
+
+    app.get('/api/health', (_request, response) => {
+        sendSuccessResponse(response, {
+            status: 'ok',
+            uptime: process.uptime(),
+            timestamp: new Date().toISOString(),
+        });
+    });
 
     const authenticate = createAuthMiddleware(modules.authService);
     app.use('/api/auth', createAuthRouter(modules.authService, authenticate));
