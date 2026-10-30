@@ -1,5 +1,5 @@
 "use client"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Toast } from "@base-ui/react/toast"
 import { apiRequest, ApiError } from "@/lib/api-request"
@@ -84,10 +84,6 @@ export function useUoms() {
     const [deletingClass, setDeletingClass] = useState<UomClass | null>(null)
     const canManage = session.data?.permissions.canManageInventory === true
     const loadError = query.error ?? classesQuery.error ?? session.error
-    useEffect(() => {
-        if (loadError instanceof ApiError && loadError.status === 401)
-            client.setQueryData(SESSION_QUERY_KEY, null)
-    }, [loadError, client])
     function refresh() {
         for (const key of [
             "uoms",
@@ -100,8 +96,6 @@ export function useUoms() {
             void client.invalidateQueries({ queryKey: [key] })
     }
     function mutationError(error: Error) {
-        if (error instanceof ApiError && error.status === 401)
-            client.setQueryData(SESSION_QUERY_KEY, null)
         if (error instanceof ApiError && error.status === 403)
             void client.invalidateQueries({ queryKey: SESSION_QUERY_KEY })
         if (error instanceof ApiError && error.status === 409) refresh()

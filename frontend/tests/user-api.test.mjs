@@ -28,6 +28,7 @@ async function importApi(baseUrl) {
 }
 
 const api = await importApi()
+const USERS_ENDPOINT = "http://localhost:3001/api/user"
 const user = {
     userId: 42,
     firstName: "Maria",
@@ -66,7 +67,7 @@ test("GET uses the default endpoint, credentials and signal and preserves nullab
         return Response.json({ success: true, data: [user] })
     }
 
-    assert.equal(api.USERS_ENDPOINT, "http://localhost:3001/api/user")
+    assert.equal(typeof api.getUsers, "function")
     const users = await api.getUsers(controller.signal)
     assert.deepEqual(users, [user])
     assert.equal("passwordHash" in users[0], false)
@@ -93,7 +94,7 @@ test("POST sends create fields and a plain password and returns the server user"
         password: "Create-password-123!",
     }
     globalThis.fetch = async (url, options) => {
-        assert.equal(url, api.USERS_ENDPOINT)
+        assert.equal(url, USERS_ENDPOINT)
         assert.equal(options.method, "POST")
         assert.equal(options.credentials, "include")
         assert.equal(new Headers(options.headers).get("Content-Type"), "application/json")
@@ -112,7 +113,7 @@ test("PATCH sends only changed fields without a password", async () => {
     const input = { firstName: "Marie", middleName: null, mobileNumber: null }
     const updated = { ...user, ...input, updatedBy: 1 }
     globalThis.fetch = async (url, options) => {
-        assert.equal(url, `${api.USERS_ENDPOINT}/42`)
+        assert.equal(url, `${USERS_ENDPOINT}/42`)
         assert.equal(options.method, "PATCH")
         assert.equal(options.credentials, "include")
         assert.equal(new Headers(options.headers).get("Content-Type"), "application/json")
@@ -136,7 +137,7 @@ for (const [name, response] of [
 ]) {
     test(`DELETE accepts ${name}`, async () => {
         globalThis.fetch = async (url, options) => {
-            assert.equal(url, `${api.USERS_ENDPOINT}/42`)
+            assert.equal(url, `${USERS_ENDPOINT}/42`)
             assert.equal(options.method, "DELETE")
             assert.equal(options.credentials, "include")
             assert.equal(options.body, undefined)
@@ -176,11 +177,11 @@ test("successful responses with invalid JSON fail clearly", async () => {
 })
 
 for (const [name, payload, expected] of [
-    ["the backend string mock", { success: true, data: "mock users" }, /expected a list of users/],
-    ["missing data", { success: true }, /user data is missing/],
-    ["a missing success flag", { data: [user] }, /invalid response/],
-    ["a non-boolean success flag", { success: "true", data: [user] }, /invalid response/],
-    ["a null envelope", null, /invalid response/],
+    ["the backend string mock", { success: true, data: "mock users" }, /invalid user record/],
+    ["missing data", { success: true }, /missing data/],
+    ["a missing success flag", { data: [user] }, /request failed/],
+    ["a non-boolean success flag", { success: "true", data: [user] }, /request failed/],
+    ["a null envelope", null, /request failed/],
     ["invalid list records", { success: true, data: [null] }, /invalid user record/],
 ]) {
     test(`GET rejects ${name}`, async () => {
@@ -325,7 +326,7 @@ test("network failures produce a usable connection error", async () => {
     globalThis.fetch = async () => {
         throw new TypeError("fetch failed")
     }
-    await assert.rejects(api.getUsers(), /Unable to reach the user API/)
+    await assert.rejects(api.getUsers(), /Unable to reach the API/)
 })
 
 test("fetch AbortError is preserved for cancellation handling", async () => {
@@ -360,11 +361,18 @@ test("AbortError during JSON reading is preserved", async () => {
 })
 
 test("the configured base URL has trailing slashes removed", async () => {
-    const configured = await importApi("https://users.example.test/api///")
-    assert.equal(configured.USERS_ENDPOINT, "https://users.example.test/api/user")
-    globalThis.fetch = async (url) => {
-        assert.equal(url, configured.USERS_ENDPOINT)
-        return Response.json({ success: true, data: [] })
+    const previous = process.env.NEXT_PUBLIC_API_BASE_URL
+    process.env.NEXT_PUBLIC_API_BASE_URL = "https://users.example.test/api///"
+    try {
+        const client = await import(`../src/lib/api-request.ts?test=${++importCount}`)
+        assert.equal(client.API_BASE_URL, "https://users.example.test/api")
+        globalThis.fetch = async (url) => {
+            assert.equal(url, "https://users.example.test/api/user")
+            return Response.json({ success: true, data: [] })
+        }
+        assert.deepEqual(await client.apiRequest("/user"), [])
+    } finally {
+        if (previous === undefined) delete process.env.NEXT_PUBLIC_API_BASE_URL
+        else process.env.NEXT_PUBLIC_API_BASE_URL = previous
     }
-    assert.deepEqual(await configured.getUsers(), [])
 })

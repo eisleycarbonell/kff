@@ -57,8 +57,6 @@ export function useInventoryStocks() {
     })
     const loadError = stocksQuery.error ?? optionsQuery.error ?? session.error
     useEffect(() => {
-        if (loadError instanceof ApiError && loadError.status === 401)
-            client.setQueryData(SESSION_QUERY_KEY, null)
         if (loadError instanceof ApiError && loadError.status === 403)
             void client.invalidateQueries({ queryKey: SESSION_QUERY_KEY })
     }, [loadError, client])
@@ -80,8 +78,6 @@ export function useInventoryStocks() {
             showToast({ type: "success", title: "Stock adjustment recorded." })
         },
         onError: (error) => {
-            if (error instanceof ApiError && error.status === 401)
-                client.setQueryData(SESSION_QUERY_KEY, null)
             if (error instanceof ApiError && error.status === 403)
                 void client.invalidateQueries({ queryKey: SESSION_QUERY_KEY })
             if (error instanceof ApiError && error.status === 409) {

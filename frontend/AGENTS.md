@@ -142,11 +142,15 @@ substantial; do not create empty files to match this tree.
    mutation logic in the hook. Do not add a `Users`-style wrapper solely to
    connect these pieces.
 
-2. **The feature hook owns requests and state.** Put endpoint constants, fetch
-   functions, response parsing, query keys, `useQuery`, `useMutation`, CRUD
+2. **The feature hook owns requests and state.** Put endpoint paths, request
+   functions, schema parsing, query keys, `useQuery`, `useMutation`, CRUD
    handlers, modal state, and success/error notifications together, as in
-   `use-users.ts`. Do not introduce separate `*.api.ts`, service, or repository
-   files by default.
+   `use-users.ts`. Send requests through the shared `apiRequest` in
+   `lib/api-request.ts` and validate responses with the feature schema
+   (`schema.array()` for lists); do not write a per-module fetch wrapper. Expired
+   sessions (HTTP 401) are handled once in `QueryProvider`; hooks must not repeat
+   that. Do not introduce separate `*.api.ts`, service, or repository files by
+   default.
 
 3. **The schema owns types and validation.** Define public response DTOs, separate
    create/update inputs, form values, and pure validation/helpers in
