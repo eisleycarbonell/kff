@@ -2,6 +2,7 @@ import { asc, eq, sql } from 'drizzle-orm';
 import { db } from '../../db/index.ts';
 import {
     items,
+    brands,
     uoms,
     uomClasses,
     supplierItems,
@@ -15,6 +16,7 @@ import {
     inventoryReservations,
     inventoryTransactions,
     stockTransferLines,
+    salesOrderLines,
 } from '../../db/schema.ts';
 import { AppError } from '../../errors/app-error.ts';
 import type { CreateItemInput, UpdateItemInput } from './item.schema.ts';
@@ -31,13 +33,17 @@ const isInUse = sql<boolean>`(
     exists (select 1 from ${inventoryStock} where ${inventoryStock.itemId} = ${items.itemId}) or
     exists (select 1 from ${inventoryReservations} where ${inventoryReservations.itemId} = ${items.itemId}) or
     exists (select 1 from ${inventoryTransactions} where ${inventoryTransactions.itemId} = ${items.itemId}) or
-    exists (select 1 from ${stockTransferLines} where ${stockTransferLines.itemId} = ${items.itemId})
+    exists (select 1 from ${stockTransferLines} where ${stockTransferLines.itemId} = ${items.itemId}) or
+    exists (select 1 from ${salesOrderLines} where ${salesOrderLines.itemId} = ${items.itemId})
 )`;
 
 const itemFields = {
     itemId: items.itemId,
     sku: items.sku,
     name: items.name,
+    brandId: items.brandId,
+    brandCode: brands.code,
+    brandName: brands.name,
     itemType: items.itemType,
     primaryUomId: items.primaryUomId,
     primaryUomName: uoms.name,
@@ -58,6 +64,7 @@ const itemQuery = (database: Reader = db) =>
     database
         .select(itemFields)
         .from(items)
+        .leftJoin(brands, eq(items.brandId, brands.brandId))
         .innerJoin(uoms, eq(items.primaryUomId, uoms.uomId))
         .innerJoin(uomClasses, eq(uoms.uomClassId, uomClasses.uomClassId));
 
@@ -91,9 +98,14 @@ async function requireUom(database: Reader, uomId: number) {
         .limit(1);
     if (!unit) throw new AppError(400, 'Select an existing primary unit of measure.');
 }
-export async function createItem(input: CreateItemInput, actorId: number) {
-    return db.transaction(async (tx) => {
+export async function createItem(
+    input: CreateItemInput,
+    actorId: number,
+    database: typeof db = db,
+) {
+    return database.transaction(async (tx) => {
         await requireUom(tx, input.primaryUomId);
+        await requireActiveBrand(tx, input.brandId);
         const [created] = await tx
             .insert(items)
             .values({ ...input, createdBy: actorId, updatedBy: actorId })
@@ -104,11 +116,18 @@ export async function createItem(input: CreateItemInput, actorId: number) {
         return saved;
     });
 }
-export async function updateItem(id: number, input: UpdateItemInput, actorId: number) {
-    return db.transaction(async (tx) => {
+export async function updateItem(
+    id: number,
+    input: UpdateItemInput,
+    actorId: number,
+    database: typeof db = db,
+) {
+    return database.transaction(async (tx) => {
         // FOR UPDATE also serializes concurrent FK references while changing the primary UOM/type.
         const [current] = await tx.select().from(items).where(eq(items.itemId, id)).for('update');
         if (!current) return null;
+        if (input.brandId !== undefined && input.brandId !== current.brandId)
+            await requireActiveBrand(tx, input.brandId);
         const changesIdentity =
             (input.primaryUomId !== undefined && input.primaryUomId !== current.primaryUomId) ||
             (input.itemType !== undefined && input.itemType !== current.itemType);
@@ -127,4 +146,14 @@ export async function updateItem(id: number, input: UpdateItemInput, actorId: nu
             .where(eq(items.itemId, id));
         return getItem(id, tx);
     });
+}
+
+async function requireActiveBrand(database: Reader, brandId: number | null | undefined) {
+    if (brandId == null) return;
+    const [brand] = await database
+        .select({ isActive: brands.isActive })
+        .from(brands)
+        .where(eq(brands.brandId, brandId))
+        .for('share');
+    if (!brand?.isActive) throw new AppError(409, 'Select an active brand.');
 }

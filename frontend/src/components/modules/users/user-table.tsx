@@ -13,7 +13,7 @@ import {
     UsersRound,
 } from "lucide-react"
 
-import type { User } from "@/components/modules/users/user.schema"
+import type { User, UserRole } from "@/components/modules/users/user.schema"
 import { createUserColumns, userTableFeatures } from "@/components/modules/users/user-table-columns"
 import { UserTableToolbar } from "@/components/modules/users/user-table-toolbar"
 import { Button } from "@/components/ui/button"
@@ -36,14 +36,18 @@ import {
 const pageSizeItems = [5, 10, 20, 50].map((size) => ({ value: String(size), label: String(size) }))
 
 type UserTableProps = {
+    roles: UserRole[]
     users: User[]
     onAdd: () => void
     onEdit: (user: User) => void
     onDelete: (users: User[]) => void
 }
 
-export function UserTable({ users, onAdd, onEdit, onDelete }: UserTableProps) {
-    const columns = useMemo(() => createUserColumns({ onEdit, onDelete }), [onEdit, onDelete])
+export function UserTable({ users, roles, onAdd, onEdit, onDelete }: UserTableProps) {
+    const columns = useMemo(
+        () => createUserColumns({ onEdit, onDelete, roles }),
+        [onEdit, onDelete, roles],
+    )
     const table = useTable({
         features: userTableFeatures,
         data: users,
@@ -71,6 +75,7 @@ export function UserTable({ users, onAdd, onEdit, onDelete }: UserTableProps) {
     return (
         <div className="min-w-0 overflow-hidden rounded-xl border bg-card text-card-foreground shadow-xs">
             <UserTableToolbar
+                roles={roles}
                 table={table}
                 hasFilters={hasFilters}
                 onClearFilters={clearFilters}
@@ -94,8 +99,7 @@ export function UserTable({ users, onAdd, onEdit, onDelete }: UserTableProps) {
                                         header.column.getCanSort()
                                             ? header.column.getIsSorted() === "asc"
                                                 ? "ascending"
-                                                : header.column.getIsSorted() ===
-                                                    "desc"
+                                                : header.column.getIsSorted() === "desc"
                                                   ? "descending"
                                                   : "none"
                                             : undefined
@@ -109,11 +113,9 @@ export function UserTable({ users, onAdd, onEdit, onDelete }: UserTableProps) {
                                             onClick={header.column.getToggleSortingHandler()}
                                         >
                                             <table.FlexRender header={header} />
-                                            {header.column.getIsSorted() ===
-                                            "asc" ? (
+                                            {header.column.getIsSorted() === "asc" ? (
                                                 <ArrowUp className="size-3.5" />
-                                            ) : header.column.getIsSorted() ===
-                                              "desc" ? (
+                                            ) : header.column.getIsSorted() === "desc" ? (
                                                 <ArrowDown className="size-3.5" />
                                             ) : (
                                                 <ArrowUpDown className="size-3.5 text-muted-foreground" />
@@ -133,9 +135,7 @@ export function UserTable({ users, onAdd, onEdit, onDelete }: UserTableProps) {
                             <TableRow
                                 key={row.id}
                                 className="hover:bg-primary/5 data-[state=selected]:bg-primary/10"
-                                data-state={
-                                    row.getIsSelected() ? "selected" : undefined
-                                }
+                                data-state={row.getIsSelected() ? "selected" : undefined}
                             >
                                 {row.getVisibleCells().map((cell) => (
                                     <TableCell
@@ -161,9 +161,7 @@ export function UserTable({ users, onAdd, onEdit, onDelete }: UserTableProps) {
                             >
                                 <UsersRound className="mx-auto mb-3 size-8 text-muted-foreground" />
                                 <p className="font-medium">
-                                    {hasFilters
-                                        ? "No users match your filters"
-                                        : "No users yet"}
+                                    {hasFilters ? "No users match your filters" : "No users yet"}
                                 </p>
                                 <p className="mt-1 text-muted-foreground">
                                     {hasFilters

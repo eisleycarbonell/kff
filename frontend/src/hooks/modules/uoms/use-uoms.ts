@@ -89,9 +89,15 @@ export function useUoms() {
             "uoms",
             "uom-classes",
             "item-uoms",
+            "packing-formula-options",
+            "packing-formulas",
             "items",
             "inventory-stocks",
             "inventory-stock-options",
+            "sales-order-options",
+            "delivery-order-options",
+            "sales-orders",
+            "delivery-orders",
         ])
             void client.invalidateQueries({ queryKey: [key] })
     }

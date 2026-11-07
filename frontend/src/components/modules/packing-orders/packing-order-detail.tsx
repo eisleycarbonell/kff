@@ -294,7 +294,7 @@ export function PackingOrderDetail({
                                                     <TableRow key={lot.lotId}>
                                                         <TableCell>
                                                             <Link
-                                                                href="/lots"
+                                                                href="/inventory/lots"
                                                                 className="font-medium underline-offset-4 hover:underline"
                                                             >
                                                                 {lot.lotNumber}

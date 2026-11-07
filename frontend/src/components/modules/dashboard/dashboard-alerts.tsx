@@ -124,7 +124,7 @@ export function DashboardAlerts({
                                     variant="ghost"
                                     size="sm"
                                     className="h-7 gap-1 text-xs text-muted-foreground hover:text-foreground"
-                                    render={<Link href="/lots" />}
+                                    render={<Link href="/inventory/lots" />}
                                     nativeButton={false}
                                 >
                                     Manage Lots

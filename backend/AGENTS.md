@@ -220,8 +220,9 @@ is unnecessary for the current modules.
 
 Run `npm run typecheck` and `npm test` after changes to requests, routing,
 services, validation, or errors. Check formatting on affected files using the
-installed Prettier CLI. Type checking covers application source, tests, and
-the Drizzle config; historical generated migration files are excluded.
+installed Prettier CLI. The current TypeScript configuration checks application
+source and the Drizzle config; test files and historical generated migration
+files are excluded. Run `npm test` separately to execute the test suite.
 
 Use [user-schema.test.ts](tests/user-schema.test.ts),
 [database-error.test.ts](tests/database-error.test.ts), and

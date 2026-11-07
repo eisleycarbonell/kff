@@ -14,7 +14,10 @@ import {
 } from "lucide-react"
 
 import type { ReceivingReceipt } from "@/components/modules/receiving/receiving.schema"
-import { createReceivingColumns, receivingTableFeatures } from "@/components/modules/receiving/receiving-table-columns"
+import {
+    createReceivingColumns,
+    receivingTableFeatures,
+} from "@/components/modules/receiving/receiving-table-columns"
 import { ReceivingTableToolbar } from "@/components/modules/receiving/receiving-table-toolbar"
 import { Button } from "@/components/ui/button"
 import {
@@ -35,7 +38,12 @@ import {
 
 const pageSizeItems = [5, 10, 20, 50].map((size) => ({ value: String(size), label: String(size) }))
 
-type ReceivingTableProps = { receipts: ReceivingReceipt[]; onAdd: () => void; canReceive: boolean; isBusy: boolean }
+type ReceivingTableProps = {
+    receipts: ReceivingReceipt[]
+    onAdd: () => void
+    canReceive: boolean
+    isBusy: boolean
+}
 
 export function ReceivingTable({ receipts, onAdd, canReceive, isBusy }: ReceivingTableProps) {
     const columns = useMemo(() => createReceivingColumns(), [])
@@ -47,7 +55,12 @@ export function ReceivingTable({ receipts, onAdd, canReceive, isBusy }: Receivin
         globalFilterFn: "includesString",
         initialState: {
             pagination: { pageIndex: 0, pageSize: 10 },
-            columnVisibility: { supplierLotNumber: false, manufactureDate: false, expirationDate: false, unitCost: false },
+            columnVisibility: {
+                supplierLotNumber: false,
+                manufactureDate: false,
+                expirationDate: false,
+                unitCost: false,
+            },
             sorting: [{ id: "createdAt", desc: true }],
         },
     })
@@ -89,8 +102,7 @@ export function ReceivingTable({ receipts, onAdd, canReceive, isBusy }: Receivin
                                         header.column.getCanSort()
                                             ? header.column.getIsSorted() === "asc"
                                                 ? "ascending"
-                                                : header.column.getIsSorted() ===
-                                                    "desc"
+                                                : header.column.getIsSorted() === "desc"
                                                   ? "descending"
                                                   : "none"
                                             : undefined
@@ -104,11 +116,9 @@ export function ReceivingTable({ receipts, onAdd, canReceive, isBusy }: Receivin
                                             onClick={header.column.getToggleSortingHandler()}
                                         >
                                             <table.FlexRender header={header} />
-                                            {header.column.getIsSorted() ===
-                                            "asc" ? (
+                                            {header.column.getIsSorted() === "asc" ? (
                                                 <ArrowUp className="size-3.5" />
-                                            ) : header.column.getIsSorted() ===
-                                              "desc" ? (
+                                            ) : header.column.getIsSorted() === "desc" ? (
                                                 <ArrowDown className="size-3.5" />
                                             ) : (
                                                 <ArrowUpDown className="size-3.5 text-muted-foreground" />
@@ -128,9 +138,7 @@ export function ReceivingTable({ receipts, onAdd, canReceive, isBusy }: Receivin
                             <TableRow
                                 key={row.id}
                                 className="hover:bg-primary/5 data-[state=selected]:bg-primary/10"
-                                data-state={
-                                    row.getIsSelected() ? "selected" : undefined
-                                }
+                                data-state={row.getIsSelected() ? "selected" : undefined}
                             >
                                 {row.getVisibleCells().map((cell) => (
                                     <TableCell
@@ -163,16 +171,20 @@ export function ReceivingTable({ receipts, onAdd, canReceive, isBusy }: Receivin
                                 <p className="mt-1 text-muted-foreground">
                                     {hasFilters
                                         ? "Try a different search or clear your filters."
-                                        : canReceive ? "Receive a supplier purchase order to create receipt history." : "ReceivingPosted receipts appear here once stock is received."}
+                                        : canReceive
+                                          ? "Receive a supplier purchase order to create receipt history."
+                                          : "Posted receipts appear here once stock is received."}
                                 </p>
-                                {(hasFilters || canReceive) && <Button
-                                    variant="outline"
-                                    className="mt-4"
-                                    disabled={!hasFilters && isBusy}
-                                            onClick={hasFilters ? clearFilters : onAdd}
-                                >
-                                    {hasFilters ? "Clear filters" : "Receive stock"}
-                                </Button>}
+                                {(hasFilters || canReceive) && (
+                                    <Button
+                                        variant="outline"
+                                        className="mt-4"
+                                        disabled={!hasFilters && isBusy}
+                                        onClick={hasFilters ? clearFilters : onAdd}
+                                    >
+                                        {hasFilters ? "Clear filters" : "Receive stock"}
+                                    </Button>
+                                )}
                             </TableCell>
                         </TableRow>
                     )}

@@ -4,6 +4,13 @@ import { db } from '../../db/index.ts';
 import { users } from '../../db/schema.ts';
 import { hashPassword } from '../../utils/hashHandler.ts';
 import type { CreateUserInput, UpdateUserInput } from './user.schema.ts';
+import {
+    lockAccessManagement,
+    requireAssignedRole,
+    requireRemainingUserManager,
+} from '../auth/access-policy.ts';
+
+type Reader = Pick<typeof db, 'select'>;
 
 const publicUserFields = {
     userId: users.userId,
@@ -43,11 +50,11 @@ export const listUsers = async () => {
         .orderBy(asc(users.lastName), asc(users.firstName), asc(users.userId));
 };
 
-export const getUserByID = async (id: string | number) => {
+export const getUserByID = async (id: string | number, database: Reader = db) => {
     const userId = parseUserId(id);
     if (userId === null) return null;
 
-    const [user] = await db
+    const [user] = await database
         .select(publicUserFields)
         .from(users)
         .where(and(eq(users.userId, userId), isNull(users.deletedAt)))
@@ -56,30 +63,41 @@ export const getUserByID = async (id: string | number) => {
     return user ?? null;
 };
 
-export const createUser = async (input: CreateUserInput) => {
+export const createUser = async (input: CreateUserInput, actorId: number, database = db) => {
     const passwordHash = await hashPassword(input.password);
-    const [user] = await db
-        .insert(users)
-        .values({
-            firstName: input.firstName.trim(),
-            middleName: nullableText(input.middleName),
-            lastName: input.lastName.trim(),
-            dateOfBirth: nullableText(input.dateOfBirth),
-            avatarUrl: nullableText(input.avatarUrl),
-            mobileNumber: nullableText(input.mobileNumber),
-            address: nullableText(input.address),
-            email: input.email.trim().toLowerCase(),
-            passwordHash,
-            isEmailVerified: input.isEmailVerified ?? false,
-            roleId: input.roleId,
-        })
-        .returning(publicUserFields);
+    return database.transaction(async (tx) => {
+        await lockAccessManagement(tx, actorId);
+        await requireAssignedRole(tx, input.roleId);
+        const [user] = await tx
+            .insert(users)
+            .values({
+                firstName: input.firstName.trim(),
+                middleName: nullableText(input.middleName),
+                lastName: input.lastName.trim(),
+                dateOfBirth: nullableText(input.dateOfBirth),
+                avatarUrl: nullableText(input.avatarUrl),
+                mobileNumber: nullableText(input.mobileNumber),
+                address: nullableText(input.address),
+                email: input.email.trim().toLowerCase(),
+                passwordHash,
+                isEmailVerified: input.isEmailVerified ?? false,
+                roleId: input.roleId,
+                createdBy: actorId,
+                updatedBy: actorId,
+            })
+            .returning(publicUserFields);
 
-    if (!user) throw new Error('The user could not be created.');
-    return user;
+        if (!user) throw new Error('The user could not be created.');
+        return user;
+    });
 };
 
-export const updateUser = async (id: string | number, input: UpdateUserInput) => {
+export const updateUser = async (
+    id: string | number,
+    input: UpdateUserInput,
+    actorId: number,
+    database = db,
+) => {
     const userId = parseUserId(id);
     if (userId === null) return null;
 
@@ -101,28 +119,38 @@ export const updateUser = async (id: string | number, input: UpdateUserInput) =>
     if (Object.keys(changes).length === 0) return getUserByID(id);
 
     changes.updatedAt = new Date();
+    changes.updatedBy = actorId;
 
-    const [user] = await db
-        .update(users)
-        .set(changes)
-        .where(and(eq(users.userId, userId), isNull(users.deletedAt)))
-        .returning(publicUserFields);
+    return database.transaction(async (tx) => {
+        await lockAccessManagement(tx, actorId);
+        if (input.roleId !== undefined) await requireAssignedRole(tx, input.roleId);
+        const [user] = await tx
+            .update(users)
+            .set(changes)
+            .where(and(eq(users.userId, userId), isNull(users.deletedAt)))
+            .returning(publicUserFields);
 
-    return user ?? null;
+        if (user) await requireRemainingUserManager(tx);
+        return user ?? null;
+    });
 };
 
-export const deleteUser = async (id: string | number) => {
+export const deleteUser = async (id: string | number, actorId: number, database = db) => {
     const userId = parseUserId(id);
     if (userId === null) return null;
 
     const now = new Date();
-    const [user] = await db
-        .update(users)
-        .set({ deletedAt: now, updatedAt: now })
-        .where(and(eq(users.userId, userId), isNull(users.deletedAt)))
-        .returning({ userId: users.userId });
+    return database.transaction(async (tx) => {
+        await lockAccessManagement(tx, actorId);
+        const [user] = await tx
+            .update(users)
+            .set({ deletedAt: now, updatedAt: now, updatedBy: actorId })
+            .where(and(eq(users.userId, userId), isNull(users.deletedAt)))
+            .returning({ userId: users.userId });
 
-    return user ?? null;
+        if (user) await requireRemainingUserManager(tx);
+        return user ?? null;
+    });
 };
 
 export const getUserByUsername = async (username: string) => {

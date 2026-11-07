@@ -9,6 +9,7 @@ import {
     itemPackaging,
     purchaseOrderLines,
     packingOrderMaterials,
+    salesOrderLines,
 } from '../../db/schema.ts';
 import { AppError } from '../../errors/app-error.ts';
 import type { CreateUomInput, UpdateUomInput, UomClassInput } from './uom.schema.ts';
@@ -25,7 +26,8 @@ const isInUse = sql<boolean>`(
  exists(select 1 from ${billOfMaterials} where ${billOfMaterials.uomId}=${uoms.uomId}) or
  exists(select 1 from ${itemPackaging} where ${itemPackaging.uomId}=${uoms.uomId}) or
  exists(select 1 from ${purchaseOrderLines} where ${purchaseOrderLines.uomId}=${uoms.uomId}) or
- exists(select 1 from ${packingOrderMaterials} where ${packingOrderMaterials.uomId}=${uoms.uomId})
+ exists(select 1 from ${packingOrderMaterials} where ${packingOrderMaterials.uomId}=${uoms.uomId}) or
+ exists(select 1 from ${salesOrderLines} where ${salesOrderLines.uomId}=${uoms.uomId})
 )`;
 const isClassAnchor = sql<boolean>`(${uoms.isBase} and exists(select 1 from ${uoms} as other_uoms where other_uoms.uom_class_id=${uoms.uomClassId} and other_uoms.uom_id<>${uoms.uomId}))`;
 const fields = {

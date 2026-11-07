@@ -1,11 +1,14 @@
 import AnimatedLogo from "@/components/shared/animated-logo";
+import Image from "next/image";
+import loginSpices from "../../../../public/images/login-spices.png";
 
 export function LoginPanelCard() {
     return (
         <aside className="relative isolate flex h-full w-full flex-col overflow-hidden bg-[#102E2F] p-6 text-white lg:p-8">
             {/* Background illustration — large, overlaps the text */}
-            <img
-                src="/images/login-spices.png"
+            <Image
+                src={loginSpices}
+                sizes="(min-width: 1024px) 40vw, 100vw"
                 alt="Noodles, garlic, chili peppers, herbs, spices etc."
                 className="pointer-events-none absolute inset-x-0 bottom-2 -z-10 h-[75%] w-full origin-bottom scale-110 object-contain object-bottom lg:bottom-3"
             />

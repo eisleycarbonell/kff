@@ -37,7 +37,10 @@ export const stockTableFeatures = tableFeatures({
     columnFilteringFeature,
     globalFilteringFeature,
     filteredRowModel: createFilteredRowModel(),
-    filterFns: { includesString: filterFn_includesString, equalsString: filterFn_equalsString },
+    filterFns: {
+        includesString: filterFn_includesString,
+        equalsString: filterFn_equalsString,
+    },
     rowSortingFeature,
     sortedRowModel: createSortedRowModel(),
     sortFns: { text: sortFn_text },
@@ -48,13 +51,18 @@ export const stockTableFeatures = tableFeatures({
 })
 export type StockTableInstance = ReactTable<typeof stockTableFeatures, Stock>
 const helper = createColumnHelper<typeof stockTableFeatures, Stock>()
-const dateFormat = new Intl.DateTimeFormat("en", { dateStyle: "medium", timeZone: "UTC" })
+const dateFormat = new Intl.DateTimeFormat("en", {
+    dateStyle: "medium",
+    timeZone: "UTC",
+})
 export function createStockColumns({
     onAdjust,
     canManage,
+    mode = "adjustment",
 }: {
     onAdjust: (stock: Stock) => void
     canManage: boolean
+    mode?: "adjustment" | "count"
 }) {
     return helper.columns([
         helper.display({
@@ -65,9 +73,12 @@ export function createStockColumns({
                     aria-label="Select all stock balances on this page"
                     checked={table.getIsAllPageRowsSelected()}
                     indeterminate={
-                        table.getIsSomePageRowsSelected() && !table.getIsAllPageRowsSelected()
+                        table.getIsSomePageRowsSelected() &&
+                        !table.getIsAllPageRowsSelected()
                     }
-                    onCheckedChange={(checked) => table.toggleAllPageRowsSelected(checked)}
+                    onCheckedChange={(checked) =>
+                        table.toggleAllPageRowsSelected(checked)
+                    }
                 />
             ),
             cell: ({ row }) => (
@@ -86,14 +97,27 @@ export function createStockColumns({
             cell: ({ row }) => (
                 <div className="flex flex-col gap-1">
                     <span className="font-medium">{row.original.itemName}</span>
-                    <span className="text-xs text-muted-foreground">{row.original.sku}</span>
+                    <span className="text-xs text-muted-foreground">
+                        {row.original.sku}
+                    </span>
                 </div>
             ),
         }),
-        helper.accessor("sku", { header: "SKU", sortFn: "text", filterFn: "includesString" }),
+        helper.accessor("sku", {
+            header: "SKU",
+            sortFn: "text",
+            filterFn: "includesString",
+        }),
         helper.accessor((stock) => String(stock.itemId), {
             id: "item",
             header: "Item ID",
+            enableHiding: false,
+            filterFn: "equalsString",
+            enableGlobalFilter: false,
+        }),
+        helper.accessor((stock) => String(stock.lotId), {
+            id: "lot",
+            header: "Lot ID",
             enableHiding: false,
             filterFn: "equalsString",
             enableGlobalFilter: false,
@@ -105,7 +129,11 @@ export function createStockColumns({
             filterFn: "equalsString",
             enableGlobalFilter: false,
         }),
-        helper.accessor("itemType", { header: "Type", sortFn: "text", filterFn: "equalsString" }),
+        helper.accessor("itemType", {
+            header: "Type",
+            sortFn: "text",
+            filterFn: "equalsString",
+        }),
         helper.accessor("lotNumber", {
             header: "Lot / Batch",
             sortFn: "text",
@@ -134,7 +162,8 @@ export function createStockColumns({
                 <div className="flex flex-col gap-1">
                     <span>{row.original.locationName}</span>
                     <span className="text-xs text-muted-foreground">
-                        {row.original.locationCode} / {row.original.locationType}
+                        {row.original.locationCode} /{" "}
+                        {row.original.locationType}
                     </span>
                 </div>
             ),
@@ -167,7 +196,9 @@ export function createStockColumns({
         ),
         helper.accessor(
             (stock) =>
-                compareStockQuantities(stock.qtyAvailable, "0") > 0 ? "Available" : "Unavailable",
+                compareStockQuantities(stock.qtyAvailable, "0") > 0
+                    ? "Available"
+                    : "Unavailable",
             {
                 id: "availability",
                 header: "Availability",
@@ -181,7 +212,13 @@ export function createStockColumns({
             sortFn: "text",
             enableGlobalFilter: false,
             cell: (context) => (
-                <Badge variant={context.getValue() === "Approved" ? "secondary" : "outline"}>
+                <Badge
+                    variant={
+                        context.getValue() === "Approved"
+                            ? "secondary"
+                            : "outline"
+                    }
+                >
                     {context.getValue()}
                 </Badge>
             ),
@@ -192,7 +229,9 @@ export function createStockColumns({
             enableGlobalFilter: false,
             cell: (context) =>
                 context.getValue() ? (
-                    dateFormat.format(new Date(`${context.getValue()}T00:00:00Z`))
+                    dateFormat.format(
+                        new Date(`${context.getValue()}T00:00:00Z`),
+                    )
                 ) : (
                     <span className="text-muted-foreground">{"\u2014"}</span>
                 ),
@@ -203,7 +242,9 @@ export function createStockColumns({
             enableGlobalFilter: false,
             cell: (context) =>
                 context.getValue() ? (
-                    dateFormat.format(new Date(`${context.getValue()}T00:00:00Z`))
+                    dateFormat.format(
+                        new Date(`${context.getValue()}T00:00:00Z`),
+                    )
                 ) : (
                     <span className="text-muted-foreground">{"\u2014"}</span>
                 ),
@@ -236,7 +277,7 @@ export function createStockColumns({
             enableHiding: false,
             header: () => <span className="sr-only">Actions</span>,
             cell: ({ row }) =>
-                canManage ? (
+                canManage && row.original.locationIsActive ? (
                     <DropdownMenu>
                         <DropdownMenuTrigger
                             render={
@@ -251,10 +292,16 @@ export function createStockColumns({
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                             <DropdownMenuGroup>
-                                <DropdownMenuLabel>Inventory stock</DropdownMenuLabel>
-                                <DropdownMenuItem onClick={() => onAdjust(row.original)}>
+                                <DropdownMenuLabel>
+                                    Inventory stock
+                                </DropdownMenuLabel>
+                                <DropdownMenuItem
+                                    onClick={() => onAdjust(row.original)}
+                                >
                                     <ClipboardPenLine />
-                                    Adjust stock
+                                    {mode === "count"
+                                        ? "Count stock"
+                                        : "Adjust stock"}
                                 </DropdownMenuItem>
                             </DropdownMenuGroup>
                         </DropdownMenuContent>

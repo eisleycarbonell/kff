@@ -16,24 +16,15 @@ const StockAdjustmentForm = dynamic(() =>
 )
 export default function InventoryPage() {
     const inventory = useInventoryStocks()
-    const missingSetup = inventory.options
-        ? [
-              !inventory.options.lots.length && "lots",
-              !inventory.options.locations.length && "locations",
-              !inventory.options.reasons.length && "inventory adjustment reasons",
-          ]
-              .filter(Boolean)
-              .join(", ")
-        : ""
     return (
         <>
-            <title>Inventory Stocks</title>
+            <title>Inventory Stock</title>
             <meta
                 name="description"
                 content="Track on-hand, reserved, and available quantities by item, lot, and location."
             />
             <PageHeader
-                title="Inventory Stocks"
+                title="Inventory Stock"
                 description="Track on-hand, reserved, and available stock by item, lot, and location."
                 actions={
                     <div className="flex flex-wrap gap-3">
@@ -63,7 +54,11 @@ export default function InventoryPage() {
                 <Alert>
                     <AlertTitle>Sign in to view inventory stocks</AlertTitle>
                     <AlertDescription>
-                        <Button className="mt-2" render={<Link href="/" />} nativeButton={false}>
+                        <Button
+                            className="mt-2"
+                            render={<Link href="/" />}
+                            nativeButton={false}
+                        >
                             Sign in
                         </Button>
                     </AlertDescription>
@@ -105,16 +100,8 @@ export default function InventoryPage() {
                         <Alert>
                             <AlertTitle>View-only stock access</AlertTitle>
                             <AlertDescription>
-                                Your role can view and export stock. Inventory managers can record
-                                adjustments.
-                            </AlertDescription>
-                        </Alert>
-                    )}
-                    {missingSetup && (
-                        <Alert>
-                            <AlertTitle>Adjustment setup required</AlertTitle>
-                            <AlertDescription>
-                                Configure {missingSetup} before recording a stock adjustment.
+                                Your role can view and export stock. Inventory
+                                managers can record adjustments.
                             </AlertDescription>
                         </Alert>
                     )}
@@ -127,13 +114,16 @@ export default function InventoryPage() {
                     />
                 </>
             )}
-            {inventory.formRequested && inventory.options && (
+            {inventory.formRequested && (
                 <StockAdjustmentForm
                     open={inventory.formOpen && inventory.canManage}
                     onOpenChange={inventory.setFormOpen}
                     stock={inventory.selectedStock}
                     stocks={inventory.stocks}
                     options={inventory.options}
+                    optionsError={inventory.optionsError}
+                    isLoadingOptions={inventory.isLoadingOptions}
+                    onRetryOptions={inventory.retryOptions}
                     isSaving={inventory.isSaving}
                     saveError={inventory.saveError}
                     onSave={inventory.handleSave}

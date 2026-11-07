@@ -5,6 +5,7 @@ import * as StockService from './modules/inventory-stocks/inventory-stock.servic
 
 import { createApp } from './app.ts';
 import * as UserService from './modules/users/user.service.ts';
+import * as RoleService from './modules/roles/role.service.ts';
 import logger from './utils/logger.ts';
 import * as ItemService from './modules/items/item.service.ts';
 import * as AuthService from './modules/auth/auth.service.ts';
@@ -15,12 +16,20 @@ import * as LotService from './modules/lots/lot.service.ts';
 import * as PackingOrderService from './modules/packing-orders/packing-order.service.ts';
 import * as TransferService from './modules/transfers/transfer.service.ts';
 import * as DashboardService from './modules/dashboard/dashboard.service.ts';
+import * as CustomerService from './modules/customers/customer.service.ts';
+import * as InventoryMovementService from './modules/inventory-movements/inventory-movement.service.ts';
+import * as SalesOrderService from './modules/sales-orders/sales-order.service.ts';
+import * as DeliveryOrderService from './modules/delivery-orders/delivery-order.service.ts';
+import * as BrandService from './modules/brands/brand.service.ts';
+import * as FormulaService from './modules/packing-formulas/packing-formula.service.ts';
 
 const app = createApp({
     userService: UserService,
+    roleService: RoleService,
     itemService: ItemService,
     authService: AuthService,
     stockService: StockService,
+    inventoryMovementService: InventoryMovementService,
     uomService: UomService,
     locationService: LocationService,
     supplierService: SupplierService,
@@ -30,8 +39,26 @@ const app = createApp({
     packingOrderService: PackingOrderService,
     transferService: TransferService,
     dashboardService: DashboardService,
+    customerService: CustomerService,
+    salesOrderService: SalesOrderService,
+    deliveryOrderService: DeliveryOrderService,
+    brandService: BrandService,
+    formulaService: FormulaService,
 });
 const port = process.env.PORT ? Number(process.env.PORT) : 3001;
+
+if (process.env.KFF_SAMPLE_DATA_ON_START === 'true') {
+    try {
+        const { seedSampleData } = await import('./db/sample-data.ts');
+        const result = await seedSampleData();
+        logger.info({ sampleData: result.status }, 'Test sample data initialization finished');
+    } catch {
+        logger.error(
+            'Test sample initialization failed. Enable KFF_ALLOW_TEST_DATA=true and initialize the empty test database schema before starting.',
+        );
+        process.exit(1);
+    }
+}
 
 app.listen(port, '0.0.0.0', () => {
     logger.info({ port, env: process.env.NODE_ENV ?? 'development' }, 'Server started');

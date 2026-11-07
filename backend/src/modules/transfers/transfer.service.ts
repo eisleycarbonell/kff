@@ -211,9 +211,11 @@ async function lockParents(
         .where(inArray(lots.lotId, lotIds))
         .orderBy(asc(lots.lotId))
         .for('update');
+    const itemsById = new Map(itemRows.map((row) => [row.itemId, row]));
+    const lotsById = new Map(lotRows.map((row) => [row.lotId, row]));
     for (const line of lines) {
-        const item = itemRows.find((row) => row.itemId === line.itemId);
-        const lot = lotRows.find((row) => row.lotId === line.lotId);
+        const item = itemsById.get(line.itemId);
+        const lot = lotsById.get(line.lotId);
         if (!item || !lot || lot.itemId !== line.itemId)
             throw new AppError(400, 'A selected lot does not belong to its item.');
         if (
@@ -286,6 +288,8 @@ async function lockStock(tx: Transaction, lotIds: number[], locationIds: number[
             and(
                 inArray(inventoryReservations.lotId, lotIds),
                 inArray(inventoryReservations.locationId, locationIds),
+                isNull(inventoryReservations.releasedAt),
+                sql`${inventoryReservations.qtyReserved} > ${inventoryReservations.qtyConsumed}`,
             ),
         )
         .orderBy(asc(inventoryReservations.reservationId))
@@ -377,88 +381,82 @@ export async function updateTransfer(
         return savedTransfer(tx, id);
     });
 }
-async function moveStock(
+async function moveStocks(
     tx: Transaction,
-    line: Line,
+    movements: { line: Line; quantity: string }[],
     from: number,
     to: number,
-    quantity: string,
     actorId: number,
     reference: string,
     context: Awaited<ReturnType<typeof lockStock>>,
 ) {
-    const amount = quantityUnits(quantity);
-    if (amount <= 0n) throw new AppError(400, 'Movement quantities must be positive.');
-    const sourceStock = context.balances.find(
-        (row) => row.lotId === line.lotId && row.locationId === from,
-    );
-    const targetStock = context.balances.find(
-        (row) => row.lotId === line.lotId && row.locationId === to,
-    );
-    const reserved = quantityUnits(
-        outstandingReservations(
-            context.reservations.filter(
-                (row) => row.lotId === line.lotId && row.locationId === from,
-            ),
-        ),
-    );
-    if (!sourceStock || quantityUnits(sourceStock.qtyOnHand) - reserved < amount)
-        throw new AppError(
-            409,
-            'There is not enough available stock for this movement. Refresh the transfer and stock.',
+    const now = new Date();
+    const balancesByKey = new Map(context.balances.map((row) => [`${row.lotId}:${row.locationId}`, row]));
+    const reservedByLot = new Map<number, bigint>();
+    for (const row of context.reservations)
+        if (row.locationId === from)
+            reservedByLot.set(row.lotId, (reservedByLot.get(row.lotId) ?? 0n) + quantityUnits(outstandingReservations([row])));
+    const balances: (typeof inventoryStock.$inferInsert)[] = [];
+    const ledger: (typeof inventoryTransactions.$inferInsert)[] = [];
+    for (const { line, quantity } of movements) {
+        const amount = quantityUnits(quantity);
+        if (amount <= 0n) throw new AppError(400, 'Movement quantities must be positive.');
+        const sourceStock = balancesByKey.get(`${line.lotId}:${from}`);
+        const targetStock = balancesByKey.get(`${line.lotId}:${to}`);
+        if (!sourceStock || quantityUnits(sourceStock.qtyOnHand) - (reservedByLot.get(line.lotId) ?? 0n) < amount)
+            throw new AppError(
+                409,
+                'There is not enough available stock for this movement. Refresh the transfer and stock.',
+            );
+        const destinationQuantity = quantityUnits(targetStock?.qtyOnHand ?? zero) + amount;
+        if (destinationQuantity > maxQuantity)
+            throw new AppError(409, 'This movement would exceed the destination stock quantity limit.');
+        balances.push(
+            { itemId: line.itemId, lotId: line.lotId, locationId: from, qtyOnHand: quantityString(quantityUnits(sourceStock.qtyOnHand) - amount), lastUpdated: now },
+            { itemId: line.itemId, lotId: line.lotId, locationId: to, qtyOnHand: quantityString(destinationQuantity), lastUpdated: now },
         );
-    if (quantityUnits(targetStock?.qtyOnHand ?? zero) + amount > maxQuantity)
-        throw new AppError(409, 'This movement would exceed the destination stock quantity limit.');
-    const remaining = quantityString(quantityUnits(sourceStock.qtyOnHand) - amount);
-    await tx
-        .update(inventoryStock)
-        .set({ qtyOnHand: remaining, lastUpdated: new Date() })
-        .where(eq(inventoryStock.stockId, sourceStock.stockId));
+        ledger.push(
+            { itemId: line.itemId, lotId: line.lotId, locationId: from, qtyChange: quantityString(-amount), transactionType: 'Transfer', transferLineId: line.transferLineId, referenceId: reference, authorizedByUserId: actorId },
+            { itemId: line.itemId, lotId: line.lotId, locationId: to, qtyChange: quantityString(amount), transactionType: 'Transfer', transferLineId: line.transferLineId, referenceId: reference, authorizedByUserId: actorId },
+        );
+    }
+    // Parent lots and existing balances remain locked through commit. Each
+    // transfer contains unique lots, so the upsert has one row per lot/location.
     await tx
         .insert(inventoryStock)
-        .values({
-            itemId: line.itemId,
-            lotId: line.lotId,
-            locationId: to,
-            qtyOnHand: quantityString(amount),
-            lastUpdated: new Date(),
-        })
+        .values(balances)
         .onConflictDoUpdate({
             target: [inventoryStock.lotId, inventoryStock.locationId],
             set: {
-                qtyOnHand: sql`${inventoryStock.qtyOnHand}+${quantityString(amount)}`,
-                lastUpdated: new Date(),
+                qtyOnHand: sql`excluded.qty_on_hand`,
+                lastUpdated: now,
             },
         });
-    await tx.insert(inventoryTransactions).values([
-        {
-            itemId: line.itemId,
-            lotId: line.lotId,
-            locationId: from,
-            qtyChange: quantityString(-amount),
-            transactionType: 'Transfer',
-            transferLineId: line.transferLineId,
-            referenceId: reference,
-            authorizedByUserId: actorId,
-        },
-        {
-            itemId: line.itemId,
-            lotId: line.lotId,
-            locationId: to,
-            qtyChange: quantityString(amount),
-            transactionType: 'Transfer',
-            transferLineId: line.transferLineId,
-            referenceId: reference,
-            authorizedByUserId: actorId,
-        },
-    ]);
+    await tx.insert(inventoryTransactions).values(ledger);
+}
+async function updateLineQuantities(
+    tx: Transaction,
+    quantities: Map<number, string>,
+    field: 'qtyShipped' | 'qtyReceived',
+    actorId: number,
+) {
+    const value = sql`case ${stockTransferLines.transferLineId} ${sql.join(
+        [...quantities].map(([id, quantity]) => sql`when ${id} then ${quantity}::numeric`),
+        sql` `,
+    )} end`;
+    await tx.update(stockTransferLines).set({
+        ...(field === 'qtyShipped' ? { qtyShipped: value } : { qtyReceived: value }),
+        updatedBy: actorId,
+        updatedAt: new Date(),
+    }).where(inArray(stockTransferLines.transferLineId, [...quantities.keys()]));
 }
 function assertActionLines(lines: Line[], supplied: { transferLineId: number }[], all: boolean) {
+    const lineIds = new Set(lines.map((line) => line.transferLineId));
     if (
         !supplied.length ||
         new Set(supplied.map((line) => line.transferLineId)).size !== supplied.length ||
         supplied.some(
-            (line) => !lines.some((saved) => saved.transferLineId === line.transferLineId),
+            (line) => !lineIds.has(line.transferLineId),
         ) ||
         (all && lines.length !== supplied.length)
     )
@@ -492,33 +490,29 @@ export async function dispatchTransfer(
             header.sourceLocationId,
             input.transitLocationId,
         ]);
-        for (const line of lines) {
-            const supplied = input.lines.find((row) => row.transferLineId === line.transferLineId)!;
+        const suppliedById = new Map(input.lines.map((line) => [line.transferLineId, line]));
+        const shipped = new Map<number, string>();
+        const movements = lines.map((line) => {
+            const supplied = suppliedById.get(line.transferLineId)!;
             const quantity = quantityUnits(supplied.qtyShipped);
             if (quantity <= 0n || quantity > quantityUnits(line.qtyRequested))
                 throw new AppError(
                     409,
                     'Shipped quantity must be positive and cannot exceed the requested quantity.',
                 );
-            await moveStock(
+            shipped.set(line.transferLineId, quantityString(quantity));
+            return { line, quantity: supplied.qtyShipped };
+        });
+        await moveStocks(
                 tx,
-                line,
+                movements,
                 header.sourceLocationId,
                 input.transitLocationId,
-                supplied.qtyShipped,
                 actorId,
                 header.transferNumber,
                 context,
             );
-            await tx
-                .update(stockTransferLines)
-                .set({
-                    qtyShipped: quantityString(quantity),
-                    updatedBy: actorId,
-                    updatedAt: new Date(),
-                })
-                .where(eq(stockTransferLines.transferLineId, line.transferLineId));
-        }
+        await updateLineQuantities(tx, shipped, 'qtyShipped', actorId);
         await tx
             .update(stockTransfers)
             .set({
@@ -552,13 +546,15 @@ async function originalTransit(tx: Reader, lines: Line[]) {
             ),
         );
     const locationIds = [...new Set(rows.map((row) => row.locationId))];
+    const dispatchedByLine = new Map<number, bigint>();
+    for (const row of rows)
+        if (row.lineId !== null)
+            dispatchedByLine.set(row.lineId, (dispatchedByLine.get(row.lineId) ?? 0n) + quantityUnits(row.quantity));
     if (
         locationIds.length !== 1 ||
         lines.some(
             (line) =>
-                rows
-                    .filter((row) => row.lineId === line.transferLineId)
-                    .reduce((sum, row) => sum + quantityUnits(row.quantity), 0n) !==
+                (dispatchedByLine.get(line.transferLineId) ?? 0n) !==
                 quantityUnits(line.qtyShipped),
         )
     )
@@ -592,9 +588,10 @@ export async function receiveTransfer(
             transitLocationId,
             header.destinationLocationId,
         ]);
-        const received = new Map<number, bigint>();
-        for (const supplied of input.lines) {
-            const line = lines.find((row) => row.transferLineId === supplied.transferLineId)!;
+        const received = new Map<number, string>();
+        const linesById = new Map(lines.map((line) => [line.transferLineId, line]));
+        const movements = input.lines.map((supplied) => {
+            const line = linesById.get(supplied.transferLineId)!;
             const quantity = quantityUnits(supplied.qtyReceived);
             const cumulative = quantityUnits(line.qtyReceived) + quantity;
             if (quantity <= 0n || cumulative > quantityUnits(line.qtyShipped))
@@ -602,29 +599,22 @@ export async function receiveTransfer(
                     409,
                     "Received quantity must be positive and cannot exceed this line's outstanding shipment.",
                 );
-            await moveStock(
+            received.set(line.transferLineId, quantityString(cumulative));
+            return { line, quantity: supplied.qtyReceived };
+        });
+        await moveStocks(
                 tx,
-                line,
+                movements,
                 transitLocationId,
                 header.destinationLocationId,
-                supplied.qtyReceived,
                 actorId,
                 header.transferNumber,
                 context,
             );
-            await tx
-                .update(stockTransferLines)
-                .set({
-                    qtyReceived: quantityString(cumulative),
-                    updatedBy: actorId,
-                    updatedAt: new Date(),
-                })
-                .where(eq(stockTransferLines.transferLineId, line.transferLineId));
-            received.set(line.transferLineId, cumulative);
-        }
+        await updateLineQuantities(tx, received, 'qtyReceived', actorId);
         const complete = lines.every(
             (line) =>
-                (received.get(line.transferLineId) ?? quantityUnits(line.qtyReceived)) ===
+                quantityUnits(received.get(line.transferLineId) ?? line.qtyReceived) ===
                 quantityUnits(line.qtyShipped),
         );
         await tx

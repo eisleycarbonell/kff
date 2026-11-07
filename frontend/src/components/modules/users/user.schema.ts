@@ -1,13 +1,19 @@
 import { z } from "zod"
 
-export const USER_ROLES = [
-    { id: 1, name: "Administrator" },
-    { id: 2, name: "Warehouse Manager" },
-    { id: 3, name: "Purchasing" },
-] as const
-
 const idSchema = z.int().positive()
 const timestampSchema = z.iso.datetime({ offset: true })
+export const userRoleSchema = z.object({
+    roleId: idSchema,
+    name: z.string(),
+    settings: z.object({
+        canManageInventory: z.boolean().default(false),
+        canManagePurchasing: z.boolean().default(false),
+        canManagePacking: z.boolean().default(false),
+        canManageTransfers: z.boolean().default(false),
+        canManageUsers: z.boolean().default(false),
+    }),
+})
+export type UserRole = z.output<typeof userRoleSchema>
 
 export const userSchema = z.object({
     userId: idSchema,
@@ -56,14 +62,15 @@ export function getUserName(user: Pick<User, "firstName" | "lastName">) {
     return `${user.firstName} ${user.lastName}`.trim()
 }
 
-export function getRoleName(roleId: number) {
-    return USER_ROLES.find((role) => role.id === roleId)?.name ?? "Unknown role"
+export function getRoleName(roleId: number, roles: UserRole[]) {
+    return roles.find((role) => role.roleId === roleId)?.name ?? `Role ${roleId}`
 }
 
 export function validateUser(
     values: UserFormValues,
     users: User[],
     excludeId?: number,
+    roles?: UserRole[],
 ): UserFormErrors {
     const errors: UserFormErrors = {}
     const email = values.email.trim()
@@ -98,7 +105,11 @@ export function validateUser(
         errors.mobileNumber = "Use 30 characters or fewer."
     }
 
-    if (!Number.isInteger(values.roleId) || values.roleId <= 0) {
+    if (
+        !Number.isInteger(values.roleId) ||
+        values.roleId <= 0 ||
+        (roles && !roles.some((role) => role.roleId === values.roleId))
+    ) {
         errors.roleId = "Select a valid role."
     }
 

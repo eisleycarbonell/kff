@@ -1,8 +1,9 @@
 # Receiving and Lots modules
 
 Receiving and Lots implement the purchasing-to-inventory handoff described in
-the [complete system flow](system-flow.md). The frontend routes are `/receiving`
-and `/lots`; the APIs are `/api/receiving` and `/api/lots`. They use the existing
+the [complete system flow](system-flow.md). The primary frontend routes are
+`/receiving` and `/inventory/lots`; `/lots` redirects to `/inventory/lots`.
+The APIs are `/api/receiving` and `/api/lots`. They use the existing
 purchase order, lot, stock-balance, reservation, and inventory-ledger tables.
 
 ## Receiving purchase orders
@@ -49,6 +50,29 @@ updated or deleted as corrections.
   Quarantine locations for the receiving form.
 - `POST /api/receiving` atomically posts a receipt batch.
 
+### Receiving screen
+
+The [receiving page](../frontend/src/app/(protected)/(purchasing)/receiving/page.tsx) shows
+receipt statistics, primary-UOM quantity totals, and searchable, filterable receipt
+history with sorting, selection, CSV export, and pagination. Inventory managers
+can open the [receiving form](../frontend/src/components/modules/receiving/receiving-form.tsx)
+from the page header or the empty history. Other authenticated users have read-only
+access to history and exports.
+
+The form selects an outstanding PO and records one or more lots, with a purchase
+quantity and destination for each entry. It displays ordered, already received,
+and remaining quantities, exact primary-UOM previews, derived costs, and the QC
+status that will be assigned. Inactive materials and destinations cannot be selected.
+Dates and supplier lot references remain optional.
+
+Failed submissions preserve the entered lot details. Background refreshes do not
+silently replace the received-quantity snapshot. The explicit "Review latest
+balances" action refreshes options and adopts the latest snapshots for all split
+lots together; quantities still exceeding the remaining balance must be corrected.
+Completed or removed PO lines must be replaced with an eligible line. Successful
+receipts refresh history and affected purchase, lot, stock, and dashboard queries.
+No additional database migration is needed for the receiving screen.
+
 Historical receipt quantities are shown in their purchase UOM when the inverse
 conversion is exact. Imported history that cannot be represented exactly leaves
 that display quantity null; the authoritative primary-UOM ledger quantity is
@@ -71,9 +95,10 @@ reference and update optional manufacture date, optional expiration date, or QC
 status (`Quarantine`, `Approved`, `Rejected`, or `Expired`). The backend merges
 partial updates before validating the date relationship. While a lot has an
 active outstanding reservation, date and QC changes are blocked so planning
-assumptions cannot change underneath a packing order; supplier-reference
-corrections remain allowed. These metadata edits never change stock or append a
-stock transaction.
+assumptions cannot change underneath a packing order or a protected customer
+delivery in transit. This includes packing-material and delivery-line
+reservations; supplier-reference corrections remain allowed. These metadata
+edits never change stock or append a stock transaction.
 
 ### Lots endpoints
 

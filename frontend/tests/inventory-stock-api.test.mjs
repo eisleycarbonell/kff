@@ -5,15 +5,19 @@ registerHooks({
     resolve(specifier, context, nextResolve) {
         return nextResolve(
             specifier.startsWith("@/")
-                ? new URL(`../src/${specifier.slice(2)}.ts`, import.meta.url).href
+                ? new URL(`../src/${specifier.slice(2)}.ts`, import.meta.url)
+                      .href
                 : specifier,
             context,
         )
     },
 })
-process.env.NEXT_PUBLIC_API_BASE_URL = "https://stocks.example.test/custom-api///"
-const api = await import("../src/hooks/modules/inventory-stocks/use-inventory-stocks.ts")
-const schema = await import("../src/components/modules/inventory-stocks/inventory-stock.schema.ts")
+process.env.NEXT_PUBLIC_API_BASE_URL =
+    "https://stocks.example.test/custom-api///"
+const api =
+    await import("../src/hooks/modules/inventory-stocks/use-inventory-stocks.ts")
+const schema =
+    await import("../src/components/modules/inventory-stocks/inventory-stock.schema.ts")
 const { ApiError } = await import("../src/lib/api-request.ts")
 const originalFetch = globalThis.fetch
 const stock = {
@@ -35,6 +39,7 @@ const stock = {
     locationCode: "WH-RM",
     locationName: "Raw materials",
     locationType: "Warehouse",
+    locationIsActive: true,
     qtyOnHand: "10.0000",
     qtyReserved: "2.5000",
     qtyAvailable: "7.5000",
@@ -81,7 +86,10 @@ afterEach(() => {
 test("stock GET uses the configured API prefix, credentials, cancellation, and exact balances", async () => {
     const controller = new AbortController()
     globalThis.fetch = async (url, request) => {
-        assert.equal(url, "https://stocks.example.test/custom-api/inventory/stocks")
+        assert.equal(
+            url,
+            "https://stocks.example.test/custom-api/inventory/stocks",
+        )
         assert.equal(request.credentials, "include")
         assert.equal(request.signal, controller.signal)
         return response([stock])
@@ -94,6 +102,7 @@ test("stock lists accept empty balances, optional lot dates, transit locations, 
     const transit = {
         ...stock,
         locationType: "In Transit",
+        locationIsActive: false,
         qtyOnHand: "0",
         qtyReserved: "0.0001",
         qtyAvailable: "-0.0001",
@@ -112,6 +121,7 @@ test("stock DTO validation rejects malformed data, numeric quantities, invalid d
         [{ ...stock, qtyAvailable: "1e3" }],
         [{ ...stock, qtyOnHand: "0.00001" }],
         [{ ...stock, qcStatus: "Pending" }],
+        [{ ...stock, locationIsActive: null }],
         [{ ...stock, lastUpdated: "yesterday" }],
     ]) {
         globalThis.fetch = async () => response(data)
@@ -128,12 +138,16 @@ test("public stock parsing strips server-only fields", async () => {
 })
 test("stock adjustment options come from their authenticated endpoint and are validated", async () => {
     globalThis.fetch = async (url, request) => {
-        assert.equal(url, "https://stocks.example.test/custom-api/inventory/stocks/options")
+        assert.equal(
+            url,
+            "https://stocks.example.test/custom-api/inventory/stocks/options",
+        )
         assert.equal(request.credentials, "include")
         return response(options)
     }
     assert.deepEqual(await api.getStockOptions(), options)
-    globalThis.fetch = async () => response({ ...options, reasons: [{ reasonId: 0 }] })
+    globalThis.fetch = async () =>
+        response({ ...options, reasons: [{ reasonId: 0 }] })
     await assert.rejects(api.getStockOptions(), /invalid adjustment options/)
 })
 test("recording an adjustment sends counted and expected balances and parses its committed ledger result", async () => {
@@ -143,7 +157,10 @@ test("recording an adjustment sends counted and expected balances and parses its
         qtyChange: "2.0001",
     }
     globalThis.fetch = async (url, request) => {
-        assert.equal(url, "https://stocks.example.test/custom-api/inventory/stocks/adjustments")
+        assert.equal(
+            url,
+            "https://stocks.example.test/custom-api/inventory/stocks/adjustments",
+        )
         assert.equal(request.method, "POST")
         assert.equal(request.credentials, "include")
         assert.deepEqual(JSON.parse(request.body), input)
@@ -151,7 +168,10 @@ test("recording an adjustment sends counted and expected balances and parses its
     }
     assert.deepEqual(await api.recordStockAdjustment(input), result)
     globalThis.fetch = async () => response({ ...result, qtyChange: 2.0001 })
-    await assert.rejects(api.recordStockAdjustment(input), /invalid adjustment result/)
+    await assert.rejects(
+        api.recordStockAdjustment(input),
+        /invalid adjustment result/,
+    )
 })
 test("permission and stale-count errors retain HTTP status and the backend message", async () => {
     for (const status of [401, 403, 409, 503]) {
@@ -184,24 +204,37 @@ test("stock request cancellation, network failure, invalid JSON, and invalid env
     await assert.rejects(api.getInventoryStocks(), /Unable to reach/)
     globalThis.fetch = async () => new Response("not-json", { status: 200 })
     await assert.rejects(api.getInventoryStocks(), /invalid JSON/)
-    globalThis.fetch = async () => new Response(JSON.stringify({ data: [] }), { status: 200 })
+    globalThis.fetch = async () =>
+        new Response(JSON.stringify({ data: [] }), { status: 200 })
     await assert.rejects(api.getInventoryStocks(), /API request failed/)
 })
 test("stock quantities format and sort without losing large values, fractions, or negative deficits", () => {
-    assert.equal(schema.formatStockQuantity("9007199254740993.0001"), "9,007,199,254,740,993.0001")
+    assert.equal(
+        schema.formatStockQuantity("9007199254740993.0001"),
+        "9,007,199,254,740,993.0001",
+    )
     assert.equal(schema.formatStockQuantity("-0.0001"), "-0.0001")
     assert.equal(schema.formatStockQuantity("12.2500"), "12.25")
     assert.equal(schema.compareStockQuantities("10", "2"), 1)
     assert.equal(schema.compareStockQuantities("1.1", "1.1000"), 0)
     assert.equal(
-        schema.compareStockQuantities("9007199254740993.0001", "9007199254740993.0002"),
+        schema.compareStockQuantities(
+            "9007199254740993.0001",
+            "9007199254740993.0002",
+        ),
         -1,
     )
 })
 test("inventory totals add matching primary units and keep kg separate from pieces", () => {
     const totals = schema.stockTotalsByUom([
         stock,
-        { ...stock, stockId: 2, qtyOnHand: "0.0001", qtyReserved: "0", qtyAvailable: "0.0001" },
+        {
+            ...stock,
+            stockId: 2,
+            qtyOnHand: "0.0001",
+            qtyReserved: "0",
+            qtyAvailable: "0.0001",
+        },
         {
             ...stock,
             stockId: 3,
@@ -233,38 +266,75 @@ test("inventory totals add matching primary units and keep kg separate from piec
 test("counted forms validate required relationships, reservations, unchanged counts, and writable fields", () => {
     const values = { ...input, referenceId: " COUNT-1 " }
     assert.deepEqual(schema.validateStockAdjustment(values, options, "2.5"), {})
-    assert.deepEqual(schema.toStockAdjustment(values), { ...input, referenceId: "COUNT-1" })
-    assert.equal(schema.toStockAdjustment({ ...values, referenceId: " " }).referenceId, null)
-    assert.ok(
-        schema.validateStockAdjustment({ ...values, qtyOnHand: "2.4999" }, options, "2.5")
-            .qtyOnHand,
+    assert.deepEqual(schema.toStockAdjustment(values), {
+        ...input,
+        referenceId: "COUNT-1",
+    })
+    assert.equal(
+        schema.toStockAdjustment({ ...values, referenceId: " " }).referenceId,
+        null,
     )
     assert.ok(
-        schema.validateStockAdjustment({ ...values, qtyOnHand: "10" }, options, "2.5").qtyOnHand,
+        schema.validateStockAdjustment(
+            { ...values, qtyOnHand: "2.4999" },
+            options,
+            "2.5",
+        ).qtyOnHand,
     )
     assert.ok(
-        schema.validateStockAdjustment({ ...values, reasonId: null }, options, "2.5").reasonId,
+        schema.validateStockAdjustment(
+            { ...values, qtyOnHand: "10" },
+            options,
+            "2.5",
+        ).qtyOnHand,
     )
-    assert.ok(schema.validateStockAdjustment({ ...values, lotId: 999 }, options, "2.5").lotId)
-    assert.throws(() => schema.toStockAdjustment({ ...values, authorizedByUserId: 999 }))
+    assert.ok(
+        schema.validateStockAdjustment(
+            { ...values, reasonId: null },
+            options,
+            "2.5",
+        ).reasonId,
+    )
+    assert.ok(
+        schema.validateStockAdjustment(
+            { ...values, lotId: 999 },
+            options,
+            "2.5",
+        ).lotId,
+    )
+    assert.throws(() =>
+        schema.toStockAdjustment({ ...values, authorizedByUserId: 999 }),
+    )
 })
 
 test("stock count forms reject inactive locations and accept active locations", () => {
     const inactive = {
         ...options,
-        locations: options.locations.map((location) => ({ ...location, isActive: false })),
+        locations: options.locations.map((location) => ({
+            ...location,
+            isActive: false,
+        })),
     }
     assert.ok(
-        schema.validateStockAdjustment({ ...input, referenceId: "COUNT-1" }, inactive, "0")
-            .locationId,
+        schema.validateStockAdjustment(
+            { ...input, referenceId: "COUNT-1" },
+            inactive,
+            "0",
+        ).locationId,
     )
     const active = {
         ...options,
-        locations: options.locations.map((location) => ({ ...location, isActive: true })),
+        locations: options.locations.map((location) => ({
+            ...location,
+            isActive: true,
+        })),
     }
     assert.equal(
-        schema.validateStockAdjustment({ ...input, referenceId: "COUNT-1" }, active, "0")
-            .locationId,
+        schema.validateStockAdjustment(
+            { ...input, referenceId: "COUNT-1" },
+            active,
+            "0",
+        ).locationId,
         undefined,
     )
 })

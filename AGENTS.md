@@ -15,6 +15,16 @@ Also read the guide for each application being changed:
 - [Backend instructions](backend/AGENTS.md): Express modules, Zod validation,
   services, database access, shared errors, and the users reference API.
 
+Use the implementation coverage and module-contract index in section 2 of the
+system flow to distinguish working modules from planned pages. For sales and
+delivery changes, also read [the module contract](docs/sales-delivery-modules.md).
+For sample records, test accounts or seed/reset changes, read
+[the sample-data guide](docs/test-data.md).
+
+When business behavior changes, keep the canonical system flow and affected
+module contracts aligned. Preserve all 26 sections and their original examples;
+extend the relevant section and mark current implementation limits explicitly.
+
 The system flow defines business behavior; the application guides define its
 implementation. The current user request defines which part to implement.
 Apply the shared business rules to that scope and describe any remaining gaps
@@ -51,6 +61,14 @@ implemented in the current code.
 - Transfers have distinct source and destination locations. Dispatch moves stock
   into In Transit; confirmed receiving moves it to the destination. Goods remain
   part of company inventory during transit.
+- Sales confirmation does not reserve warehouse stock. Draft deliveries allocate
+  sales demand; dispatch checks stock availability and moves selected lots into
+  protected In Transit inventory. Completed customer delivery records negative
+  Sale entries, consumes/releases its reservation, and updates sales fulfillment
+  atomically. Customer contacts are separate from company inventory locations.
+- Reuse the current permission settings: sales writes require
+  `canManageInventory`; delivery writes require `canManageTransfers`. All active
+  outstanding packing and delivery reservations reduce stock availability.
 - Derive reports and dashboard metrics from operational records. Maintain audit
   fields using authenticated user identity. The frontend reflects role settings;
   the backend enforces authorization for protected operations.

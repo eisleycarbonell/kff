@@ -8,6 +8,8 @@ import { SESSION_QUERY_KEY, useSession } from "@/hooks/use-session"
 import {
     itemSchema,
     itemUomSchema,
+    itemBrandSchema,
+    type ItemBrand,
     toItemInput,
     type Item,
     type ItemUom,
@@ -40,6 +42,11 @@ export async function updateItem(itemId: number, input: UpdateItemInput): Promis
     )
 }
 export const ITEMS_QUERY_KEY = ["items"] as const
+export async function getItemBrands(signal?: AbortSignal): Promise<ItemBrand[]> {
+    const result = itemBrandSchema.array().safeParse(await apiRequest("/brands", { signal }))
+    if (!result.success) throw new Error("The item API returned invalid brand options.")
+    return result.data
+}
 const EMPTY_ITEMS: Item[] = []
 const EMPTY_UOMS: ItemUom[] = []
 
@@ -59,6 +66,11 @@ export function useItems() {
         enabled: Boolean(session.data),
     })
     const [formOpen, setFormOpen] = useState(false)
+    const brandsQuery = useQuery({
+        queryKey: ["item-brands", session.data?.userId],
+        queryFn: ({ signal }) => getItemBrands(signal),
+        enabled: Boolean(session.data),
+    })
     const [formRequested, setFormRequested] = useState(false)
     const [editingItem, setEditingItem] = useState<Item | null>(null)
     const [deactivatingItems, setDeactivatingItems] = useState<Item[]>([])
@@ -71,6 +83,18 @@ export function useItems() {
                 ? current.map((item) => (item.itemId === saved.itemId ? saved : item))
                 : [...current, saved],
         )
+        for (const key of [
+            "sales-order-options",
+            "brands",
+            "packing-formulas",
+            "packing-formula-options",
+            "packing-options",
+            "packing-preview",
+            "delivery-order-options",
+            "sales-orders",
+            "delivery-orders",
+        ])
+            void client.invalidateQueries({ queryKey: [key] })
     }
     function mutationError(error: Error) {
         if (error instanceof ApiError && error.status === 403)
@@ -148,6 +172,9 @@ export function useItems() {
     return {
         items: itemsQuery.data ?? EMPTY_ITEMS,
         uoms: uomsQuery.data ?? EMPTY_UOMS,
+        brands: brandsQuery.data,
+        brandsError: brandsQuery.error?.message,
+        retryBrands: () => void brandsQuery.refetch(),
         canManage,
         loadStatus,
         loadError,

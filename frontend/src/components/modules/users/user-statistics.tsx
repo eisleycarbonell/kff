@@ -1,9 +1,9 @@
 import { Mail, ShieldCheck, UsersRound } from "lucide-react"
 
-import type { User } from "@/components/modules/users/user.schema"
+import type { User, UserRole } from "@/components/modules/users/user.schema"
 import { Card, CardContent } from "@/components/ui/card"
 
-export function UserStatistics({ users }: { users: User[] }) {
+export function UserStatistics({ users, roles }: { users: User[]; roles: UserRole[] }) {
     const statistics = [
         {
             label: "Total users",
@@ -18,9 +18,11 @@ export function UserStatistics({ users }: { users: User[] }) {
             icon: Mail,
         },
         {
-            label: "Administrators",
-            value: users.filter((user) => user.roleId === 1).length,
-            description: "Users with administrator access",
+            label: "User managers",
+            value: users.filter((user) =>
+                roles.some((role) => role.roleId === user.roleId && role.settings.canManageUsers),
+            ).length,
+            description: "Users who can manage accounts and roles",
             icon: ShieldCheck,
         },
     ]
@@ -36,9 +38,7 @@ export function UserStatistics({ users }: { users: User[] }) {
                             <p className="mt-2 text-3xl font-semibold tracking-tight tabular-nums">
                                 {value}
                             </p>
-                            <p className="mt-1 text-sm text-muted-foreground">
-                                {description}
-                            </p>
+                            <p className="mt-1 text-sm text-muted-foreground">{description}</p>
                         </div>
                     </CardContent>
                 </Card>
