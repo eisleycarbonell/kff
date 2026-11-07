@@ -2,7 +2,10 @@
 
 This module implements `/transfers` and `/transfers/in-transit` from the shared
 [system flow](system-flow.md), using the existing stock-transfer tables and the
-shared item/lot/location balances and append-only ledger. No migration is needed.
+shared item/lot/location balances and append-only ledger. The transfer-specific
+tables are unchanged; use the current shared schema, including the
+[Sales and Delivery migration](../backend/supabase/migrations/20261105000000_sales_delivery_orders/migration.sql)
+when running the updated application.
 
 ## API contract
 
@@ -71,6 +74,8 @@ quantity no greater than requested. It runs once from Draft and changes status
 to In Transit. Each line posts a negative source and positive In Transit ledger
 entry and updates the same lot's balances atomically. Availability is rechecked
 under locks as on-hand minus active outstanding reservations.
+This includes delivery-line reservations protecting customer shipments in the
+same In Transit location, as well as packing-material reservations.
 
 POST `/api/transfers/:id/receive` accepts:
 
@@ -110,6 +115,11 @@ inactive; its physical movement and traceability must be recorded.
 No ledger records are edited or removed. Branch/store inventory uses the same
 tables as warehouse inventory. The dispatch ledger preserves transit identity
 without adding a redundant header column.
+
+Customer delivery orders use their own sales-line references and protected
+transit reservations. Their completion removes goods from company inventory
+with `Sale` entries; internal transfer receipt instead moves goods to another
+company location. See the [Sales and Delivery contract](sales-delivery-modules.md).
 
 ## Verification
 

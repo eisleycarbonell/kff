@@ -391,3 +391,47 @@ test("grouped receiving statistics and sorting preserve quantities beyond Number
     )
     assert.equal(schema.formatReceivingDecimal("NaN"), "—")
 })
+
+test("reviewing latest balances preserves all entered lot details and refreshes split snapshots together", () => {
+    const draft = {
+        poId: 5,
+        lines: [
+            {
+                ...formLine,
+                uiKey: "first",
+                supplierLotNumber: "Supplier lot",
+                manufactureDate: "2026-10-01",
+            },
+            { ...formLine, uiKey: "second", lotNumber: "LOT-002", qtyReceived: "4" },
+        ],
+    }
+    const latest = {
+        ...options,
+        orders: [
+            { ...order, lines: [{ ...source, qtyReceived: "4.0000", qtyRemaining: "6.0000" }] },
+        ],
+    }
+    const reviewed = schema.reviewReceivingBalances(draft, latest)
+    assert.deepEqual(reviewed, {
+        ...draft,
+        lines: draft.lines.map((line) => ({ ...line, expectedQtyReceived: "4.0000" })),
+    })
+    assert.equal(draft.lines[0].expectedQtyReceived, "2.0000")
+    const errors = schema.validateReceipt(reviewed, latest)
+    assert.ok(errors.lineErrors[0].qtyReceived)
+    assert.ok(errors.lineErrors[1].qtyReceived)
+    assert.equal(errors.lineErrors[0].expectedQtyReceived, undefined)
+})
+
+test("reviewing a closed order or missing line never silently changes selected items or quantities", () => {
+    for (const latest of [
+        { ...options, orders: [] },
+        { ...options, orders: [{ ...order, lines: [] }] },
+    ]) {
+        const reviewed = schema.reviewReceivingBalances(values, latest)
+        assert.deepEqual(reviewed, values)
+        assert.notEqual(reviewed, values)
+        const errors = schema.validateReceipt(reviewed, latest)
+        assert.ok(errors.poId || errors.lineErrors?.[0].poLineId)
+    }
+})

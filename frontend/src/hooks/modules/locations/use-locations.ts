@@ -55,7 +55,13 @@ export function useLocations() {
         )
     }
     function refresh() {
-        for (const key of ["locations", "inventory-stocks", "inventory-stock-options"])
+        for (const key of [
+            "locations",
+            "inventory-stocks",
+            "inventory-stock-options",
+            "delivery-order-options",
+            "delivery-orders",
+        ])
             void client.invalidateQueries({ queryKey: [key] })
     }
     function mutationError(error: Error) {

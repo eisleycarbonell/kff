@@ -40,6 +40,7 @@ const filters = [
     },
 ]
 const columnLabels: Record<string, string> = {
+    brandName: "Brand",
     sku: "SKU",
     itemType: "Type",
     primaryUomName: "Primary UOM",
@@ -58,6 +59,7 @@ export function exportItems(items: Item[]) {
         [
             "SKU",
             "Name",
+            "Brand",
             "Type",
             "Primary UOM",
             "Reference cost",
@@ -69,6 +71,7 @@ export function exportItems(items: Item[]) {
         ...items.map((item) => [
             item.sku,
             item.name,
+            item.brandName ?? "",
             item.itemType,
             item.primaryUomName,
             item.unitCost,

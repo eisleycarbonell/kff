@@ -33,13 +33,29 @@ import { createTransferRouter } from './modules/transfers/transfer.routes.ts';
 import type { TransferService } from './modules/transfers/transfer.controller.ts';
 import { createDashboardRouter } from './modules/dashboard/dashboard.routes.ts';
 import type { DashboardService } from './modules/dashboard/dashboard.controller.ts';
+import { createCustomerRouter } from './modules/customers/customer.routes.ts';
+import type { CustomerService } from './modules/customers/customer.controller.ts';
+import { createInventoryMovementRouter } from './modules/inventory-movements/inventory-movement.routes.ts';
+import type { InventoryMovementService } from './modules/inventory-movements/inventory-movement.controller.ts';
+import { createRoleRouter } from './modules/roles/role.routes.ts';
+import type { RoleService } from './modules/roles/role.controller.ts';
+import { createSalesOrderRouter } from './modules/sales-orders/sales-order.routes.ts';
+import type { SalesOrderService } from './modules/sales-orders/sales-order.controller.ts';
+import { createDeliveryOrderRouter } from './modules/delivery-orders/delivery-order.routes.ts';
+import { createBrandRouter } from './modules/brands/brand.routes.ts';
+import type { BrandService } from './modules/brands/brand.controller.ts';
+import { createFormulaRouter } from './modules/packing-formulas/packing-formula.routes.ts';
+import type { FormulaService } from './modules/packing-formulas/packing-formula.controller.ts';
+import type { DeliveryOrderService } from './modules/delivery-orders/delivery-order.controller.ts';
 
 /** Build the HTTP app without opening a port or importing a live database client. */
 export function createApp(modules: {
     userService: UserService;
     authService: AuthService;
+    roleService?: RoleService;
     itemService?: ItemService;
     stockService?: StockService;
+    inventoryMovementService?: InventoryMovementService;
     uomService?: UomService;
     locationService?: LocationService;
     supplierService?: SupplierService;
@@ -49,6 +65,11 @@ export function createApp(modules: {
     packingOrderService?: PackingOrderService;
     transferService?: TransferService;
     dashboardService?: DashboardService;
+    customerService?: CustomerService;
+    salesOrderService?: SalesOrderService;
+    deliveryOrderService?: DeliveryOrderService;
+    brandService?: BrandService;
+    formulaService?: FormulaService;
 }) {
     const app = express();
 
@@ -72,7 +93,23 @@ export function createApp(modules: {
     });
 
     const authenticate = createAuthMiddleware(modules.authService);
+    if (modules.brandService)
+        app.use('/api/brands', createBrandRouter(modules.brandService, authenticate));
+    if (modules.formulaService)
+        app.use('/api/packing-formulas', createFormulaRouter(modules.formulaService, authenticate));
+    if (modules.salesOrderService)
+        app.use(
+            '/api/sales-orders',
+            createSalesOrderRouter(modules.salesOrderService, authenticate),
+        );
+    if (modules.deliveryOrderService)
+        app.use(
+            '/api/delivery-orders',
+            createDeliveryOrderRouter(modules.deliveryOrderService, authenticate),
+        );
     app.use('/api/auth', createAuthRouter(modules.authService, authenticate));
+    if (modules.roleService)
+        app.use('/api/roles', createRoleRouter(modules.roleService, authenticate));
     app.use(
         '/api/user',
         authenticate,
@@ -83,11 +120,18 @@ export function createApp(modules: {
         app.use('/api/items', createItemRouter(modules.itemService, authenticate));
     if (modules.stockService)
         app.use('/api/inventory/stocks', createStockRouter(modules.stockService, authenticate));
+    if (modules.inventoryMovementService)
+        app.use(
+            '/api/inventory/movements',
+            createInventoryMovementRouter(modules.inventoryMovementService, authenticate),
+        );
     if (modules.uomService) app.use('/api/uoms', createUomRouter(modules.uomService, authenticate));
     if (modules.locationService)
         app.use('/api/locations', createLocationRouter(modules.locationService, authenticate));
     if (modules.supplierService)
         app.use('/api/suppliers', createSupplierRouter(modules.supplierService, authenticate));
+    if (modules.customerService)
+        app.use('/api/customers', createCustomerRouter(modules.customerService, authenticate));
     if (modules.purchaseOrderService)
         app.use(
             '/api/purchase-orders',

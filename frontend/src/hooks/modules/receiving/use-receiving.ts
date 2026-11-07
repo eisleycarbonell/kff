@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Toast } from "@base-ui/react/toast"
 import { apiRequest, ApiError } from "@/lib/api-request"
@@ -52,6 +52,7 @@ export function useReceiving() {
     const queryKey = [...RECEIVING_QUERY_KEY, session.data?.userId]
     const [formOpen, setFormOpen] = useState(false)
     const [formRequested, setFormRequested] = useState(false)
+    const submissionPending = useRef(false)
     const receiptsQuery = useQuery({
         queryKey,
         queryFn: ({ signal }) => getReceipts(signal),
@@ -66,15 +67,9 @@ export function useReceiving() {
     const loadError = receiptsQuery.error ?? session.error
     const optionsError = optionsQuery.error
     useEffect(() => {
-        if (
-            [loadError, optionsError].some(
-                (error) => error instanceof ApiError && error.status === 401,
-            )
-        )
-            client.setQueryData(SESSION_QUERY_KEY, null)
         if (optionsError instanceof ApiError && optionsError.status === 403)
             void client.invalidateQueries({ queryKey: SESSION_QUERY_KEY })
-    }, [client, loadError, optionsError])
+    }, [client, optionsError])
     const receive = useMutation({
         mutationFn: (values: ReceivingFormValues) => {
             if (!canReceive) throw new Error("Your role does not allow receiving inventory.")
@@ -100,15 +95,18 @@ export function useReceiving() {
                 "items",
                 "uoms",
                 "locations",
+                "dashboard",
             ])
                 void client.invalidateQueries({ queryKey: [prefix] })
             showToast({ type: "success", title: `${saved.receipts.length} lot(s) received.` })
         },
         onError: (error) => {
+            // A response can fail after the server commits. Reconcile before retrying.
+            void client.invalidateQueries({ queryKey: RECEIVING_QUERY_KEY })
+            void client.invalidateQueries({ queryKey: RECEIVING_OPTIONS_QUERY_KEY })
             if (error instanceof ApiError && error.status === 403)
                 void client.invalidateQueries({ queryKey: SESSION_QUERY_KEY })
             if (error instanceof ApiError && error.status === 409) {
-                void client.invalidateQueries({ queryKey: RECEIVING_OPTIONS_QUERY_KEY })
                 void client.invalidateQueries({ queryKey: ["purchase-orders"] })
                 void client.invalidateQueries({ queryKey: ["purchase-order-detail"] })
             }
@@ -121,21 +119,25 @@ export function useReceiving() {
     })
     const { reset, mutateAsync: receiveInventory, isPending: isReceiving } = receive
     const openAdd = useCallback(() => {
+        if (!canReceive || submissionPending.current) return
         reset()
         setFormRequested(true)
         setFormOpen(true)
-    }, [reset])
+    }, [canReceive, reset])
     const handleReceive = useCallback(
         async (values: ReceivingFormValues) => {
-            if (isReceiving) return false
+            if (submissionPending.current) return false
+            submissionPending.current = true
             try {
                 await receiveInventory(values)
                 return true
             } catch {
                 return false
+            } finally {
+                submissionPending.current = false
             }
         },
-        [isReceiving, receiveInventory],
+        [receiveInventory],
     )
     const { refetch: refetchSession } = session
     const { refetch: refetchReceipts } = receiptsQuery
@@ -145,8 +147,10 @@ export function useReceiving() {
         void refetchSession()
         if (signedIn) void refetchReceipts()
     }, [refetchReceipts, refetchSession, signedIn])
-    const retryOptions = useCallback(() => {
-        if (signedIn && canReceive) void refetchOptions()
+    const retryOptions = useCallback(async (): Promise<ReceivingOptions | null> => {
+        if (!signedIn || !canReceive) return null
+        const result = await refetchOptions()
+        return result.isSuccess ? result.data : null
     }, [canReceive, refetchOptions, signedIn])
     const loadStatus = session.isPending
         ? "loading"
@@ -169,7 +173,7 @@ export function useReceiving() {
         options: optionsQuery.data ?? EMPTY_OPTIONS,
         optionsReady: optionsQuery.data !== undefined,
         optionsError,
-        isOptionsLoading: optionsQuery.isPending,
+        isOptionsLoading: optionsQuery.isFetching,
         retryOptions,
         formOpen,
         setFormOpen,

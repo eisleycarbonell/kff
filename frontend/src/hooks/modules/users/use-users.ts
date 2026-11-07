@@ -2,13 +2,15 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { z } from "zod"
-import { apiRequest } from "@/lib/api-request"
+import { apiRequest, ApiError } from "@/lib/api-request"
 import { useSession, SESSION_QUERY_KEY } from "@/hooks/use-session"
 import { Toast } from "@base-ui/react/toast"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import {
     userSchema,
+    userRoleSchema,
+    type UserRole,
     type CreateUserInput,
     type UpdateUserInput,
     type User,
@@ -27,6 +29,9 @@ function parse<T>(schema: z.ZodType<T>, data: unknown): T {
 
 export async function getUsers(signal?: AbortSignal): Promise<User[]> {
     return parse(userSchema.array(), await apiRequest(USERS_PATH, { method: "GET", signal }))
+}
+export async function getUserRoleOptions(signal?: AbortSignal): Promise<UserRole[]> {
+    return parse(userRoleSchema.array(), await apiRequest("/roles", { signal }))
 }
 
 export async function createUser(input: CreateUserInput): Promise<User> {
@@ -52,6 +57,7 @@ export async function deleteUser(userId: number): Promise<void> {
 
 export const USERS_QUERY_KEY = ["users"] as const
 const EMPTY_USERS: User[] = []
+const EMPTY_ROLES: UserRole[] = []
 
 export function useUsers() {
     const queryClient = useQueryClient()
@@ -64,7 +70,13 @@ export function useUsers() {
         enabled: canManage,
         queryFn: ({ signal }) => getUsers(signal),
     })
-    const { error: loadError, refetch } = usersQuery
+    const rolesQuery = useQuery({
+        queryKey: ["user-role-options", session.data?.userId],
+        enabled: canManage,
+        queryFn: ({ signal }) => getUserRoleOptions(signal),
+    })
+    const { refetch } = usersQuery
+    const loadError = usersQuery.error ?? rolesQuery.error ?? session.error
 
     useEffect(() => {
         if (!loadError) return
@@ -115,17 +127,22 @@ export function useUsers() {
                     : [...current, savedUser],
             )
             void queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY })
+            void queryClient.invalidateQueries({ queryKey: ["roles"] })
+            void queryClient.invalidateQueries({ queryKey: SESSION_QUERY_KEY })
             showToast({
                 type: "success",
                 title: userId === undefined ? "User added." : "User details updated.",
             })
         },
-        onError: (error) =>
+        onError: (error) => {
+            if (error instanceof ApiError && error.status === 403)
+                void queryClient.invalidateQueries({ queryKey: SESSION_QUERY_KEY })
             showToast({
                 type: "error",
                 title: "Unable to save user",
                 description: error.message,
-            }),
+            })
+        },
     })
     const { mutateAsync: saveUser, isPending: isSaving, reset: resetSave } = save
 
@@ -148,6 +165,8 @@ export function useUsers() {
                     current.filter((user) => !deletedIds.has(user.userId)),
                 )
                 void queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY })
+                void queryClient.invalidateQueries({ queryKey: ["roles"] })
+                void queryClient.invalidateQueries({ queryKey: SESSION_QUERY_KEY })
                 showToast({
                     type: "success",
                     title: `${deletedIds.size === 1 ? "User" : `${deletedIds.size} users`} deleted.`,
@@ -178,9 +197,9 @@ export function useUsers() {
             ? "signed-out"
             : !canManage
               ? "forbidden"
-              : usersQuery.data !== undefined
+              : usersQuery.data !== undefined && rolesQuery.data !== undefined
                 ? "ready"
-                : usersQuery.isError
+                : usersQuery.isError || rolesQuery.isError
                   ? "error"
                   : "loading"
 
@@ -191,17 +210,23 @@ export function useUsers() {
         setFormOpen(true)
     }, [resetSave])
 
-    const openEdit = useCallback((user: User) => {
-        resetSave()
-        setFormRequested(true)
-        setEditingUser(user)
-        setFormOpen(true)
-    }, [resetSave])
+    const openEdit = useCallback(
+        (user: User) => {
+            resetSave()
+            setFormRequested(true)
+            setEditingUser(user)
+            setFormOpen(true)
+        },
+        [resetSave],
+    )
 
-    const openDelete = useCallback((selectedUsers: User[]) => {
-        resetDelete()
-        setDeletingUsers(selectedUsers)
-    }, [resetDelete])
+    const openDelete = useCallback(
+        (selectedUsers: User[]) => {
+            resetDelete()
+            setDeletingUsers(selectedUsers)
+        },
+        [resetDelete],
+    )
 
     const handleSave = useCallback(
         async (values: UserFormValues, user: User | null): Promise<boolean> => {
@@ -225,11 +250,15 @@ export function useUsers() {
 
     const retry = useCallback(() => {
         void session.refetch()
-        if (canManage) void refetch()
-    }, [session, canManage, refetch])
+        if (canManage) {
+            void refetch()
+            void rolesQuery.refetch()
+        }
+    }, [session, canManage, refetch, rolesQuery])
 
     return {
         users,
+        roles: rolesQuery.data ?? EMPTY_ROLES,
         canManage,
         loadStatus,
         formOpen,
@@ -244,7 +273,7 @@ export function useUsers() {
         handleSave,
         handleDelete,
         retry,
-        isFetching: session.isFetching || usersQuery.isFetching,
+        isFetching: session.isFetching || usersQuery.isFetching || rolesQuery.isFetching,
         isSaving,
         isDeleting,
     }

@@ -75,7 +75,7 @@ The other modules' placeholder pages are not complete implementation examples.
 
 | Concern | Reference file |
 | --- | --- |
-| Page composition, header action, loading, and dialogs | [users/page.tsx](src/app/(protected)/users/page.tsx) |
+| Page composition, header action, loading, and dialogs | [users/page.tsx](src/app/(protected)/(users-access)/users/page.tsx) |
 | Requests, query cache, mutations, notifications, and feature state | [use-users.ts](src/hooks/modules/users/use-users.ts) |
 | Public DTOs, writable inputs, form values, and validation | [user.schema.ts](src/components/modules/users/user.schema.ts) |
 | Statistics calculated from page data | [user-statistics.tsx](src/components/modules/users/user-statistics.tsx) |
@@ -105,8 +105,9 @@ frontend/
       layout.tsx                     # Existing shared QueryProvider
       (protected)/
         layout.tsx                   # Shared authenticated app shell
-        users/
-          page.tsx                   # Direct page composition
+        (users-access)/             # Sidebar group; does not change the URL
+          users/
+            page.tsx                 # Direct page composition at /users
     components/
       modules/
         users/
@@ -255,6 +256,9 @@ substantial; do not create empty files to match this tree.
 
 - Authenticated routes belong under `app/(protected)/`; public routes belong
   directly under `app/`.
+- Organize protected pages by sidebar section using route groups such as
+  `(master-data)/items/` and `(master-data)/brands/`. Route groups do not change
+  the documented URL paths or backend API paths.
 - `components/ui/` is generated shadcn code. Do not place custom components
   there or edit primitives except for necessary type or dark-mode fixes.
 - `components/layout/` owns the shared app shell.
@@ -280,9 +284,9 @@ substantial; do not create empty files to match this tree.
   loading, errors, empty results, and failed submissions. Report any browser or
   backend verification that could not be completed.
 
-## Inventory Stocks boundary
+## Inventory Stock boundary
 
-Inventory Management -> Inventory Stocks (`/inventory`) owns on-hand, reserved,
+Inventory -> Inventory Stock (`/inventory`) owns on-hand, reserved,
 and available quantities. Master Data -> Items (`/items`) owns catalog fields.
 Use the [stock contract](../docs/inventory-stocks-module.md). Keep quantities as
 exact decimal strings and group summary totals by primary UOM. Count adjustments

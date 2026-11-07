@@ -20,6 +20,7 @@ export const itemInputSchema = z.strictObject({
     name: z.string().trim().min(1, "Enter an item name.").max(120),
     itemType: z.enum(ITEM_TYPES),
     primaryUomId: id,
+    brandId: id.nullable().optional(),
     netWeightG: decimal(8).nullable(),
     shelfLifeDays: id.nullable(),
     requiresQc: z.boolean(),
@@ -31,6 +32,8 @@ export const itemSchema = z.object({
     itemId: id,
     primaryUomName: z.string(),
     uomClassName: z.string(),
+    brandCode: z.string().nullable().optional(),
+    brandName: z.string().nullable().optional(),
     isInUse: z.boolean(),
     createdBy: id.nullable(),
     updatedBy: id.nullable(),
@@ -45,6 +48,13 @@ export const itemUomSchema = z.object({
 })
 export type Item = z.output<typeof itemSchema>
 export type ItemUom = z.output<typeof itemUomSchema>
+export const itemBrandSchema = z.object({
+    brandId: id,
+    code: z.string(),
+    name: z.string(),
+    isActive: z.boolean(),
+})
+export type ItemBrand = z.output<typeof itemBrandSchema>
 export type CreateItemInput = z.output<typeof itemInputSchema>
 export type UpdateItemInput = Partial<CreateItemInput>
 export type ItemFormValues = Omit<

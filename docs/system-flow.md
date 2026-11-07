@@ -1,5 +1,11 @@
 # Spice Trading & Packing System Flow
 
+Repository documentation reviewed on 2026-11-07. This document retains the
+original 26 sections and defines the shared business flow, including the
+implemented customer sales and delivery extension in section 17. Section 2
+distinguishes implemented workflows from planned modules; a documented route
+alone does not establish that its page and API are implemented.
+
 ## 1. System Purpose
 
 This system manages the complete operational flow for a spice trading and packing business.
@@ -19,6 +25,8 @@ The system mainly handles:
 - Finished goods storage
 - Warehouse transfers
 - Branch and store distribution
+- Customer sales orders
+- Lot-based customer deliveries and fulfillment
 - Inventory tracking
 - User and role management
 - Reporting
@@ -50,6 +58,10 @@ Stock Transfer
 Branch / Store
 ```
 
+Finished goods at a warehouse, branch or store can also fulfill customer sales
+orders through Delivery Orders -> In Transit -> Customer Receipt. Sections 17
+and 22 describe that customer path and its stock/ledger effects.
+
 ---
 
 # 2. Main Modules
@@ -75,6 +87,42 @@ Routes:
 ```text
 /dashboard
 ```
+
+## Current Implementation Coverage
+
+The following status reflects the repository source on 2026-11-07.
+Implemented means that the page and operational API are present; database
+deployment and live verification are separate. The business examples below
+remain illustrative rather than fixed master data or promised feature coverage.
+
+| Module | Current implementation | Implementation contract |
+| --- | --- | --- |
+| Dashboard | Operational inventory, purchasing, packing and transfer summaries | Dashboard page and API |
+| Items / Products | Catalog management and reference protection | [Items](items-module.md) |
+| Suppliers | Supplier and item-offer management | [Suppliers](suppliers-module.md) |
+| Customers | Contact master data linked to sales orders | [Customers](customers-module.md) |
+| Units and Locations | Master-data management and usage protection | [UOM and Locations](uom-locations-modules.md) |
+| Purchase Orders | Draft, send, partial receipt, completion and cancellation | [Purchase Orders](purchase-orders-module.md) |
+| Receiving and Lots | Purchase receiving, lot provenance and QC metadata | [Receiving and Lots](receiving-lots-modules.md) |
+| Inventory, Movements, Adjustments and Counts | Balances and ledger views; individual lot/location counted corrections | [Inventory Stocks](inventory-stocks-module.md) |
+| Packing Orders and Material Reservations | BOM snapshots, planning, reservations, start and completion | [Packing Orders](packing-orders-module.md) |
+| Stock Transfers and Branch/Store Stock | Dispatch through In Transit, partial receiving and shared location inventory | [Stock Transfers](stock-transfers-module.md) |
+| Sales Orders and Delivery Orders | Customer demand allocation, lot dispatch and completed delivery fulfillment | [Sales and Delivery](sales-delivery-modules.md) |
+| Users, Roles and Authentication | Accounts, sessions and the five supported permission settings | [Users and Roles](roles-users-module.md) |
+| Packing Formula / BOM maintenance | Current formula editor/API with compatible units and protected historical order snapshots | [Brands and Packing Formulas](brands-packing-formulas-modules.md) |
+| Brands | Brand management, active status and optional item assignments | [Brands and Packing Formulas](brands-packing-formulas-modules.md) |
+| Reports | Placeholder report tabs; dedicated reporting APIs are planned | Section 18 |
+| Company Settings | Placeholder page; company settings storage and API are planned | Section 21 navigation |
+
+Item-specific packaging/UOM conversions and scrap reason codes have schema and
+sample records but no maintenance API. A dedicated scrap/disposal operation is
+not yet exposed; sample Scrap entries do not establish a live scrap workflow.
+Stock Counts currently records changed counts through adjustments, without
+count-session documents or saved unchanged observations.
+
+[Sample-data setup](test-data.md) describes the implemented examples, six sample
+role/account assignments, and empty-database import behavior. Sample records
+do not implement the planned modules above.
 
 ---
 
@@ -122,6 +170,15 @@ Route:
 
 ---
 
+## Brands
+
+Brands identify commercial product families. Inventory managers maintain a
+unique code, name, optional description and active status at `/brands`, then
+optionally assign a brand in Items / Products. Only active brands may be newly
+assigned; deactivation preserves existing item links and operational history.
+Brands are not hard deleted. See
+[Brands and Packing Formulas](brands-packing-formulas-modules.md).
+
 ## Suppliers
 
 Suppliers provide raw spices, packaging materials, labels, and other materials.
@@ -160,6 +217,23 @@ leadTimeDays
 isPreferred
 isActive
 ```
+
+## Customers
+
+Customers are contact master data used by sales orders. They contain a name,
+optional contact name, email, phone, address and notes, plus active status.
+Customers are separate from company inventory locations; completing a customer
+delivery removes goods from company inventory.
+
+Route:
+
+```text
+/customers
+```
+
+New and confirmed sales orders require an active customer. Customer records
+remain available historically, and deactivation is blocked while a Draft,
+Confirmed or Partially Delivered sales order remains open.
 
 ---
 
@@ -238,6 +312,14 @@ Route:
 # 4. Packing Formula / BOM
 
 A BOM defines the materials required to produce one finished product.
+
+The current `/bom` editor creates one formula per active Finished Good. Packing
+managers add 1-100 distinct active raw materials, packaging or labels, with
+positive exact per-unit quantities and compatible UOMs. They can edit or remove
+the current formula. Changes are atomic and apply to new orders; existing orders
+retain their own material snapshot and reservations. Formula revision numbers,
+effective dates and approval workflows remain planned. See
+[Brands and Packing Formulas](brands-packing-formulas-modules.md).
 
 Example:
 
@@ -634,6 +716,8 @@ Reserve Materials
    ↓
 Packing Starts
    ↓
+Packing Completion
+   ↓
 Reserved Qty becomes Consumed Qty
    ↓
 Release unused reservation
@@ -649,6 +733,19 @@ Location
 Reserved Quantity
 Consumed Quantity
 ```
+
+The flow above describes packing-material reservations. Starting packing
+validates allocations and changes the order status; it does not consume stock.
+The materials remain reserved until completion, when actual consumption is
+recorded and unused reservations are released, as described in section 12.
+
+Customer deliveries use the same reservation table to protect dispatched stock
+at its In Transit location. Each reservation belongs to exactly one packing
+order material or delivery order line, and retains item, lot, location,
+reserved quantity, consumed quantity and release time. All active outstanding
+reservations reduce availability, regardless of their owning workflow.
+The Material Reservations page lists packing reservations; delivery shipment
+reservations are managed through the delivery workflow in section 17.
 
 ---
 
@@ -758,7 +855,14 @@ Produce
 Transfer
 Scrap
 Adjustment
+Sale
 ```
+
+`Sale` records the negative quantity leaving company inventory when a customer
+delivery is completed. Customer dispatch uses paired `Transfer` entries from
+the source location to In Transit. Every such entry links to its delivery order
+line and reference number; internal stock transfers retain their own transfer
+line references. Quantities remain in the item's primary UOM.
 
 Route:
 
@@ -923,6 +1027,118 @@ inventory_transactions
 locations
 ```
 
+## Sales Orders
+
+Sales orders record customer demand for active Finished Goods in each item's
+primary UOM. An order belongs to one active customer and contains an order
+number, order date, optional requested delivery date, notes, and one line per
+finished product. Each line records item, primary UOM, quantity ordered,
+quantity delivered and unit price. Requested delivery cannot precede the order
+date. Quantities and prices use exact decimal strings with up to four decimal
+places; quantities are positive and prices may be zero. Line amounts round
+half up to four decimal places, and the order total sums those line amounts.
+
+Route:
+
+```text
+/sales-orders
+```
+
+Sales order statuses:
+
+```text
+Draft
+Confirmed
+Partially Delivered
+Completed
+Cancelled
+```
+
+Draft orders can be edited and confirmed. Confirmation revalidates the active
+customer and products but does not reserve warehouse stock. Only Draft or
+Confirmed orders with no un-cancelled delivery orders can be cancelled.
+Partially Delivered and Completed orders preserve their fulfillment history.
+The backend derives delivered quantities and fulfillment status from completed
+deliveries; clients cannot write them directly.
+
+Delivery drafts allocate outstanding sales quantities under a lock on the
+sales order so simultaneous deliveries cannot over-allocate its demand:
+
+```text
+qtyRemaining = qtyOrdered - qtyDelivered
+
+qtyAllocated = total quantity on Draft and In Transit delivery lines
+
+quantity available to allocate = qtyRemaining - qtyAllocated
+```
+
+Completed deliveries contribute to `qtyDelivered`, and no longer contribute
+to `qtyAllocated`. Cancelled deliveries contribute to neither. Demand
+allocation is separate from physical stock reservation and availability.
+
+## Delivery Orders
+
+A delivery belongs to one Confirmed or Partially Delivered sales order. Its
+header records a delivery number, source location, delivery date, notes, and
+the original In Transit location once dispatched. The source is an active
+Warehouse, Branch or Store, distinct from the active In Transit location.
+The delivery date cannot precede the associated sales order date.
+
+Each delivery line links a sales order line to a matching finished-product lot.
+Each lot appears once per delivery; a sales order line can be split across
+several lots or deliveries. The delivery line's `qtyDelivered` is its planned
+full shipment quantity while Draft and its committed shipment after dispatch.
+The sales line's `qtyDelivered` counts only completed customer deliveries.
+
+Route:
+
+```text
+/delivery-orders
+```
+
+Delivery order statuses:
+
+```text
+Draft
+In Transit
+Completed
+Cancelled
+```
+
+Drafts can be edited or cancelled. Draft creation and editing validate matching
+lots with stock at the source and allocate the sales order's demand. Dispatch
+rechecks physical availability after all active reservations, active finished
+items, approved and unexpired lots, and provenance to a packing order.
+
+Dispatch atomically:
+
+- Deducts stock at the source and adds the same lot to In Transit.
+- Appends paired Transfer ledger entries linked to the delivery line.
+- Reserves that shipment at its In Transit location for the delivery line.
+- Records the original transit location, dispatch time, actor and In Transit status.
+
+Completion confirms receipt of the entire delivery by the customer and atomically:
+
+- Validates the original transit stock and the delivery's protected allocation.
+- Deducts the shipment from In Transit and appends negative Sale entries.
+- Consumes and releases its transit reservations.
+- Increments the sales lines' delivered quantities without exceeding quantities ordered.
+- Marks the sales order Partially Delivered or Completed according to all its lines.
+- Records completion time, actor and Completed delivery status.
+
+Goods remain company inventory during transit and leave it only on completed
+customer receipt. Customer contacts are not company destination locations.
+Dispatch and completion hold document and inventory locks through commit;
+failure rolls back every related stock, ledger, reservation and document write.
+Repeated or invalid actions fail without duplicating inventory or fulfillment.
+
+Dispatched deliveries cannot be edited or cancelled. Each delivery completes
+as a whole shipment; use multiple delivery orders for partial sales fulfillment.
+The current scope does not include invoices, payments, receivables, customer
+returns, partial receipt within a delivery, or dispatched-delivery reversals.
+See [Sales and Delivery](sales-delivery-modules.md) for request/response contracts
+and [test data](test-data.md) for the five sample sales orders and six deliveries.
+
 ---
 
 # 18. Reports
@@ -955,6 +1171,12 @@ Branch Transfers
 In Transit Inventory
 ```
 
+The routes and report types above describe intended reporting coverage. Current
+`/reports/inventory` contains five planned tabs and no reporting API. Packing,
+purchasing and transfer report workflows are also planned; dashboard metrics
+and operational stock/movement screens provide data but do not implement these
+reporting workflows. See the current implementation coverage in section 2.
+
 ---
 
 # 19. Users and Roles
@@ -986,7 +1208,28 @@ Administrator
 Warehouse Manager
 
 Purchasing
+Sales
+Delivery
+Viewer
 ```
+
+The implemented Sales and Delivery modules reuse the existing permission flags:
+
+| Protected operation | Permission |
+| --- | --- |
+| Items, customers, UOMs, locations, receiving and stock adjustments | canManageInventory |
+| Sales order creation, editing, confirmation and cancellation | canManageInventory |
+| Suppliers and purchase orders | canManagePurchasing |
+| Packing order management | canManagePacking |
+| Internal transfers and customer delivery management | canManageTransfers |
+| User and role management, including their protected reads | canManageUsers |
+
+There are no separate sales or delivery permission flags. A Sales role with
+Inventory permission can also manage inventory; a Delivery role with Transfers
+permission can also manage internal transfers. The sample Administrator and
+Warehouse Manager have both permissions. Purchasing and Viewer can read sales
+and delivery orders but cannot manage them. All six sample accounts and their
+persisted role assignments are documented in [test data](test-data.md).
 
 The frontend must hide or disable functionality based on permissions, but backend authorization must still enforce permissions.
 
@@ -1023,43 +1266,53 @@ Use this module structure:
 ```text
 Dashboard
 
-Master Data
-├── Items
-├── Suppliers
-├── Locations
-├── Units of Measure
-└── Packing Formulas
+Inventory
+├── Inventory Stock
+├── Lots / Batches
+├── Stock Movements
+├── Stock Adjustments
+└── Stock Counts
 
 Purchasing
 ├── Purchase Orders
-├── Receiving
-└── Lots / Batches
+└── Receiving
 
 Packing
 ├── Packing Orders
 └── Material Reservations
 
-Inventory
-├── Stock
-├── Stock by Location
-├── Stock by Lot
-├── Transactions
-└── Adjustments
-
 Transfers
-├── Stock Transfers
-└── In Transit
+└── Stock Transfers
+
+Sales & Delivery
+├── Sales Orders
+└── Delivery Orders
+
+Master Data
+├── Items / Products
+├── Brands
+├── Packing Formulas
+├── Suppliers
+├── Customers
+├── Locations
+└── Units of Measure
 
 Reports
-├── Inventory Report
-├── Packing Report
-├── Purchasing Report
-└── Transfer Report
+└── Inventory Reports
 
-Administration
+Users & Access
 ├── Users
 └── Roles & Permissions
+
+Settings
+└── Company Settings
 ```
+
+Dashboard is a direct link. Main groups use collapsible menus. In Transit is a
+tab in Stock Transfers. Report types are tabs in Inventory Reports. Location
+and lot filters belong in Inventory Stock. Sidebar and breadcrumb labels stay
+consistent. Navigation destinations may be planned until their workflows and
+backend contracts are implemented.
 
 ---
 
@@ -1143,6 +1396,30 @@ Packing
 Transfers
 ```
 
+Customer fulfillment is an additional path from finished stock in a warehouse,
+branch or store; it does not replace internal distribution:
+
+```text
+CUSTOMER DEMAND
+Active Customer
+    -> Draft Sales Order
+    -> Confirm Sales Order
+    -> Allocate outstanding demand to Draft Delivery Orders
+
+CUSTOMER DISPATCH
+Select traceable finished-product lots and source location
+    -> Recheck available physical stock
+    -> Dispatch source stock into In Transit
+    -> Protect each shipment with a delivery reservation
+
+CUSTOMER RECEIPT
+Complete the full delivery
+    -> Remove original In Transit stock with Sale ledger entries
+    -> Consume and release the shipment reservations
+    -> Update sales quantities delivered
+    -> Partially Delivered or Completed Sales Order
+```
+
 ---
 
 # 23. Important Business Rules
@@ -1187,6 +1464,11 @@ qtyOnHand
 -
 activeReservedQty
 ```
+
+Active outstanding reservations include both packing-material allocations and
+delivery shipments protected in transit. A Draft delivery's sales-demand
+allocation does not reserve warehouse stock. Physical availability is checked
+under inventory locks when that delivery is dispatched.
 
 ---
 
@@ -1249,6 +1531,12 @@ Drizzle ORM
 PostgreSQL / Supabase
 ```
 
+In this repository the implementation path is Next.js page/components ->
+feature hook with TanStack Query -> Express route with Zod validation ->
+controller -> business service -> PostgreSQL transaction / Drizzle ORM.
+The general diagram above describes responsibilities rather than requiring
+Next.js Route Handlers or Server Actions instead of the existing Express API.
+
 Avoid putting complex inventory business logic directly in React components.
 
 Recommended services:
@@ -1260,6 +1548,8 @@ PackingService
 InventoryService
 ReservationService
 TransferService
+SalesOrderService
+DeliveryOrderService
 ```
 
 Examples:
@@ -1288,6 +1578,18 @@ dispatchTransfer()
 receiveTransfer()
 ```
 
+Customer operations include:
+
+```text
+createSalesOrder()
+confirmSalesOrder()
+cancelSalesOrder()
+createDeliveryOrder()
+dispatchDeliveryOrder()
+completeDeliveryOrder()
+cancelDeliveryOrder()
+```
+
 ---
 
 # 25. Transaction Safety
@@ -1310,7 +1612,18 @@ Dispatching transfer
 Receiving transfer
 ```
 
+Customer workflow transactions also include creating/editing orders and lines,
+allocating delivery quantities, cancelling draft demand allocations, dispatching
+customer deliveries, and completing customer deliveries. Stock/ledger changes,
+reservation changes and sales fulfillment changes must commit or roll back
+together where the operation affects them.
+
 Never allow partial inventory operations.
+
+Serialize sales allocations on the sales order, and hold stock and reservation
+locks through the dispatch or completion ledger/balance commit. Neither
+concurrent deliveries nor repeated actions may over-allocate demand, overspend
+available stock, or duplicate sales fulfillment.
 
 Example of an invalid partial operation:
 
@@ -1349,6 +1662,8 @@ Store
 Reserve
 Pack
 Transfer
+Sell
+Deliver
 Track
 Report
 ```

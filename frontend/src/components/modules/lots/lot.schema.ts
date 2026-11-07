@@ -80,6 +80,7 @@ export const lotDetailSchema = lotSchema.extend({
                 "Transfer",
                 "Scrap",
                 "Adjustment",
+                "Sale",
             ]),
             poLineId: id.nullable(),
             packingOrderId: id.nullable(),

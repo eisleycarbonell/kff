@@ -6,6 +6,7 @@ import {
     validateItem,
     type Item,
     type ItemUom,
+    type ItemBrand,
     type ItemFormValues,
     type ItemFormErrors,
 } from "@/components/modules/items/item.schema"
@@ -45,6 +46,9 @@ type Props = {
     item: Item | null
     items: Item[]
     uoms: ItemUom[]
+    brands?: ItemBrand[]
+    brandsError?: string
+    retryBrands: () => void
     onSave: (values: ItemFormValues, item: Item | null) => Promise<boolean>
     isSaving: boolean
 }
@@ -83,6 +87,9 @@ function ItemFormContent({
     item,
     items,
     uoms,
+    brands,
+    brandsError,
+    retryBrands,
     onSave,
     isSaving,
 }: Omit<Props, "open">) {
@@ -92,6 +99,7 @@ function ItemFormContent({
         name: item?.name ?? "",
         itemType: item?.itemType ?? ITEM_TYPES[0],
         primaryUomId: item?.primaryUomId ?? null,
+        brandId: item?.brandId ?? null,
         unitCost: item?.unitCost ?? "0",
         netWeightG: item?.netWeightG ?? "",
         shelfLifeDays: item?.shelfLifeDays?.toString() ?? "",
@@ -141,6 +149,60 @@ function ItemFormContent({
             </DialogHeader>
             <form onSubmit={submit} className="flex flex-col gap-5" aria-busy={isSaving}>
                 <FieldGroup className="grid gap-4 sm:grid-cols-2">
+                    <Field className="sm:col-span-2">
+                        <FieldLabel htmlFor={`${id}-brand`}>Brand (optional)</FieldLabel>
+                        <Select
+                            value={values.brandId ?? 0}
+                            items={[
+                                { value: 0, label: "No brand" },
+                                ...(brands ?? [])
+                                    .filter(
+                                        (brand) =>
+                                            brand.isActive || brand.brandId === item?.brandId,
+                                    )
+                                    .map((brand) => ({
+                                        value: brand.brandId,
+                                        label: `${brand.code} · ${brand.name}${brand.isActive ? "" : " (inactive)"}`,
+                                    })),
+                            ]}
+                            disabled={isSaving || !brands}
+                            onValueChange={(value) => update("brandId", value || null)}
+                        >
+                            <SelectTrigger
+                                id={`${id}-brand`}
+                                className="w-full data-[size=default]:h-10"
+                            >
+                                <SelectValue placeholder={item?.brandName ?? "No brand"} />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value={0}>No brand</SelectItem>
+                                {(brands ?? [])
+                                    .filter(
+                                        (brand) =>
+                                            brand.isActive || brand.brandId === item?.brandId,
+                                    )
+                                    .map((brand) => (
+                                        <SelectItem key={brand.brandId} value={brand.brandId}>
+                                            {brand.code} · {brand.name}
+                                            {brand.isActive ? "" : " (inactive)"}
+                                        </SelectItem>
+                                    ))}
+                            </SelectContent>
+                        </Select>
+                        {brandsError && (
+                            <div role="alert" className="text-sm text-destructive">
+                                {brandsError}
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    disabled={isSaving}
+                                    onClick={retryBrands}
+                                >
+                                    Retry brands
+                                </Button>
+                            </div>
+                        )}
+                    </Field>
                     {textFields.map((field) => (
                         <Field
                             key={field.name}

@@ -23,7 +23,7 @@ const routeConfig: Record<string, BreadcrumbConfig> = {
     // Dashboard
     "/dashboard": { label: "Dashboard" },
 
-    // Inventory Management
+    // Inventory
     "/items": {
         label: "Items / Products",
         group: "Master Data",
@@ -34,23 +34,31 @@ const routeConfig: Record<string, BreadcrumbConfig> = {
     },
     "/lots": {
         label: "Lots / Batches",
-        group: "Purchasing",
+        group: "Inventory",
     },
     "/inventory": {
-        label: "Inventory Stocks",
-        group: "Inventory Management",
+        label: "Inventory Stock",
+        group: "Inventory",
     },
     "/inventory/locations": {
-        label: "Stock by Location",
+        label: "Inventory Stock",
+        group: "Inventory",
     },
     "/inventory/lots": {
-        label: "Stock by Lot",
+        label: "Lots / Batches",
+        group: "Inventory",
     },
     "/inventory/transactions": {
-        label: "Transactions",
+        label: "Stock Movements",
+        group: "Inventory",
     },
     "/inventory/adjustments": {
-        label: "Adjustments",
+        label: "Stock Adjustments",
+        group: "Inventory",
+    },
+    "/inventory/counts": {
+        label: "Stock Counts",
+        group: "Inventory",
     },
     "/transfers": {
         label: "Stock Transfers",
@@ -76,7 +84,11 @@ const routeConfig: Record<string, BreadcrumbConfig> = {
     },
     "/sales-orders": {
         label: "Sales Orders",
-        group: "Orders & Operations",
+        group: "Sales & Delivery",
+    },
+    "/delivery-orders": {
+        label: "Delivery Orders",
+        group: "Sales & Delivery",
     },
 
     // Master Data
@@ -92,6 +104,10 @@ const routeConfig: Record<string, BreadcrumbConfig> = {
         label: "Packing Formulas",
         group: "Master Data",
     },
+    "/brands": {
+        label: "Brands",
+        group: "Master Data",
+    },
 
     // Business Partners
     "/suppliers": {
@@ -100,15 +116,16 @@ const routeConfig: Record<string, BreadcrumbConfig> = {
     },
     "/customers": {
         label: "Customers",
-        group: "Business Partners",
+        group: "Master Data",
     },
 
     // Reports
     "/reports": {
-        label: "Reports & Analytics",
+        label: "Reports",
     },
     "/reports/inventory": {
-        label: "Inventory Report",
+        label: "Inventory Reports",
+        group: "Reports",
     },
     "/reports/packing": {
         label: "Packing Report",
@@ -123,15 +140,15 @@ const routeConfig: Record<string, BreadcrumbConfig> = {
     // Administration
     "/users": {
         label: "Users",
-        group: "Administration",
+        group: "Users & Access",
     },
     "/roles": {
         label: "Roles & Permissions",
-        group: "Administration",
+        group: "Users & Access",
     },
     "/settings": {
-        label: "Settings",
-        group: "Administration",
+        label: "Company Settings",
+        group: "Settings",
     },
 }
 
@@ -163,7 +180,7 @@ export function AppBreadcrumb() {
             .reverse()
             .map((path) => routeConfig[path]?.group)
             .find(Boolean) ??
-        (segments[0] === "reports" ? "Reports & Analytics" : undefined)
+        (segments[0] === "reports" ? "Reports" : undefined)
 
     type BreadcrumbEntry = {
         label: string
@@ -186,7 +203,10 @@ export function AppBreadcrumb() {
         if (!parent) return
 
         // Avoid duplicating the group name.
-        if (parent.label === group) return
+        if (parent.label === group || parent.label === currentRoute?.label) return
+
+        // Inventory's nested pages are sibling modules, not children of Inventory Stock.
+        if (href === "/inventory" && currentRoute?.group === "Inventory") return
 
         // Avoid showing a parent from another sidebar group.
         if (parent.group && parent.group !== group) return

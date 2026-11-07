@@ -55,6 +55,12 @@ type Actions = {
 
 export function createItemColumns({ onEdit, onDeactivate, canManage }: Actions) {
     return helper.columns([
+        helper.accessor((item) => item.brandName ?? "", {
+            id: "brandName",
+            header: "Brand",
+            sortFn: "text",
+            cell: ({ cell }) => cell.getValue() || "—",
+        }),
         helper.display({
             id: "select",
             enableHiding: false,

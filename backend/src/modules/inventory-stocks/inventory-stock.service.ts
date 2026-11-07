@@ -44,6 +44,7 @@ const fields = {
     locationCode: locations.code,
     locationName: locations.name,
     locationType: locations.locationType,
+    locationIsActive: locations.isActive,
     qtyOnHand: inventoryStock.qtyOnHand,
     qtyReserved: sql<string>`${reserved}::text`,
     qtyAvailable: sql<string>`(${inventoryStock.qtyOnHand} - ${reserved})::text`,

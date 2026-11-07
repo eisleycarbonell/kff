@@ -11,7 +11,9 @@ reservation, lot, inventory-balance, and append-only ledger tables.
 Configure an active Finished Good with a valid BOM, compatible component UOMs,
 distinct active Warehouse or Packing source and destination locations, and approved, unexpired material lots
 with available stock. The Packing Orders module reads configured BOM records;
-the Packing Formulas editor is a separate feature.
+the [Packing Formulas editor](brands-packing-formulas-modules.md) maintains those
+records at `/bom`. Edits/removal affect new orders; saved orders retain their
+own requirements and can still follow their normal planning/completion flow.
 
 Authenticated users can inspect orders, availability previews, and reservations.
 Creating, editing, planning, starting, completing, and cancelling orders require

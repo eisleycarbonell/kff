@@ -7,6 +7,7 @@ import {
     inventoryTransactions,
     packingOrders,
     stockTransfers,
+    deliveryOrders,
 } from '../../db/schema.ts';
 import type { CreateLocationInput, UpdateLocationInput } from './location.schema.ts';
 import { assertLocationChange, assertActiveLocation } from './location.rules.ts';
@@ -16,13 +17,15 @@ const isInUse = sql<boolean>`(
  exists(select 1 from ${inventoryReservations} where ${inventoryReservations.locationId}=${locations.locationId}) or
  exists(select 1 from ${inventoryTransactions} where ${inventoryTransactions.locationId}=${locations.locationId}) or
  exists(select 1 from ${packingOrders} where ${packingOrders.sourceLocationId}=${locations.locationId} or ${packingOrders.destinationLocationId}=${locations.locationId}) or
- exists(select 1 from ${stockTransfers} where ${stockTransfers.sourceLocationId}=${locations.locationId} or ${stockTransfers.destinationLocationId}=${locations.locationId})
+ exists(select 1 from ${stockTransfers} where ${stockTransfers.sourceLocationId}=${locations.locationId} or ${stockTransfers.destinationLocationId}=${locations.locationId}) or
+ exists(select 1 from ${deliveryOrders} where ${deliveryOrders.sourceLocationId}=${locations.locationId} or ${deliveryOrders.transitLocationId}=${locations.locationId})
 )`;
 const hasOperationalActivity = sql<boolean>`(
  exists(select 1 from ${inventoryStock} where ${inventoryStock.locationId}=${locations.locationId} and ${inventoryStock.qtyOnHand}>0) or
  exists(select 1 from ${inventoryReservations} where ${inventoryReservations.locationId}=${locations.locationId} and ${inventoryReservations.releasedAt} is null and ${inventoryReservations.qtyReserved}>${inventoryReservations.qtyConsumed}) or
  exists(select 1 from ${packingOrders} where (${packingOrders.sourceLocationId}=${locations.locationId} or ${packingOrders.destinationLocationId}=${locations.locationId}) and ${packingOrders.status} in ('Draft','Planned','In Progress')) or
- exists(select 1 from ${stockTransfers} where (${stockTransfers.sourceLocationId}=${locations.locationId} or ${stockTransfers.destinationLocationId}=${locations.locationId}) and ${stockTransfers.status} in ('Draft','In Transit'))
+ exists(select 1 from ${stockTransfers} where (${stockTransfers.sourceLocationId}=${locations.locationId} or ${stockTransfers.destinationLocationId}=${locations.locationId}) and ${stockTransfers.status} in ('Draft','In Transit')) or
+ exists(select 1 from ${deliveryOrders} where (${deliveryOrders.sourceLocationId}=${locations.locationId} or ${deliveryOrders.transitLocationId}=${locations.locationId}) and ${deliveryOrders.status} in ('Draft','In Transit'))
 )`;
 const fields = {
     locationId: locations.locationId,
