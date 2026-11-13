@@ -62,7 +62,7 @@ const app = createApp({
 });
 const port = process.env.PORT ? Number(process.env.PORT) : 3001;
 
-if (process.env.KFF_SAMPLE_DATA_ON_START === 'true') {
+if (process.env.KFF_SAMPLE_DATA_ON_START === 'true' && !process.env.VERCEL) {
     try {
         const { seedSampleData } = await import('./db/sample-data.ts');
         const result = await seedSampleData();
@@ -75,6 +75,10 @@ if (process.env.KFF_SAMPLE_DATA_ON_START === 'true') {
     }
 }
 
-app.listen(port, '0.0.0.0', () => {
-    logger.info({ port, env: process.env.NODE_ENV ?? 'development' }, 'Server started');
-});
+if (!process.env.VERCEL) {
+    app.listen(port, '0.0.0.0', () => {
+        logger.info({ port, env: process.env.NODE_ENV ?? 'development' }, 'Server started');
+    });
+}
+
+export default app;
