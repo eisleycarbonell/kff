@@ -5,7 +5,7 @@
     "license": "ISC",
     "author": "eisley carbonell",
     "type": "module",
-    "main": "index.js",
+    "main": "dist/src/index.js",
     "scripts": {
         "dev": "tsx watch src/index.ts",
         "format": "prettier --write \"src/**/*.{js,ts}\"",
@@ -49,6 +49,6 @@
     },
     "keywords": [],
     "engines": {
-        "node": "24.22.1"
+        "node": "24.x"
     }
 }
