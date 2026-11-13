@@ -8,10 +8,12 @@ import type {
     updatePurchaseOrderRequestSchema,
     purchaseOrderIdRequestSchema,
     purchaseOrderActionRequestSchema,
+    purchaseOrderNumberRequestSchema,
 } from './purchase-order.schema.ts';
 
 export type PurchaseOrderService = Pick<
     typeof purchaseOrderService,
+    | 'allocatePurchaseOrderNumber'
     | 'listPurchaseOrders'
     | 'getPurchaseOrder'
     | 'getPurchaseOrderOptions'
@@ -40,6 +42,12 @@ export function createPurchaseOrderController(service: PurchaseOrderService) {
             const order = await service.getPurchaseOrder(response.locals.validated.params.id);
             if (!order) throw new AppError(404, 'Purchase order not found.');
             return sendSuccessResponse(response, order);
+        },
+        async nextNumber(
+            _request: Request,
+            response: ValidatedResponse<typeof purchaseOrderNumberRequestSchema>,
+        ) {
+            return sendSuccessResponse(response, await service.allocatePurchaseOrderNumber());
         },
         async create(
             request: Request,

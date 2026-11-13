@@ -1,3 +1,4 @@
+import { memo } from "react"
 import { ClipboardList, FilePenLine, PackageOpen, Wallet } from "lucide-react"
 
 import {
@@ -7,7 +8,7 @@ import {
 } from "@/components/modules/purchase-orders/purchase-order.schema"
 import { Card, CardContent } from "@/components/ui/card"
 
-export function PurchaseOrderStatistics({ orders }: { orders: PurchaseOrder[] }) {
+export const PurchaseOrderStatistics = memo(function PurchaseOrderStatistics({ orders }: { orders: PurchaseOrder[] }) {
     const openOrders = orders.filter(
         (order) => order.status !== "Completed" && order.status !== "Cancelled",
     )
@@ -61,4 +62,4 @@ export function PurchaseOrderStatistics({ orders }: { orders: PurchaseOrder[] })
             ))}
         </div>
     )
-}
+})

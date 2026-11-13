@@ -14,9 +14,13 @@
         "db:push": "npx drizzle-kit push",
         "db:studio": "npx drizzle-kit studio",
         "db:create-demo-user": "node src/db/create-demo-user.ts",
-        "db:seed": "tsx src/db/seed.ts",
+        "db:migrate:controls": "node --experimental-strip-types src/db/migrate-controls.ts",
+        "db:seed": "node --experimental-strip-types src/db/seed.ts",
+        "db:rebuild": "node --experimental-strip-types src/db/rebuild.ts",
+        "dev:test": "tsx watch src/start-test.ts",
         "build": "tsc",
-        "start": "node dist/src/index.js"
+        "start": "node dist/src/index.js",
+        "start:test": "node dist/src/start-test.js"
     },
     "devDependencies": {
         "@types/cors": "^2.8.19",

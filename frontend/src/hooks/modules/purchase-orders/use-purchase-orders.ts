@@ -1,15 +1,19 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Toast } from "@base-ui/react/toast"
 import { apiRequest, ApiError } from "@/lib/api-request"
+import { createDialogStore } from "@/lib/create-dialog-store"
+import { getLoadStatus } from "@/lib/load-status"
 import { SESSION_QUERY_KEY, useSession } from "@/hooks/use-session"
 import {
     purchaseOrderSchema,
     purchaseOrderDetailSchema,
     purchaseOrderOptionsSchema,
+    nextPurchaseOrderNumberSchema,
     toPurchaseOrderInput,
+    toPurchaseOrderUpdateInput,
     canEditPurchaseOrder,
     canSendPurchaseOrder,
     canCancelPurchaseOrder,
@@ -44,6 +48,13 @@ export async function getPurchaseOrderOptions(signal?: AbortSignal): Promise<Pur
         await apiRequest("/purchase-orders/options", { signal }),
     )
     if (!result.success) throw new Error("The purchase order API returned invalid order options.")
+    return result.data
+}
+export async function requestPurchaseOrderNumber(): Promise<{ poNumber: string }> {
+    const result = nextPurchaseOrderNumberSchema.safeParse(
+        await apiRequest("/purchase-orders/next-number", { method: "POST", body: "{}" }),
+    )
+    if (!result.success) throw new Error("The purchase order API returned an invalid PO number.")
     return result.data
 }
 export async function createPurchaseOrder(
@@ -86,6 +97,15 @@ const EMPTY_OPTIONS: PurchaseOrderOptions = {
     supplierItems: [],
 }
 export type PurchaseOrderTransitionTarget = { order: PurchaseOrder; action: "send" | "cancel" }
+/**
+ * Form, send/cancel confirmation, and detail-dialog state for the purchase orders page.
+ * `viewingOrder` stays set after closing so the detail dialog can finish its close animation.
+ */
+const usePurchaseOrderDialogs = createDialogStore<
+    PurchaseOrder,
+    PurchaseOrderTransitionTarget,
+    { viewingOrder: PurchaseOrder | null; detailOpen: boolean; defaultPoNumber: string }
+>({ viewingOrder: null, detailOpen: false, defaultPoNumber: "" })
 
 export function usePurchaseOrderDetail(poId: number | null) {
     const session = useSession()
@@ -103,23 +123,9 @@ export function usePurchaseOrderDetail(poId: number | null) {
         void refetchSession()
         if (signedIn && poId !== null) void refetch()
     }, [poId, refetch, refetchSession, signedIn])
-    const loadStatus =
-        poId === null
-            ? "ready"
-            : session.isPending
-              ? "loading"
-              : session.data === undefined
-                ? "error"
-                : !session.data
-                  ? "signed-out"
-                  : query.data !== undefined
-                    ? "ready"
-                    : query.isError
-                      ? "error"
-                      : "loading"
     return {
         order: poId === null ? null : (query.data ?? null),
-        loadStatus,
+        loadStatus: poId === null ? "ready" : getLoadStatus(session, [query]),
         loadError,
         retry,
         isFetching: session.isFetching || query.isFetching,
@@ -132,33 +138,35 @@ export function usePurchaseOrders() {
     const { add: showToast } = Toast.useToastManager()
     const canManage = session.data?.permissions.canManagePurchasing === true
     const queryKey = [...PURCHASE_ORDERS_QUERY_KEY, session.data?.userId]
-    const [formOpen, setFormOpen] = useState(false)
-    const [formRequested, setFormRequested] = useState(false)
-    const [editingOrder, setEditingOrder] = useState<PurchaseOrder | null>(null)
-    const [transitionTarget, setTransitionTarget] = useState<PurchaseOrderTransitionTarget | null>(
-        null,
-    )
+    const {
+        formOpen,
+        formRequested,
+        editing: editingOrder,
+        target: transitionTarget,
+        viewingOrder,
+        detailOpen,
+        defaultPoNumber,
+        getState,
+        openForm,
+        setFormOpen,
+        setTarget: setTransitionTarget,
+        patch,
+    } = usePurchaseOrderDialogs()
     const ordersQuery = useQuery({
         queryKey,
         queryFn: ({ signal }) => getPurchaseOrders(signal),
         enabled: Boolean(session.data),
     })
+    // Options are only needed by the form, so they load when it opens.
     const optionsQuery = useQuery({
         queryKey: [...PURCHASE_ORDER_OPTIONS_QUERY_KEY, session.data?.userId],
         queryFn: ({ signal }) => getPurchaseOrderOptions(signal),
         enabled: Boolean(session.data) && canManage && formOpen,
         staleTime: 0,
     })
+    // Expired sessions (HTTP 401) are signed out once by QueryProvider.
     const loadError = ordersQuery.error ?? session.error
     const optionsError = optionsQuery.error
-    useEffect(() => {
-        if (
-            [loadError, optionsError].some(
-                (error) => error instanceof ApiError && error.status === 401,
-            )
-        )
-            client.setQueryData(SESSION_QUERY_KEY, null)
-    }, [client, loadError, optionsError])
 
     function cacheOrder(saved: PurchaseOrderDetail) {
         const row = purchaseOrderSchema.parse(saved)
@@ -192,6 +200,20 @@ export function usePurchaseOrders() {
             description: error.message,
         })
     }
+    const prepareNumber = useMutation({
+        mutationFn: () => {
+            if (!canManage) throw new Error("Your role does not allow creating purchase orders.")
+            return requestPurchaseOrderNumber()
+        },
+        retry: false,
+        onSuccess: ({ poNumber }) => {
+            const current = getState()
+            if (current.formOpen || current.detailOpen) return
+            patch({ defaultPoNumber: poNumber, detailOpen: false })
+            openForm(null)
+        },
+        onError: mutationError,
+    })
     const save = useMutation({
         mutationFn: ({
             values,
@@ -203,8 +225,9 @@ export function usePurchaseOrders() {
             if (!canManage) throw new Error("Your role does not allow editing purchase orders.")
             if (order && !canEditPurchaseOrder(order))
                 throw new Error("Only unreceived draft purchase orders can be edited.")
-            const input = toPurchaseOrderInput(values)
-            return order ? updatePurchaseOrder(order.poId, input) : createPurchaseOrder(input)
+            return order
+                ? updatePurchaseOrder(order.poId, toPurchaseOrderUpdateInput(values))
+                : createPurchaseOrder(toPurchaseOrderInput(values))
         },
         onSuccess: (saved, { order }) => {
             cacheOrder(saved)
@@ -246,34 +269,41 @@ export function usePurchaseOrders() {
         mutate: transitionOrder,
         isPending: isTransitioning,
     } = transition
+    const { mutate: prepareOrderNumber, isPending: isPreparingNumber } = prepareNumber
+
+    // Store actions and mutation resets are stable, so memoized table columns stay stable too.
     const openAdd = useCallback(() => {
+        if (isPreparingNumber || isSaving || isTransitioning) return
         resetSave()
-        setEditingOrder(null)
-        setFormRequested(true)
-        setFormOpen(true)
-    }, [resetSave])
+        prepareOrderNumber()
+    }, [isPreparingNumber, isSaving, isTransitioning, resetSave, prepareOrderNumber])
     const openEdit = useCallback(
         (order: PurchaseOrder) => {
             resetSave()
-            setEditingOrder(order)
-            setFormRequested(true)
-            setFormOpen(true)
+            // Editing from the detail dialog closes it before the form opens.
+            patch({ detailOpen: false })
+            openForm(order)
         },
-        [resetSave],
+        [resetSave, patch, openForm],
     )
+    const openDetail = useCallback(
+        (order: PurchaseOrder) => patch({ viewingOrder: order, detailOpen: true }),
+        [patch],
+    )
+    const setDetailOpen = useCallback((open: boolean) => patch({ detailOpen: open }), [patch])
     const openSend = useCallback(
         (order: PurchaseOrder) => {
             resetTransition()
             setTransitionTarget({ order, action: "send" })
         },
-        [resetTransition],
+        [resetTransition, setTransitionTarget],
     )
     const openCancel = useCallback(
         (order: PurchaseOrder) => {
             resetTransition()
             setTransitionTarget({ order, action: "cancel" })
         },
-        [resetTransition],
+        [resetTransition, setTransitionTarget],
     )
     const handleSave = useCallback(
         async (values: PurchaseOrderFormValues, order: PurchaseOrder | null) => {
@@ -288,8 +318,9 @@ export function usePurchaseOrders() {
         [isSaving, isTransitioning, saveOrder],
     )
     const handleTransition = useCallback(() => {
-        if (!isSaving && !isTransitioning && transitionTarget) transitionOrder(transitionTarget)
-    }, [isSaving, isTransitioning, transitionOrder, transitionTarget])
+        const target = getState().target
+        if (!isSaving && !isTransitioning && target) transitionOrder(target)
+    }, [getState, isSaving, isTransitioning, transitionOrder])
     const { refetch: refetchOrders } = ordersQuery
     const { refetch: refetchSession } = session
     const { refetch: refetchOptions } = optionsQuery
@@ -301,28 +332,23 @@ export function usePurchaseOrders() {
     const retryOptions = useCallback(() => {
         if (signedIn && canManage) void refetchOptions()
     }, [canManage, refetchOptions, signedIn])
-    const loadStatus = session.isPending
-        ? "loading"
-        : session.data === undefined
-          ? "error"
-          : !session.data
-            ? "signed-out"
-            : ordersQuery.data !== undefined
-              ? "ready"
-              : ordersQuery.isError
-                ? "error"
-                : "loading"
     return {
         orders: ordersQuery.data ?? EMPTY_ORDERS,
         canManage,
-        loadStatus,
+        loadStatus: getLoadStatus(session, [ordersQuery]),
         loadError,
         formOpen,
         setFormOpen,
         formRequested,
         editingOrder,
+        defaultPoNumber,
+        isPreparingNumber,
         openAdd,
         openEdit,
+        viewingOrder,
+        detailOpen,
+        setDetailOpen,
+        openDetail,
         options: optionsQuery.data ?? EMPTY_OPTIONS,
         optionsReady: optionsQuery.data !== undefined,
         optionsError,

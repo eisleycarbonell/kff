@@ -18,7 +18,13 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog"
-import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
+import {
+    Field,
+    FieldDescription,
+    FieldError,
+    FieldGroup,
+    FieldLabel,
+} from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import {
     Select,
@@ -29,16 +35,21 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 type Props = {
+    mode?: "adjustment" | "count"
     open: boolean
     onOpenChange: (open: boolean) => void
     stock: Stock | null
     stocks: Stock[]
-    options: StockOptions
+    options?: StockOptions
+    optionsError: Error | null
+    isLoadingOptions: boolean
+    onRetryOptions: () => void
     isSaving: boolean
     saveError: Error | null
     onSave: (values: AdjustmentFormValues) => Promise<boolean>
 }
 function AdjustmentContent({
+    mode = "adjustment",
     onOpenChange,
     stock,
     stocks,
@@ -46,7 +57,10 @@ function AdjustmentContent({
     isSaving,
     saveError,
     onSave,
-}: Omit<Props, "open">) {
+}: Omit<
+    Props,
+    "open" | "options" | "optionsError" | "isLoadingOptions" | "onRetryOptions"
+> & { options: StockOptions }) {
     const id = useId()
     const [values, setValues] = useState<AdjustmentFormValues>(() => ({
         lotId: stock?.lotId ?? null,
@@ -62,7 +76,9 @@ function AdjustmentContent({
         qtyAvailable: stock?.qtyAvailable ?? "0",
     }))
     const [errors, setErrors] = useState<AdjustmentFormErrors>({})
-    const unit = options.lots.find((lot) => lot.lotId === values.lotId)?.primaryUomName ?? ""
+    const unit =
+        options.lots.find((lot) => lot.lotId === values.lotId)
+            ?.primaryUomName ?? ""
     function update<K extends keyof AdjustmentFormValues>(
         field: K,
         value: AdjustmentFormValues[K],
@@ -74,10 +90,14 @@ function AdjustmentContent({
             return next
         })
     }
-    function selectPosition(field: "lotId" | "locationId", value: number | null) {
+    function selectPosition(
+        field: "lotId" | "locationId",
+        value: number | null,
+    ) {
         const next = { ...values, [field]: value }
         const balance = stocks.find(
-            (row) => row.lotId === next.lotId && row.locationId === next.locationId,
+            (row) =>
+                row.lotId === next.lotId && row.locationId === next.locationId,
         )
         const nextSnapshot = {
             qtyOnHand: balance?.qtyOnHand ?? "0",
@@ -85,7 +105,11 @@ function AdjustmentContent({
             qtyAvailable: balance?.qtyAvailable ?? "0",
         }
         setSnapshot(nextSnapshot)
-        setValues({ ...next, expectedQtyOnHand: nextSnapshot.qtyOnHand, qtyOnHand: "" })
+        setValues({
+            ...next,
+            expectedQtyOnHand: nextSnapshot.qtyOnHand,
+            qtyOnHand: "",
+        })
         setErrors({})
     }
     const selects: {
@@ -131,7 +155,11 @@ function AdjustmentContent({
     async function submit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault()
         if (isSaving) return
-        const next = validateStockAdjustment(values, options, snapshot.qtyReserved)
+        const next = validateStockAdjustment(
+            values,
+            options,
+            snapshot.qtyReserved,
+        )
         setErrors(next)
         const first = Object.keys(next)[0]
         if (first) {
@@ -146,16 +174,28 @@ function AdjustmentContent({
             showCloseButton={!isSaving}
         >
             <DialogHeader>
-                <DialogTitle>Record stock adjustment</DialogTitle>
+                <DialogTitle>
+                    {mode === "count"
+                        ? "Record stock count"
+                        : "Record stock adjustment"}
+                </DialogTitle>
                 <DialogDescription>
-                    Enter the physical count for one lot and location. Every adjustment is recorded
-                    in stock history.
+                    Enter the physical count for one lot and location. Every
+                    adjustment is recorded in stock history.
                 </DialogDescription>
             </DialogHeader>
-            <form onSubmit={submit} aria-busy={isSaving} className="flex flex-col gap-5">
+            <form
+                onSubmit={submit}
+                aria-busy={isSaving}
+                className="flex flex-col gap-5"
+            >
                 {saveError && (
                     <Alert variant="destructive">
-                        <AlertTitle>Adjustment was not recorded</AlertTitle>
+                        <AlertTitle>
+                            {mode === "count"
+                                ? "Count was not recorded"
+                                : "Adjustment was not recorded"}
+                        </AlertTitle>
                         <AlertDescription>{saveError.message}</AlertDescription>
                     </Alert>
                 )}
@@ -166,7 +206,9 @@ function AdjustmentContent({
                             data-invalid={Boolean(errors[field.name])}
                             data-disabled={isSaving}
                         >
-                            <FieldLabel htmlFor={`${id}-${field.name}`}>{field.label}</FieldLabel>
+                            <FieldLabel htmlFor={`${id}-${field.name}`}>
+                                {field.label}
+                            </FieldLabel>
                             <Select
                                 name={field.name}
                                 items={field.items}
@@ -189,7 +231,10 @@ function AdjustmentContent({
                                 <SelectContent>
                                     <SelectGroup>
                                         {field.items
-                                            .filter((option) => option.value !== null)
+                                            .filter(
+                                                (option) =>
+                                                    option.value !== null,
+                                            )
                                             .map((option) => (
                                                 <SelectItem
                                                     key={option.value}
@@ -215,7 +260,9 @@ function AdjustmentContent({
                                 ["Available", snapshot.qtyAvailable],
                             ].map(([label, quantity]) => (
                                 <div key={label}>
-                                    <dt className="text-muted-foreground">{label}</dt>
+                                    <dt className="text-muted-foreground">
+                                        {label}
+                                    </dt>
                                     <dd className="mt-1 font-medium tabular-nums">
                                         {formatStockQuantity(quantity)} {unit}
                                     </dd>
@@ -223,7 +270,10 @@ function AdjustmentContent({
                             ))}
                         </dl>
                     )}
-                    <Field data-invalid={Boolean(errors.qtyOnHand)} data-disabled={isSaving}>
+                    <Field
+                        data-invalid={Boolean(errors.qtyOnHand)}
+                        data-disabled={isSaving}
+                    >
                         <FieldLabel htmlFor={`${id}-qtyOnHand`}>
                             Counted quantity {unit && `(${unit})`}
                         </FieldLabel>
@@ -232,7 +282,9 @@ function AdjustmentContent({
                             name="qtyOnHand"
                             inputMode="decimal"
                             value={values.qtyOnHand}
-                            onChange={(event) => update("qtyOnHand", event.target.value)}
+                            onChange={(event) =>
+                                update("qtyOnHand", event.target.value)
+                            }
                             disabled={isSaving}
                             required
                             aria-invalid={Boolean(errors.qtyOnHand)}
@@ -241,13 +293,16 @@ function AdjustmentContent({
                         />
                         <div id={`${id}-quantity-feedback`}>
                             <FieldDescription>
-                                The final on-hand balance after correction, including stock reserved
-                                for orders.
+                                The final on-hand balance after correction,
+                                including stock reserved for orders.
                             </FieldDescription>
                             <FieldError>{errors.qtyOnHand}</FieldError>
                         </div>
                     </Field>
-                    <Field data-invalid={Boolean(errors.referenceId)} data-disabled={isSaving}>
+                    <Field
+                        data-invalid={Boolean(errors.referenceId)}
+                        data-disabled={isSaving}
+                    >
                         <FieldLabel htmlFor={`${id}-referenceId`}>
                             Count reference (optional)
                         </FieldLabel>
@@ -256,13 +311,17 @@ function AdjustmentContent({
                             name="referenceId"
                             value={values.referenceId}
                             maxLength={60}
-                            onChange={(event) => update("referenceId", event.target.value)}
+                            onChange={(event) =>
+                                update("referenceId", event.target.value)
+                            }
                             disabled={isSaving}
                             aria-invalid={Boolean(errors.referenceId)}
                             aria-describedby={`${id}-reference-error`}
                             className="h-10"
                         />
-                        <FieldError id={`${id}-reference-error`}>{errors.referenceId}</FieldError>
+                        <FieldError id={`${id}-reference-error`}>
+                            {errors.referenceId}
+                        </FieldError>
                     </Field>
                 </FieldGroup>
                 <DialogFooter>
@@ -275,7 +334,11 @@ function AdjustmentContent({
                         Cancel
                     </Button>
                     <Button type="submit" disabled={isSaving}>
-                        {isSaving ? "Recording..." : "Record adjustment"}
+                        {isSaving
+                            ? "Recording..."
+                            : mode === "count"
+                              ? "Record count"
+                              : "Record adjustment"}
                     </Button>
                 </DialogFooter>
             </form>
@@ -283,6 +346,16 @@ function AdjustmentContent({
     )
 }
 export function StockAdjustmentForm({ open, onOpenChange, ...props }: Props) {
+    const missingSetup = props.options
+        ? [
+              !props.options.lots.length && "lots",
+              !props.options.locations.some((location) => location.isActive) &&
+                  "active locations",
+              !props.options.reasons.length && "inventory adjustment reasons",
+          ]
+              .filter(Boolean)
+              .join(", ")
+        : ""
     return (
         <Dialog
             open={open}
@@ -290,13 +363,62 @@ export function StockAdjustmentForm({ open, onOpenChange, ...props }: Props) {
                 if (!props.isSaving) onOpenChange(value)
             }}
         >
-            {open && (
+            {open && props.options && !missingSetup ? (
                 <AdjustmentContent
                     key={props.stock?.stockId ?? "new"}
                     onOpenChange={onOpenChange}
                     {...props}
+                    options={props.options}
                 />
-            )}
+            ) : open ? (
+                <DialogContent className="sm:max-w-xl">
+                    <DialogHeader>
+                        <DialogTitle>
+                            {props.mode === "count"
+                                ? "Record stock count"
+                                : "Record stock adjustment"}
+                        </DialogTitle>
+                        <DialogDescription>
+                            Select an existing lot, an active location, and an
+                            adjustment reason.
+                        </DialogDescription>
+                    </DialogHeader>
+                    {props.optionsError ? (
+                        <Alert variant="destructive">
+                            <AlertTitle>
+                                Unable to load adjustment options
+                            </AlertTitle>
+                            <AlertDescription>
+                                {props.optionsError.message}
+                            </AlertDescription>
+                        </Alert>
+                    ) : props.isLoadingOptions ? (
+                        <p
+                            className="text-sm text-muted-foreground"
+                            role="status"
+                        >
+                            Loading adjustment options...
+                        </p>
+                    ) : (
+                        <Alert>
+                            <AlertTitle>Adjustment setup required</AlertTitle>
+                            <AlertDescription>
+                                Configure {missingSetup} before recording stock.
+                            </AlertDescription>
+                        </Alert>
+                    )}
+                    {props.optionsError && (
+                        <DialogFooter>
+                            <Button
+                                variant="outline"
+                                onClick={props.onRetryOptions}
+                            >
+                                Retry loading
+                            </Button>
+                        </DialogFooter>
+                    )}
+                </DialogContent>
+            ) : null}
         </Dialog>
     )
 }

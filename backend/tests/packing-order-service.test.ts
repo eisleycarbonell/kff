@@ -419,6 +419,7 @@ test('real planning service serializes competing orders on the parent lot and ne
 });
 test('start retains allocations; partial completion consumes snapshot quantities, releases unused stock and traces output atomically', async () => {
     const fixtureDb = fixture();
+    fixtureDb.state.items!.find((row) => row.itemId === 10)!.requiresQc = true;
     await planPackingOrder(1, 7, fixtureDb.database);
     await startPackingOrder(1, 7, fixtureDb.database);
     assert.equal(fixtureDb.state.inventory_stock![0]!.qtyOnHand, '8.0000');
@@ -431,6 +432,7 @@ test('start retains allocations; partial completion consumes snapshot quantities
     assert.equal(fixtureDb.state.packing_order_materials![0]!.consumedQty, '3.0000');
     const output = fixtureDb.state.lots!.find((row) => row.lotNumber === 'FG-1')!;
     assert.equal(output.packingOrderId, 1);
+    assert.equal(output.qcStatus, 'Approved');
     assert.equal(output.poLineId, null);
     assert.equal(output.unitCost, '1.0000');
     assert.equal(output.createdBy, 7);

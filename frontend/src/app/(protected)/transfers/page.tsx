@@ -33,13 +33,13 @@ export default function TransfersPage() {
     const busy = feature.isSaving || feature.isActing || feature.isOpeningEdit
     return (
         <>
-            <title>{inTransitOnly ? "In Transit Inventory" : "Stock Transfers"}</title>
+            <title>{inTransitOnly ? "In Transit | Stock Transfers" : "Stock Transfers"}</title>
             <meta
                 name="description"
                 content="Dispatch finished-product lots through In Transit and confirm destination receipts."
             />
             <PageHeader
-                title={inTransitOnly ? "In Transit" : "Stock Transfers"}
+                title="Stock Transfers"
                 description={
                     inTransitOnly
                         ? "Track dispatched goods awaiting destination receipt."
@@ -47,18 +47,6 @@ export default function TransfersPage() {
                 }
                 actions={
                     <>
-                        <Button
-                            variant="outline"
-                            className="h-10"
-                            render={
-                                <Link
-                                    href={inTransitOnly ? "/transfers" : "/transfers/in-transit"}
-                                />
-                            }
-                            nativeButton={false}
-                        >
-                            {inTransitOnly ? "All transfers" : "View In Transit"}
-                        </Button>
                         {feature.canManage && (
                             <Button
                                 className="h-10 gap-2 px-4"
@@ -72,6 +60,21 @@ export default function TransfersPage() {
                     </>
                 }
             />
+            <nav aria-label="Stock transfer views" className="flex flex-wrap gap-1 border-b">
+                {[
+                    { label: "All Transfers", href: "/transfers", active: !inTransitOnly },
+                    { label: "In Transit", href: "/transfers/in-transit", active: inTransitOnly },
+                ].map((tab) => (
+                    <Link
+                        key={tab.href}
+                        href={tab.href}
+                        aria-current={tab.active ? "page" : undefined}
+                        className={`border-b-2 px-4 py-2 text-sm font-medium transition-colors ${tab.active ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+                    >
+                        {tab.label}
+                    </Link>
+                ))}
+            </nav>
             {feature.loadStatus === "signed-out" && (
                 <Alert>
                     <AlertTitle>Sign in to view stock transfers</AlertTitle>

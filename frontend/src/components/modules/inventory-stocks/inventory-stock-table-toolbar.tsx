@@ -1,3 +1,4 @@
+import { useMemo } from "react"
 import { Download, Search, Settings2, X } from "lucide-react"
 import {
     QC_STATUSES,
@@ -80,9 +81,28 @@ export function exportStocks(stocks: Stock[]) {
         ]),
     ]
     const url = URL.createObjectURL(
-        new Blob(["\uFEFF" + rows.map((row) => row.map(escape).join(",")).join("\r\n")], {
-            type: "text/csv;charset=utf-8;",
-        }),
+        new Blob(
+            [
+                "\uFEFF" +
+                    rows
+                        .map((row, rowIndex) =>
+                            row
+                                .map((value, columnIndex) =>
+                                    // These columns are schema-validated decimals, including signed availability.
+                                    rowIndex > 0 &&
+                                    columnIndex >= 8 &&
+                                    columnIndex <= 10
+                                        ? value
+                                        : escape(value),
+                                )
+                                .join(","),
+                        )
+                        .join("\r\n"),
+            ],
+            {
+                type: "text/csv;charset=utf-8;",
+            },
+        ),
     )
     const link = document.createElement("a")
     link.href = url
@@ -105,25 +125,39 @@ export function StockTableToolbar({
 }) {
     const filtered = table.getFilteredRowModel().rows
     const selected = table.getFilteredSelectedRowModel().rows
-    const items = [
-        ...new Map(
-            stocks.map((stock) => [
-                stock.itemId,
-                { value: String(stock.itemId), label: `${stock.itemName} (${stock.sku})` },
-            ]),
-        ).values(),
-    ].sort((a, b) => a.label.localeCompare(b.label))
-    const locations = [
-        ...new Map(
-            stocks.map((stock) => [
-                stock.locationId,
-                {
-                    value: String(stock.locationId),
-                    label: `${stock.locationName} (${stock.locationCode})`,
-                },
-            ]),
-        ).values(),
-    ].sort((a, b) => a.label.localeCompare(b.label))
+    const { items, locations, lots } = useMemo(() => {
+        const items = [
+            ...new Map(
+                stocks.map((stock) => [
+                    stock.itemId,
+                    {
+                        value: String(stock.itemId),
+                        label: `${stock.itemName} (${stock.sku})`,
+                    },
+                ]),
+            ).values(),
+        ].sort((a, b) => a.label.localeCompare(b.label))
+        const locations = [
+            ...new Map(
+                stocks.map((stock) => [
+                    stock.locationId,
+                    {
+                        value: String(stock.locationId),
+                        label: `${stock.locationName} (${stock.locationCode})`,
+                    },
+                ]),
+            ).values(),
+        ].sort((a, b) => a.label.localeCompare(b.label))
+        const lots = [
+            ...new Map(
+                stocks.map((stock) => [
+                    stock.lotId,
+                    { value: String(stock.lotId), label: stock.lotNumber },
+                ]),
+            ).values(),
+        ].sort((a, b) => a.label.localeCompare(b.label))
+        return { items, locations, lots }
+    }, [stocks])
     const filters = [
         {
             id: "item",
@@ -134,6 +168,11 @@ export function StockTableToolbar({
             id: "location",
             label: "Filter by location",
             items: [{ value: "all", label: "All locations" }, ...locations],
+        },
+        {
+            id: "lot",
+            label: "Filter by lot",
+            items: [{ value: "all", label: "All lots" }, ...lots],
         },
         {
             id: "qcStatus",
@@ -177,11 +216,17 @@ export function StockTableToolbar({
                 <Select
                     key={filter.id}
                     items={filter.items}
-                    value={(table.getColumn(filter.id)?.getFilterValue() as string) ?? "all"}
+                    value={
+                        (table
+                            .getColumn(filter.id)
+                            ?.getFilterValue() as string) ?? "all"
+                    }
                     onValueChange={(value) => {
                         table
                             .getColumn(filter.id)
-                            ?.setFilterValue(value === "all" ? undefined : value)
+                            ?.setFilterValue(
+                                value === "all" ? undefined : value,
+                            )
                         table.resetRowSelection()
                         table.setPageIndex(0)
                     }}
@@ -195,7 +240,10 @@ export function StockTableToolbar({
                     <SelectContent>
                         <SelectGroup>
                             {filter.items.map((option) => (
-                                <SelectItem key={option.value} value={option.value}>
+                                <SelectItem
+                                    key={option.value}
+                                    value={option.value}
+                                >
                                     {option.label}
                                 </SelectItem>
                             ))}
@@ -204,7 +252,11 @@ export function StockTableToolbar({
                 </Select>
             ))}
             {hasFilters && (
-                <Button variant="ghost" className="h-10" onClick={onClearFilters}>
+                <Button
+                    variant="ghost"
+                    className="h-10"
+                    onClick={onClearFilters}
+                >
                     <X data-icon="inline-start" />
                     Reset
                 </Button>
@@ -228,7 +280,9 @@ export function StockTableToolbar({
                     disabled={!filtered.length}
                     onClick={() =>
                         exportStocks(
-                            (selected.length ? selected : filtered).map((row) => row.original),
+                            (selected.length ? selected : filtered).map(
+                                (row) => row.original,
+                            ),
                         )
                     }
                 >
@@ -236,13 +290,17 @@ export function StockTableToolbar({
                     {selected.length ? "Export selected" : "Export CSV"}
                 </Button>
                 <DropdownMenu>
-                    <DropdownMenuTrigger render={<Button variant="outline" className="h-10" />}>
+                    <DropdownMenuTrigger
+                        render={<Button variant="outline" className="h-10" />}
+                    >
                         <Settings2 data-icon="inline-start" />
                         Columns
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                         <DropdownMenuGroup>
-                            <DropdownMenuLabel>Visible columns</DropdownMenuLabel>
+                            <DropdownMenuLabel>
+                                Visible columns
+                            </DropdownMenuLabel>
                             {table
                                 .getAllLeafColumns()
                                 .filter((column) => column.getCanHide())

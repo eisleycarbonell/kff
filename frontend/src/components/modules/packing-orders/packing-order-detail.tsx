@@ -95,6 +95,12 @@ export function PackingOrderDetail({
                                     ],
                                     ["Scheduled", order.scheduledDate ?? "Unscheduled"],
                                     [
+                                        "Formula revision request",
+                                        order.formulaRevisionId
+                                            ? String(order.formulaRevisionId)
+                                            : "Legacy published formula",
+                                    ],
+                                    [
                                         "Material source",
                                         `${order.sourceLocationCode} · ${order.sourceLocationName}`,
                                     ],
@@ -294,7 +300,7 @@ export function PackingOrderDetail({
                                                     <TableRow key={lot.lotId}>
                                                         <TableCell>
                                                             <Link
-                                                                href="/lots"
+                                                                href="/inventory/lots"
                                                                 className="font-medium underline-offset-4 hover:underline"
                                                             >
                                                                 {lot.lotNumber}

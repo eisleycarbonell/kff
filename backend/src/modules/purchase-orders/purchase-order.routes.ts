@@ -10,6 +10,7 @@ import {
     createPurchaseOrderRequestSchema,
     updatePurchaseOrderRequestSchema,
     purchaseOrderActionRequestSchema,
+    purchaseOrderNumberRequestSchema,
 } from './purchase-order.schema.ts';
 
 export function createPurchaseOrderRouter(
@@ -22,6 +23,12 @@ export function createPurchaseOrderRouter(
     router.get('/', controller.list);
     router.get('/options', controller.options);
     router.get('/:id', validateRequest(purchaseOrderIdRequestSchema), controller.get);
+    router.post(
+        '/next-number',
+        requirePermission('canManagePurchasing'),
+        validateRequest(purchaseOrderNumberRequestSchema),
+        controller.nextNumber,
+    );
     router.post(
         '/',
         requirePermission('canManagePurchasing'),

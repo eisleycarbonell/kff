@@ -1,9 +1,10 @@
+import { memo } from "react"
 import { ClipboardList, Package, Truck, UserCheck } from "lucide-react"
 
 import type { Supplier } from "@/components/modules/suppliers/supplier.schema"
 import { Card, CardContent } from "@/components/ui/card"
 
-export function SupplierStatistics({ suppliers }: { suppliers: Supplier[] }) {
+export const SupplierStatistics = memo(function SupplierStatistics({ suppliers }: { suppliers: Supplier[] }) {
     const statistics = [
         {
             label: "Total suppliers",
@@ -18,9 +19,9 @@ export function SupplierStatistics({ suppliers }: { suppliers: Supplier[] }) {
             icon: UserCheck,
         },
         {
-            label: "Active item offers",
+            label: "Linked items",
             value: suppliers.reduce((total, supplier) => total + supplier.activeItemCount, 0),
-            description: "Materials offered by suppliers",
+            description: "Current links across all suppliers",
             icon: Package,
         },
         {
@@ -49,4 +50,4 @@ export function SupplierStatistics({ suppliers }: { suppliers: Supplier[] }) {
             ))}
         </div>
     )
-}
+})

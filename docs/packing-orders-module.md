@@ -11,7 +11,9 @@ reservation, lot, inventory-balance, and append-only ledger tables.
 Configure an active Finished Good with a valid BOM, compatible component UOMs,
 distinct active Warehouse or Packing source and destination locations, and approved, unexpired material lots
 with available stock. The Packing Orders module reads configured BOM records;
-the Packing Formulas editor is a separate feature.
+the [Packing Formulas editor](brands-packing-formulas-modules.md) maintains those
+records at `/bom`. Edits/removal affect new orders; saved orders retain their
+own requirements and can still follow their normal planning/completion flow.
 
 Authenticated users can inspect orders, availability previews, and reservations.
 Creating, editing, planning, starting, completing, and cancelling orders require
@@ -68,8 +70,12 @@ Completion atomically:
 - Adds destination stock and a linked Produce ledger entry.
 - Records actual output, completion time, actor, and Completed status.
 
-The finished lot has optional manufacture and expiration dates, the product's
-required QC status, and a unit cost derived from consumed lots. Unknown input
+The finished lot has optional manufacture and expiration dates, an initial
+Approved status, and a unit cost derived from consumed lots. The legacy item's
+`requiresQc` flag does not place new outputs on hold: the separate QC Decisions
+workflow is retired. Inventory managers may correct lot status through Lots,
+subject to reservation and expiry protections. Existing held/rejected lots keep
+their status. Unknown input
 costs remain unknown. Lot numbers are unique and normalized. When both dates are
 present, expiration must be later than manufacture. Repeated or stale workflow
 actions fail safely and cannot duplicate inventory.

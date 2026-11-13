@@ -328,7 +328,7 @@ export function reservationColumns(onView: (id: number) => void) {
             sortFn: "text",
             cell: ({ row }) => (
                 <Link
-                    href="/lots"
+                    href="/inventory/lots"
                     className="underline-offset-4 hover:underline"
                     title="Open lots and batches"
                 >

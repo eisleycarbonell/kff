@@ -1,4 +1,4 @@
-import { asc, desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { db } from '../../db/index.ts';
 import {
@@ -22,6 +22,9 @@ import {
     assertDraftEditable,
     assertPurchaseOrderAction,
     assertPurchaseOrderLineDefinitions,
+    assertSupplierMaterials,
+    generatedPurchaseOrderNumber,
+    PURCHASE_ORDER_TRIM_CHARACTERS,
     purchaseOrderAmounts,
     purchaseOrderLineAmounts,
 } from './purchase-order.rules.ts';
@@ -177,6 +180,7 @@ async function lockSuppliers(database: Reader, ids: number[]) {
 async function lockLineDefinitions(
     database: Reader,
     lines: readonly { itemId: number; uomId: number }[],
+    supplierId: number,
 ) {
     const itemIds = [...new Set(lines.map((line) => line.itemId))].sort((a, b) => a - b);
     if (!itemIds.length) throw new AppError(400, 'Add at least one purchase-order line.');
@@ -204,9 +208,22 @@ async function lockLineDefinitions(
         .orderBy(asc(uoms.uomId))
         .for('share');
     assertPurchaseOrderLineDefinitions(lines, materials, units);
+    const offers = await database
+        .select({
+            supplierId: supplierItems.supplierId,
+            itemId: supplierItems.itemId,
+            isActive: supplierItems.isActive,
+        })
+        .from(supplierItems)
+        .where(
+            and(eq(supplierItems.supplierId, supplierId), inArray(supplierItems.itemId, itemIds)),
+        )
+        .orderBy(asc(supplierItems.supplierItemId))
+        .for('share');
+    assertSupplierMaterials(lines, supplierId, offers);
 }
-async function observeSupplier(id: number) {
-    const [observed] = await db
+async function observeSupplier(id: number, database: Reader = db) {
+    const [observed] = await database
         .select({ supplierId: purchaseOrders.supplierId })
         .from(purchaseOrders)
         .where(eq(purchaseOrders.poId, id))
@@ -231,17 +248,79 @@ async function lockOrder(database: Reader, id: number, observedSupplierId: numbe
         .for('update');
     return getPurchaseOrder(id, database);
 }
-export async function createPurchaseOrder(input: CreatePurchaseOrderInput, actorId: number) {
-    return db.transaction(async (tx) => {
+type NumberDatabase = Pick<typeof db, 'select' | 'execute'>;
+const matchingPurchaseOrderNumber = (number: string) =>
+    sql`upper(btrim(${purchaseOrders.poNumber}, ${PURCHASE_ORDER_TRIM_CHARACTERS})) = ${number}`;
+async function lockPurchaseOrderNumber(database: NumberDatabase, number: string) {
+    await database.execute(sql`select pg_advisory_xact_lock(1262896724, hashtext(${number}))`);
+}
+async function allocatePurchaseOrderReference(
+    database: NumberDatabase,
+    requestedNumber?: string,
+    createdAt = new Date(),
+) {
+    // Custom numbers are checked under their held advisory lock before allocating.
+    // The identity sequence gives concurrent generated candidates distinct values.
+    while (true) {
+        const [allocated] = await database.execute<{ id: number }>(
+            sql`select nextval(pg_get_serial_sequence('purchase_orders', 'po_id'))::integer as id`,
+        );
+        if (!allocated) throw new Error('The purchase-order number could not be allocated.');
+        const poId = allocated.id;
+        const poNumber = requestedNumber ?? generatedPurchaseOrderNumber(poId, createdAt);
+        if (!requestedNumber) await lockPurchaseOrderNumber(database, poNumber);
+        const [existing] = await database
+            .select({ id: purchaseOrders.poId })
+            .from(purchaseOrders)
+            .where(
+                requestedNumber
+                    ? eq(purchaseOrders.poId, poId)
+                    : or(eq(purchaseOrders.poId, poId), matchingPurchaseOrderNumber(poNumber)),
+            )
+            .limit(1);
+        if (!existing) return { poId, poNumber };
+    }
+}
+export async function allocatePurchaseOrderNumber(database: typeof db = db) {
+    return database.transaction(async (tx) => {
+        const { poNumber } = await allocatePurchaseOrderReference(tx);
+        return { poNumber };
+    });
+}
+export async function createPurchaseOrder(
+    input: CreatePurchaseOrderInput,
+    actorId: number,
+    database: typeof db = db,
+) {
+    return database.transaction(async (tx) => {
         const supplierRows = await lockSuppliers(tx, [input.supplierId]);
         assertActiveSupplier(supplierRows[0]);
         assertDeliveryDate(input.orderDate, input.expectedDeliveryDate);
-        await lockLineDefinitions(tx, input.lines);
+        await lockLineDefinitions(tx, input.lines, input.supplierId);
+        const createdAt = new Date();
+        const requestedNumber = input.poNumber?.trim().toUpperCase() || undefined;
+        if (requestedNumber) {
+            await lockPurchaseOrderNumber(tx, requestedNumber);
+            const [existing] = await tx
+                .select({ id: purchaseOrders.poId })
+                .from(purchaseOrders)
+                .where(matchingPurchaseOrderNumber(requestedNumber))
+                .limit(1);
+            if (existing)
+                throw new AppError(409, 'A purchase order with this PO number already exists.');
+        }
+        const { poId, poNumber } = await allocatePurchaseOrderReference(
+            tx,
+            requestedNumber,
+            createdAt,
+        );
         const { lines, orderDate, ...header } = input;
         const [created] = await tx
             .insert(purchaseOrders)
             .values({
                 ...header,
+                poId,
+                poNumber,
                 orderDate: new Date(orderDate),
                 status: 'Draft',
                 createdBy: actorId,
@@ -267,10 +346,11 @@ export async function updatePurchaseOrder(
     id: number,
     input: UpdatePurchaseOrderInput,
     actorId: number,
+    database: typeof db = db,
 ) {
-    const observed = await observeSupplier(id);
+    const observed = await observeSupplier(id, database);
     if (!observed) return null;
-    return db.transaction(async (tx) => {
+    return database.transaction(async (tx) => {
         const targetSupplierId = input.supplierId ?? observed.supplierId;
         const supplierRows = await lockSuppliers(tx, [observed.supplierId, targetSupplierId]);
         const current = await lockOrder(tx, id, observed.supplierId);
@@ -286,7 +366,7 @@ export async function updatePurchaseOrder(
                 ? current.expectedDeliveryDate
                 : input.expectedDeliveryDate;
         assertDeliveryDate(nextDate, nextExpected);
-        await lockLineDefinitions(tx, input.lines ?? current.lines);
+        await lockLineDefinitions(tx, input.lines ?? current.lines, targetSupplierId);
         const { lines, orderDate, ...header } = input;
         await tx
             .update(purchaseOrders)
@@ -313,10 +393,15 @@ export async function updatePurchaseOrder(
         return getPurchaseOrder(id, tx);
     });
 }
-async function transitionPurchaseOrder(id: number, action: 'send' | 'cancel', actorId: number) {
-    const observed = await observeSupplier(id);
+async function transitionPurchaseOrder(
+    id: number,
+    action: 'send' | 'cancel',
+    actorId: number,
+    database: typeof db = db,
+) {
+    const observed = await observeSupplier(id, database);
     if (!observed) return null;
-    return db.transaction(async (tx) => {
+    return database.transaction(async (tx) => {
         const supplierRows = await lockSuppliers(tx, [observed.supplierId]);
         const current = await lockOrder(tx, id, observed.supplierId);
         if (!current) return null;
@@ -324,7 +409,7 @@ async function transitionPurchaseOrder(id: number, action: 'send' | 'cancel', ac
         if (action === 'send') {
             assertActiveSupplier(supplierRows[0]);
             assertDeliveryDate(current.orderDate, current.expectedDeliveryDate);
-            await lockLineDefinitions(tx, current.lines);
+            await lockLineDefinitions(tx, current.lines, current.supplierId);
         }
         await tx
             .update(purchaseOrders)
@@ -337,9 +422,9 @@ async function transitionPurchaseOrder(id: number, action: 'send' | 'cancel', ac
         return getPurchaseOrder(id, tx);
     });
 }
-export async function sendPurchaseOrder(id: number, actorId: number) {
-    return transitionPurchaseOrder(id, 'send', actorId);
+export async function sendPurchaseOrder(id: number, actorId: number, database: typeof db = db) {
+    return transitionPurchaseOrder(id, 'send', actorId, database);
 }
-export async function cancelPurchaseOrder(id: number, actorId: number) {
-    return transitionPurchaseOrder(id, 'cancel', actorId);
+export async function cancelPurchaseOrder(id: number, actorId: number, database: typeof db = db) {
+    return transitionPurchaseOrder(id, 'cancel', actorId, database);
 }

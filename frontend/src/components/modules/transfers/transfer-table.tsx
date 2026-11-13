@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { memo, useMemo } from "react"
 import { useTable, type ReactTable } from "@tanstack/react-table"
 import {
     ArrowDown,
@@ -338,7 +338,7 @@ function TransferGrid({ table, name, statuses, onExport, onAdd }: GridProps) {
         </div>
     )
 }
-export function TransferTable({
+export const TransferTable = memo(function TransferTable({
     transfers,
     onAdd,
     inTransitOnly = false,
@@ -395,4 +395,4 @@ export function TransferTable({
             }
         />
     )
-}
+})

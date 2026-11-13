@@ -220,8 +220,9 @@ is unnecessary for the current modules.
 
 Run `npm run typecheck` and `npm test` after changes to requests, routing,
 services, validation, or errors. Check formatting on affected files using the
-installed Prettier CLI. Type checking covers application source, tests, and
-the Drizzle config; historical generated migration files are excluded.
+installed Prettier CLI. The current TypeScript configuration checks application
+source and the Drizzle config; test files and historical generated migration
+files are excluded. Run `npm test` separately to execute the test suite.
 
 Use [user-schema.test.ts](tests/user-schema.test.ts),
 [database-error.test.ts](tests/database-error.test.ts), and
@@ -260,3 +261,11 @@ hard deletion and must have no stock, outstanding reservations, or open work.
 Inventory writers use `requireActiveLocation(transaction, id)` from the locations
 service before writes and hold that transaction through ledger/balance commit.
 Lock multiple locations in ascending ID order. Metadata APIs never edit stock.
+
+## Reviewed inventory controls and reports
+
+Use [the controls contract](../docs/inventory-controls-and-reports.md) for company
+settings, packaging/reorder/reason maintenance, scrap approvals, formula releases,
+operational reports and retained read history for retired Count/QC/Disposition
+requests. New requests/actions for those retired kinds are disabled. Keep authoritative review and stock
+rules in backend transactions and reflect the same permissions and states in UI.

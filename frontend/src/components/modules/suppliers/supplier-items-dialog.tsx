@@ -1,395 +1,228 @@
-"use client"
+"use client";
 
-import dynamic from "next/dynamic"
-import { useState } from "react"
-import { Ellipsis, Package, Pencil, Plus, PowerOff, Search, Star } from "lucide-react"
+import { useState } from "react";
+import type { Supplier } from "@/components/modules/suppliers/supplier.schema";
+import { useSupplierItems } from "@/hooks/modules/suppliers/use-suppliers";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
-import type { Supplier } from "@/components/modules/suppliers/supplier.schema"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog"
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuGroup,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Input } from "@/components/ui/input"
-import { Skeleton } from "@/components/ui/skeleton"
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table"
-import { useSupplierItems } from "@/hooks/modules/suppliers/use-suppliers"
-
-const SupplierItemForm = dynamic(() =>
-    import("@/components/modules/suppliers/supplier-item-form").then(
-        (module) => module.SupplierItemForm,
-    ),
-)
-
-type Props = { open: boolean; onOpenChange: (open: boolean) => void; supplier: Supplier }
+type Props = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  supplier: Supplier;
+};
 
 export function SupplierItemsDialog({ open, onOpenChange, supplier }: Props) {
-    const {
-        items,
-        options,
-        optionsReady,
-        canManage,
-        loadStatus,
-        loadError,
-        isFetching,
-        retry,
-        formOpen,
-        setFormOpen,
-        formRequested,
-        editingItem,
-        openAdd,
-        openEdit,
-        deactivatingItem,
-        setDeactivatingItem,
-        openDeactivate,
-        handleSave,
-        handleDeactivate,
-        isSaving,
-        isDeactivating,
-        saveError,
-        deactivateError,
-    } = useSupplierItems(open ? supplier.supplierId : null)
-    const [search, setSearch] = useState("")
-    const searchTerm = search.trim().toLowerCase()
-    const filteredItems = items.filter((item) =>
-        `${item.itemSku} ${item.itemName} ${item.supplierItemCode ?? ""}`
-            .toLowerCase()
-            .includes(searchTerm),
+  const links = useSupplierItems(open ? supplier.supplierId : null);
+  const [search, setSearch] = useState("");
+  const [showAvailable, setShowAvailable] = useState(false);
+  const searchTerm = search.trim().toLowerCase();
+  const byItem = new Map(links.items.map((link) => [link.itemId, link]));
+  const materials = links.options.items.filter((item) =>
+    showAvailable
+      ? !byItem.get(item.itemId)?.isActive &&
+        item.isActive &&
+        item.itemType !== "Finished Good"
+      : Boolean(byItem.get(item.itemId)?.isActive),
+  );
+  const filtered = materials
+    .filter((item) =>
+      `${item.sku} ${item.name}`.toLowerCase().includes(searchTerm),
     )
-    const isBusy = isSaving || isDeactivating
-    const errorMessage =
-        loadError instanceof Error
-            ? loadError.message
-            : "Unable to load the supplier's item offers."
+    .sort(
+      (a, b) =>
+        Number(Boolean(byItem.get(b.itemId)?.isActive)) -
+          Number(Boolean(byItem.get(a.itemId)?.isActive)) ||
+        a.name.localeCompare(b.name),
+    );
+  const linkedCount = links.items.filter((link) => link.isActive).length;
 
-    return (
-        <>
-            <Dialog
-                open={open}
-                onOpenChange={(value) => {
-                    if (!isBusy) onOpenChange(value)
-                }}
-            >
-                {open && (
-                    <DialogContent
-                        className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-4xl"
-                        showCloseButton={!isBusy}
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(value) => {
+        if (!links.isSaving) {
+          links.resetError();
+          setSearch("");
+          setShowAvailable(false);
+          onOpenChange(value);
+        }
+      }}
+    >
+      {open && (
+        <DialogContent
+          className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-2xl"
+          showCloseButton={!links.isSaving}
+        >
+          <DialogHeader>
+            <DialogTitle className="break-words">
+              Linked items: {supplier.name}
+            </DialogTitle>
+            <DialogDescription>
+              Link the materials this supplier provides. The same links appear
+              in Items and control its purchase-order choices. Enter prices and
+              purchase units on the PO.
+            </DialogDescription>
+          </DialogHeader>
+          {!supplier.isActive && (
+            <p className="text-sm text-muted-foreground">
+              Reactivate this supplier before linking items.
+            </p>
+          )}
+          {!links.canManage && (
+            <p className="text-sm text-muted-foreground">
+              Purchasing permission is required to change links.
+            </p>
+          )}
+          {links.loadStatus === "loading" && (
+            <p role="status">Loading item links...</p>
+          )}
+          {links.loadError && (
+            <Alert variant="destructive">
+              <AlertTitle>Unable to load item links</AlertTitle>
+              <AlertDescription>
+                {links.loadError instanceof Error
+                  ? links.loadError.message
+                  : "Please retry."}
+                <Button
+                  variant="outline"
+                  disabled={links.isFetching}
+                  onClick={links.retry}
+                >
+                  Retry
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+          {links.saveError && (
+            <Alert variant="destructive">
+              <AlertTitle>Unable to update link</AlertTitle>
+              <AlertDescription>{links.saveError}</AlertDescription>
+            </Alert>
+          )}
+          {links.loadStatus === "ready" && (
+            <>
+              <p className="text-sm" role="status">
+                {linkedCount} linked {linkedCount === 1 ? "item" : "items"}
+              </p>
+              {(showAvailable || (links.canManage && supplier.isActive)) && (
+                <Button
+                  variant="outline"
+                  disabled={links.isSaving}
+                  onClick={() => {
+                    setShowAvailable(!showAvailable);
+                    setSearch("");
+                    links.resetError();
+                  }}
+                >
+                  {showAvailable ? "Back to linked items" : "Link another item"}
+                </Button>
+              )}
+              {showAvailable && (
+                <p className="text-sm font-medium">Available items to link</p>
+              )}
+              <Input
+                aria-label={
+                  showAvailable
+                    ? "Search available items"
+                    : "Search linked items"
+                }
+                placeholder={
+                  showAvailable
+                    ? "Search available items..."
+                    : "Search linked items..."
+                }
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+              />
+              <div className="flex flex-col gap-2">
+                {filtered.map((item) => {
+                  const link = byItem.get(item.itemId);
+                  const linked = Boolean(link?.isActive);
+                  return (
+                    <div
+                      key={item.itemId}
+                      className="flex items-center justify-between gap-3 rounded-md border p-3"
                     >
-                        <DialogHeader>
-                            <DialogTitle className="break-words pr-6">
-                                Supplied items · {supplier.name}
-                            </DialogTitle>
-                            <DialogDescription>
-                                Compare purchasing prices, units, delivery lead times, and preferred
-                                item offers.
-                            </DialogDescription>
-                        </DialogHeader>
-                        {!supplier.isActive && (
-                            <Alert>
-                                <AlertTitle>Inactive supplier</AlertTitle>
-                                <AlertDescription>
-                                    Reactivate this supplier before adding or enabling item offers.
-                                    Existing offers remain available for reference.
-                                </AlertDescription>
-                            </Alert>
+                      <div className="min-w-0">
+                        <p className="break-words font-medium">{item.name}</p>
+                        <p className="break-words text-sm text-muted-foreground">
+                          {item.sku} / {item.primaryUomName}
+                        </p>
+                        <Badge variant={linked ? "secondary" : "outline"}>
+                          {linked ? "Linked" : "Not linked"}
+                        </Badge>
+                        {!item.isActive && (
+                          <p className="text-sm text-muted-foreground">
+                            Item inactive; unavailable on new POs.
+                          </p>
                         )}
-                        {loadStatus === "loading" && (
-                            <div
-                                className="space-y-3"
-                                aria-label="Loading supplied items"
-                                aria-busy="true"
-                            >
-                                <Skeleton className="h-10 rounded-lg" />
-                                <Skeleton className="h-60 rounded-lg" />
-                            </div>
-                        )}
-                        {loadError && (
-                            <Alert variant="destructive">
-                                <AlertTitle>Unable to load supplied items</AlertTitle>
-                                <AlertDescription>
-                                    {errorMessage}
-                                    <Button
-                                        variant="outline"
-                                        className="mt-2"
-                                        disabled={isFetching}
-                                        onClick={retry}
-                                    >
-                                        {isFetching ? "Retrying..." : "Retry"}
-                                    </Button>
-                                </AlertDescription>
-                            </Alert>
-                        )}
-                        {loadStatus === "signed-out" && (
-                            <Alert>
-                                <AlertTitle>Sign in required</AlertTitle>
-                                <AlertDescription>
-                                    Your session has ended. Sign in again to view this
-                                    supplier&apos;s items.
-                                </AlertDescription>
-                            </Alert>
-                        )}
-                        {loadStatus === "ready" && (
-                            <>
-                                <div className="flex flex-wrap items-center justify-between gap-3">
-                                    <div className="relative w-full sm:w-72">
-                                        <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-                                        <Input
-                                            aria-label="Search supplied items"
-                                            placeholder="Search items or supplier code..."
-                                            value={search}
-                                            onChange={(event) => setSearch(event.target.value)}
-                                            className="h-10 pl-10"
-                                        />
-                                    </div>
-                                    {canManage && (
-                                        <Button
-                                            className="h-10"
-                                            disabled={isBusy || !supplier.isActive || !optionsReady}
-                                            onClick={openAdd}
-                                        >
-                                            <Plus />
-                                            Add supplied item
-                                        </Button>
-                                    )}
-                                </div>
-                                <div className="overflow-hidden rounded-lg border">
-                                    <Table className="min-w-[720px]">
-                                        <TableHeader className="bg-muted/50">
-                                            <TableRow>
-                                                <TableHead>Material</TableHead>
-                                                <TableHead>Supplier code</TableHead>
-                                                <TableHead>Price / unit</TableHead>
-                                                <TableHead>Lead time</TableHead>
-                                                <TableHead>Preference</TableHead>
-                                                <TableHead>Status</TableHead>
-                                                {canManage && (
-                                                    <TableHead>
-                                                        <span className="sr-only">Actions</span>
-                                                    </TableHead>
-                                                )}
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {filteredItems.map((item) => (
-                                                <TableRow key={item.supplierItemId}>
-                                                    <TableCell>
-                                                        <p className="font-medium">
-                                                            {item.itemName}
-                                                        </p>
-                                                        <p className="mt-0.5 text-xs text-muted-foreground">
-                                                            {item.itemSku}
-                                                        </p>
-                                                        {!item.itemIsActive && (
-                                                            <Badge
-                                                                variant="outline"
-                                                                className="mt-1"
-                                                            >
-                                                                Item inactive
-                                                            </Badge>
-                                                        )}
-                                                    </TableCell>
-                                                    <TableCell className="text-muted-foreground">
-                                                        {item.supplierItemCode ?? "—"}
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <span className="font-medium tabular-nums">
-                                                            {item.defaultPrice ?? "Not set"}
-                                                        </span>
-                                                        <span className="ml-1 text-muted-foreground">
-                                                            /{" "}
-                                                            {item.defaultUomName ??
-                                                                item.primaryUomName}
-                                                        </span>
-                                                    </TableCell>
-                                                    <TableCell className="text-muted-foreground">
-                                                        {item.leadTimeDays == null
-                                                            ? "Not set"
-                                                            : `${item.leadTimeDays} ${item.leadTimeDays === 1 ? "day" : "days"}`}
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        {item.isPreferred ? (
-                                                            <Badge
-                                                                variant="secondary"
-                                                                className="gap-1 bg-primary/10 text-primary"
-                                                            >
-                                                                <Star className="size-3" />
-                                                                Preferred
-                                                            </Badge>
-                                                        ) : (
-                                                            <span className="text-muted-foreground">
-                                                                —
-                                                            </span>
-                                                        )}
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <Badge
-                                                            variant="secondary"
-                                                            className={
-                                                                item.isActive
-                                                                    ? "bg-primary/10 text-primary"
-                                                                    : "text-muted-foreground"
-                                                            }
-                                                        >
-                                                            {item.isActive ? "Active" : "Inactive"}
-                                                        </Badge>
-                                                    </TableCell>
-                                                    {canManage && (
-                                                        <TableCell className="text-right">
-                                                            <DropdownMenu>
-                                                                <DropdownMenuTrigger
-                                                                    render={
-                                                                        <Button
-                                                                            variant="ghost"
-                                                                            size="icon-sm"
-                                                                            aria-label={`Actions for ${item.itemName}`}
-                                                                            disabled={isBusy}
-                                                                        />
-                                                                    }
-                                                                >
-                                                                    <Ellipsis />
-                                                                </DropdownMenuTrigger>
-                                                                <DropdownMenuContent align="end">
-                                                                    <DropdownMenuGroup>
-                                                                        <DropdownMenuItem
-                                                                            disabled={!optionsReady}
-                                                                            onClick={() =>
-                                                                                openEdit(item)
-                                                                            }
-                                                                        >
-                                                                            <Pencil />
-                                                                            Edit item offer
-                                                                        </DropdownMenuItem>
-                                                                        {item.isActive && (
-                                                                            <DropdownMenuItem
-                                                                                onClick={() =>
-                                                                                    openDeactivate(
-                                                                                        item,
-                                                                                    )
-                                                                                }
-                                                                            >
-                                                                                <PowerOff />
-                                                                                Deactivate offer
-                                                                            </DropdownMenuItem>
-                                                                        )}
-                                                                    </DropdownMenuGroup>
-                                                                </DropdownMenuContent>
-                                                            </DropdownMenu>
-                                                        </TableCell>
-                                                    )}
-                                                </TableRow>
-                                            ))}
-                                            {!filteredItems.length && (
-                                                <TableRow>
-                                                    <TableCell
-                                                        colSpan={canManage ? 7 : 6}
-                                                        className="h-44 text-center"
-                                                    >
-                                                        <Package className="mx-auto mb-3 size-7 text-muted-foreground" />
-                                                        <p className="font-medium">
-                                                            {searchTerm
-                                                                ? "No supplied items match your search"
-                                                                : "No supplied items yet"}
-                                                        </p>
-                                                        <p className="mt-1 text-muted-foreground">
-                                                            {searchTerm
-                                                                ? "Try another name, SKU, or supplier code."
-                                                                : "Link a material to record its purchasing price and lead time."}
-                                                        </p>
-                                                    </TableCell>
-                                                </TableRow>
-                                            )}
-                                        </TableBody>
-                                    </Table>
-                                </div>
-                                <p className="text-sm text-muted-foreground" aria-live="polite">
-                                    {filteredItems.length} of {items.length} supplied items
-                                </p>
-                            </>
-                        )}
-                        <DialogFooter>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                disabled={isBusy}
-                                onClick={() => onOpenChange(false)}
-                            >
-                                Close
-                            </Button>
-                        </DialogFooter>
-                    </DialogContent>
+                      </div>
+                      {links.canManage && (
+                        <Button
+                          variant="outline"
+                          className="shrink-0"
+                          disabled={
+                            links.isSaving ||
+                            (!linked && (!supplier.isActive || !item.isActive))
+                          }
+                          aria-label={`${linked ? "Unlink" : "Link"} ${item.name}`}
+                          onClick={() =>
+                            void links.setLink(
+                              item.itemId,
+                              link?.supplierItemId ?? null,
+                              !linked,
+                            )
+                          }
+                        >
+                          {links.isSaving
+                            ? "Saving..."
+                            : linked
+                              ? "Unlink"
+                              : "Link item"}
+                        </Button>
+                      )}
+                    </div>
+                  );
+                })}
+                {filtered.length === 0 && (
+                  <p className="py-4 text-sm text-muted-foreground">
+                    {searchTerm
+                      ? "No items match your search."
+                      : showAvailable
+                        ? "No more materials available to link."
+                        : "No items linked to this supplier."}
+                  </p>
                 )}
-            </Dialog>
-            {formRequested && optionsReady && (
-                <SupplierItemForm
-                    open={open && formOpen && canManage}
-                    onOpenChange={setFormOpen}
-                    supplier={supplier}
-                    item={editingItem}
-                    items={items}
-                    options={options}
-                    onSave={handleSave}
-                    isSaving={isSaving}
-                    saveError={saveError}
-                />
-            )}
-            <AlertDialog
-                open={open && canManage && Boolean(deactivatingItem)}
-                onOpenChange={(value) => {
-                    if (!value && !isDeactivating) setDeactivatingItem(null)
-                }}
+              </div>
+            </>
+          )}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              disabled={links.isSaving}
+              onClick={() => {
+                links.resetError();
+                setSearch("");
+                setShowAvailable(false);
+                onOpenChange(false);
+              }}
             >
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Deactivate item offer?</AlertDialogTitle>
-                        <AlertDialogDescription className="break-words">
-                            {deactivatingItem?.itemName} will be disabled for this supplier and its
-                            preferred status cleared. The offer and purchasing history remain
-                            available.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    {deactivateError && (
-                        <Alert variant="destructive">
-                            <AlertDescription>{deactivateError}</AlertDescription>
-                        </Alert>
-                    )}
-                    <AlertDialogFooter>
-                        <AlertDialogCancel disabled={isDeactivating}>Cancel</AlertDialogCancel>
-                        <AlertDialogAction disabled={isDeactivating} onClick={handleDeactivate}>
-                            {isDeactivating ? "Deactivating..." : "Deactivate offer"}
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-        </>
-    )
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      )}
+    </Dialog>
+  );
 }

@@ -41,6 +41,7 @@ const stock: NonNullable<Awaited<ReturnType<StockService['getStock']>>> = {
     locationCode: 'WH-RM',
     locationName: 'Raw materials',
     locationType: 'Warehouse',
+    locationIsActive: true,
     qtyOnHand: '10.0000',
     qtyReserved: '2.5000',
     qtyAvailable: '7.5000',

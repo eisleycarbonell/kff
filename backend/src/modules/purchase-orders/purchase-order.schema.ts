@@ -35,7 +35,6 @@ const lines = z
         });
     });
 const fields = {
-    poNumber: z.string().trim().toUpperCase().min(1).max(30),
     supplierId: id,
     orderDate: z.iso.datetime({ offset: true }),
     expectedDeliveryDate: z
@@ -70,7 +69,18 @@ const checkDates = (
         });
     }
 };
-export const createPurchaseOrderSchema = z.strictObject(fields).superRefine(checkDates);
+export const createPurchaseOrderSchema = z
+    .strictObject({
+        ...fields,
+        poNumber: z
+            .string()
+            .trim()
+            .toUpperCase()
+            .max(30)
+            .transform((value) => value || undefined)
+            .optional(),
+    })
+    .superRefine(checkDates);
 export const updatePurchaseOrderSchema = z
     .strictObject(fields)
     .partial()
@@ -84,6 +94,7 @@ export const purchaseOrderIdRequestSchema = z.object({
         id: z.string().regex(/^\d+$/, 'Use a positive integer ID.').transform(Number).pipe(id),
     }),
 });
+export const purchaseOrderNumberRequestSchema = z.object({ body: z.strictObject({}) });
 export const createPurchaseOrderRequestSchema = z.object({ body: createPurchaseOrderSchema });
 export const updatePurchaseOrderRequestSchema = z.object({
     params: purchaseOrderIdRequestSchema.shape.params,

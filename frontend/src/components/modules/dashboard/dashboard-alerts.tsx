@@ -70,7 +70,7 @@ export function DashboardAlerts({
                             <CheckCircle2 className="size-8 text-emerald-500/80" />
                             <p className="mt-2 text-sm font-medium text-foreground">No expiring lots</p>
                             <p className="text-xs text-muted-foreground">
-                                All inventory lots have adequate shelf life beyond 30 days.
+                                No positive stock is within the configured expiry warning window.
                             </p>
                         </div>
                     ) : (
@@ -124,7 +124,7 @@ export function DashboardAlerts({
                                     variant="ghost"
                                     size="sm"
                                     className="h-7 gap-1 text-xs text-muted-foreground hover:text-foreground"
-                                    render={<Link href="/lots" />}
+                                    render={<Link href="/inventory/lots" />}
                                     nativeButton={false}
                                 >
                                     Manage Lots
@@ -186,7 +186,7 @@ export function DashboardAlerts({
                                             >
                                                 {formatQuantity(item.qtyAvailable)} {item.primaryUomName}
                                             </p>
-                                            <p className="text-[10px] text-muted-foreground">Available to Pack</p>
+                                            <p className="text-[10px] text-muted-foreground">Eligible available stock</p>
                                         </div>
                                         <Button
                                             size="sm"

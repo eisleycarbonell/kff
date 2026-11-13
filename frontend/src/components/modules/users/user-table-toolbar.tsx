@@ -1,6 +1,6 @@
 import { Download, Search, Settings2, Trash2, X } from "lucide-react"
 
-import { USER_ROLES, getRoleName, type User } from "@/components/modules/users/user.schema"
+import { getRoleName, type User, type UserRole } from "@/components/modules/users/user.schema"
 import type { UserTableInstance } from "@/components/modules/users/user-table-columns"
 import { Button } from "@/components/ui/button"
 import {
@@ -20,10 +20,6 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 
-const roleItems = [
-    { value: "all", label: "All roles" },
-    ...USER_ROLES.map((role) => ({ value: role.name, label: role.name })),
-]
 const verificationItems = [
     { value: "all", label: "All email statuses" },
     { value: "Verified", label: "Verified" },
@@ -39,13 +35,14 @@ const columnLabels: Record<string, string> = {
 }
 
 type UserTableToolbarProps = {
+    roles: UserRole[]
     table: UserTableInstance
     hasFilters: boolean
     onClearFilters: () => void
     onDelete: (users: User[]) => void
 }
 
-function exportUsers(users: User[]) {
+function exportUsers(users: User[], roles: UserRole[]) {
     const escape = (value: string) =>
         `"${(/^[\s]*[=+\-@]/.test(value) ? "'" + value : value).replaceAll('"', '""')}"`
     const rows = [
@@ -55,7 +52,7 @@ function exportUsers(users: User[]) {
             user.lastName,
             user.email,
             user.mobileNumber ?? "",
-            getRoleName(user.roleId),
+            getRoleName(user.roleId, roles),
             user.isEmailVerified ? "Verified" : "Unverified",
             user.createdAt.slice(0, 10),
         ]),
@@ -75,6 +72,7 @@ function exportUsers(users: User[]) {
 }
 
 export function UserTableToolbar({
+    roles,
     table,
     hasFilters,
     onClearFilters,
@@ -82,6 +80,10 @@ export function UserTableToolbar({
 }: UserTableToolbarProps) {
     const filteredRows = table.getFilteredRowModel().rows
     const selectedRows = table.getFilteredSelectedRowModel().rows
+    const roleItems = [
+        { value: "all", label: "All roles" },
+        ...roles.map((role) => ({ value: role.name, label: role.name })),
+    ]
 
     return (
         <div
@@ -120,10 +122,7 @@ export function UserTableToolbar({
                 </SelectTrigger>
                 <SelectContent>
                     {roleItems.map((item) => (
-                        <SelectItem
-                            key={item.value}
-                            value={item.value}
-                        >
+                        <SelectItem key={item.value} value={item.value}>
                             {item.label}
                         </SelectItem>
                     ))}
@@ -148,21 +147,14 @@ export function UserTableToolbar({
                 </SelectTrigger>
                 <SelectContent>
                     {verificationItems.map((item) => (
-                        <SelectItem
-                            key={item.value}
-                            value={item.value}
-                        >
+                        <SelectItem key={item.value} value={item.value}>
                             {item.label}
                         </SelectItem>
                     ))}
                 </SelectContent>
             </Select>
             {hasFilters && (
-                <Button
-                    variant="ghost"
-                    className="h-10"
-                    onClick={onClearFilters}
-                >
+                <Button variant="ghost" className="h-10" onClick={onClearFilters}>
                     <X />
                     Reset
                 </Button>
@@ -198,6 +190,7 @@ export function UserTableToolbar({
                             (selectedRows.length ? selectedRows : filteredRows).map(
                                 (row) => row.original,
                             ),
+                            roles,
                         )
                     }
                     disabled={!filteredRows.length}
@@ -207,20 +200,12 @@ export function UserTableToolbar({
                 </Button>
                 <DropdownMenu>
                     <DropdownMenuTrigger
-                        render={
-                            <Button
-                                variant="outline"
-                                className="h-10 gap-2 px-3"
-                            />
-                        }
+                        render={<Button variant="outline" className="h-10 gap-2 px-3" />}
                     >
                         <Settings2 />
                         Columns
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent
-                        align="end"
-                        className="w-44"
-                    >
+                    <DropdownMenuContent align="end" className="w-44">
                         <DropdownMenuGroup>
                             <DropdownMenuLabel>Visible columns</DropdownMenuLabel>
                             {table

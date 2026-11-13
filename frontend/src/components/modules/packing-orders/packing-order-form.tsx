@@ -1,6 +1,6 @@
 "use client"
 
-import { useId, useState, type FormEvent } from "react"
+import { useEffect, useId, useState, type FormEvent } from "react"
 import {
     validatePacking,
     decimalUnits,
@@ -73,8 +73,14 @@ function PackingOrderFormContent({
         notes: order?.notes ?? "",
     }))
     const [errors, setErrors] = useState<PackingFormErrors>({})
+    const [previewQty, setPreviewQty] = useState(values.targetQty)
+    useEffect(() => {
+        const timeout = setTimeout(() => setPreviewQty(values.targetQty), 300)
+        return () => clearTimeout(timeout)
+    }, [values.targetQty])
     const preview = usePackingPreview(
         !order &&
+            previewQty === values.targetQty &&
             values.itemId &&
             values.sourceLocationId &&
             (decimalUnits(values.targetQty) ?? BigInt(0)) > BigInt(0)

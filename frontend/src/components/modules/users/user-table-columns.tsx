@@ -19,7 +19,12 @@ import {
 } from "@tanstack/react-table"
 import { Check, Ellipsis, Pencil, Trash2 } from "lucide-react"
 
-import { getRoleName, getUserName, type User } from "@/components/modules/users/user.schema"
+import {
+    getRoleName,
+    getUserName,
+    type User,
+    type UserRole,
+} from "@/components/modules/users/user.schema"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -59,11 +64,12 @@ const dateFormat = new Intl.DateTimeFormat("en", {
 })
 
 type UserColumnActions = {
+    roles: UserRole[]
     onEdit: (user: User) => void
     onDelete: (users: User[]) => void
 }
 
-export function createUserColumns({ onEdit, onDelete }: UserColumnActions) {
+export function createUserColumns({ onEdit, onDelete, roles }: UserColumnActions) {
     return helper.columns([
         helper.display({
             id: "select",
@@ -123,7 +129,7 @@ export function createUserColumns({ onEdit, onDelete }: UserColumnActions) {
             filterFn: "includesString",
             cell: ({ getValue }) => <span className="text-muted-foreground">{getValue()}</span>,
         }),
-        helper.accessor((user) => getRoleName(user.roleId), {
+        helper.accessor((user) => getRoleName(user.roleId, roles), {
             id: "role",
             header: "Role",
             sortFn: "text",
@@ -142,7 +148,10 @@ export function createUserColumns({ onEdit, onDelete }: UserColumnActions) {
             enableGlobalFilter: false,
             cell: ({ row }) =>
                 row.original.isEmailVerified ? (
-                    <Badge variant="secondary" className="gap-1.5 bg-primary/10 px-2.5 py-1 text-primary">
+                    <Badge
+                        variant="secondary"
+                        className="gap-1.5 bg-primary/10 px-2.5 py-1 text-primary"
+                    >
                         <Check className="size-3.5" />
                         Verified
                     </Badge>
@@ -159,9 +168,7 @@ export function createUserColumns({ onEdit, onDelete }: UserColumnActions) {
             enableGlobalFilter: false,
             cell: ({ getValue }) => (
                 <span className="text-muted-foreground">
-                    {getValue()
-                        ? dateFormat.format(new Date(getValue()!))
-                        : "Never signed in"}
+                    {getValue() ? dateFormat.format(new Date(getValue()!)) : "Never signed in"}
                 </span>
             ),
         }),

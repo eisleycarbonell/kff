@@ -1,9 +1,11 @@
 "use client"
 
-import { useCallback, useState } from "react"
+import { useCallback } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Toast } from "@base-ui/react/toast"
 import { apiRequest, ApiError } from "@/lib/api-request"
+import { createDialogStore } from "@/lib/create-dialog-store"
+import { getLoadStatus } from "@/lib/load-status"
 import { SESSION_QUERY_KEY, useSession } from "@/hooks/use-session"
 import {
     lotSchema,
@@ -35,6 +37,15 @@ export async function updateLot(lotId: number, input: UpdateLotInput): Promise<L
 export const LOTS_QUERY_KEY = ["lots"] as const
 export const LOT_DETAIL_QUERY_KEY = ["lot-detail"] as const
 const EMPTY_LOTS: Lot[] = []
+/**
+ * Edit-form and detail-dialog state for the lots page. `viewingLot` stays set after closing so
+ * the detail dialog can finish its close animation.
+ */
+const useLotDialogs = createDialogStore<
+    Lot,
+    Lot,
+    { viewingLot: Lot | null; detailOpen: boolean }
+>({ viewingLot: null, detailOpen: false })
 
 export function useLotDetail(lotId: number | null) {
     const session = useSession()
@@ -52,20 +63,7 @@ export function useLotDetail(lotId: number | null) {
         void refetchSession()
         if (signedIn && lotId !== null) void refetch()
     }, [lotId, refetch, refetchSession, signedIn])
-    const loadStatus =
-        lotId === null
-            ? "ready"
-            : session.isPending
-              ? "loading"
-              : session.data === undefined
-                ? "error"
-                : !session.data
-                  ? "signed-out"
-                  : query.data !== undefined
-                    ? "ready"
-                    : query.isError
-                      ? "error"
-                      : "loading"
+    const loadStatus = lotId === null ? "ready" : getLoadStatus(session, [query])
     return {
         lot: lotId === null ? null : (query.data ?? null),
         loadStatus,
@@ -85,9 +83,16 @@ export function useLots() {
         queryFn: ({ signal }) => getLots(signal),
         enabled: Boolean(session.data),
     })
-    const [formOpen, setFormOpen] = useState(false),
-        [formRequested, setFormRequested] = useState(false)
-    const [editingLot, setEditingLot] = useState<Lot | null>(null)
+    const {
+        formOpen,
+        formRequested,
+        editing,
+        viewingLot,
+        detailOpen,
+        openForm,
+        setFormOpen,
+        patch,
+    } = useLotDialogs()
     const loadError = query.error ?? session.error
     const save = useMutation({
         mutationFn: ({ values, lot }: { values: LotFormValues; lot: Lot | null }) => {
@@ -105,9 +110,26 @@ export function useLots() {
                 "lots",
                 "lot-detail",
                 "inventory-stocks",
+                "inventory-reports",
+                "inventory-control-options",
+                "inventory-controls",
+                "item-packaging-options",
+                "reorder-policies-options",
+                "operational-reports",
                 "inventory-stock-options",
                 "receiving",
                 "receiving-options",
+                "packing-orders",
+                "packing-options",
+                "packing-preview",
+                "packing-detail",
+                "transfers",
+                "transfer-options",
+                "transfer-detail",
+                "delivery-orders",
+                "delivery-order-options",
+                "delivery-order-detail",
+                "dashboard",
             ])
                 void client.invalidateQueries({ queryKey: [prefix] })
             showToast({ type: "success", title: "Lot details updated." })
@@ -130,12 +152,16 @@ export function useLots() {
     const openEdit = useCallback(
         (lot: Lot) => {
             reset()
-            setEditingLot(lot)
-            setFormRequested(true)
-            setFormOpen(true)
+            patch({ detailOpen: false })
+            openForm(lot)
         },
-        [reset],
+        [reset, patch, openForm],
     )
+    const openDetail = useCallback(
+        (lot: Lot) => patch({ viewingLot: lot, detailOpen: true }),
+        [patch],
+    )
+    const setDetailOpen = useCallback((open: boolean) => patch({ detailOpen: open }), [patch])
     const handleSave = useCallback(
         async (values: LotFormValues, lot: Lot | null) => {
             if (isSaving) return false
@@ -157,17 +183,7 @@ export function useLots() {
         void refetchSession()
         if (signedIn) void refetch()
     }, [refetch, refetchSession, signedIn])
-    const loadStatus = session.isPending
-        ? "loading"
-        : session.data === undefined
-          ? "error"
-          : !session.data
-            ? "signed-out"
-            : query.data !== undefined
-              ? "ready"
-              : query.isError
-                ? "error"
-                : "loading"
+    const loadStatus = getLoadStatus(session, [query])
     return {
         lots: query.data ?? EMPTY_LOTS,
         canManage,
@@ -178,8 +194,12 @@ export function useLots() {
         formOpen,
         setFormOpen,
         formRequested,
-        editingLot,
+        editingLot: editing,
         openEdit,
+        viewingLot,
+        detailOpen,
+        setDetailOpen,
+        openDetail,
         handleSave,
         isSaving,
         saveError: save.error?.message ?? null,

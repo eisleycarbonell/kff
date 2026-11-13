@@ -1,10 +1,12 @@
 "use client"
 
-import { useCallback, useState } from "react"
+import { useCallback, useRef } from "react"
 import { z } from "zod"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Toast } from "@base-ui/react/toast"
 import { apiRequest, ApiError } from "@/lib/api-request"
+import { createDialogStore } from "@/lib/create-dialog-store"
+import { getLoadStatus } from "@/lib/load-status"
 import { SESSION_QUERY_KEY, useSession } from "@/hooks/use-session"
 import {
     packingOrderSchema,
@@ -68,6 +70,8 @@ export const runPackingAction = (id: number, action: PackingAction, input?: Comp
     request(packingDetailSchema, `/${id}/${action}`, "updated order", send("POST", input ?? {}))
 const EMPTY_ORDERS: PackingOrder[] = []
 const EMPTY_RESERVATIONS: Reservation[] = []
+type PackingActionTarget = { order: PackingOrder; action: PackingAction }
+const usePackingDialogs = createDialogStore<PackingOrder, PackingActionTarget>()
 
 export function usePackingPreview(input: PreviewPackingInput | null) {
     const session = useSession()
@@ -85,6 +89,11 @@ export function usePackingOrders(reservationsPage = false) {
     const { add: showToast } = Toast.useToastManager()
     const canManage = session.data?.permissions.canManagePacking === true
     const userId = session.data?.userId
+    const {
+        formOpen, formRequested, editing: editingOrder, target: actionOrder, detailId,
+        getState, openForm, setFormOpen, setTarget: setActionOrder, setDetailId,
+    } = usePackingDialogs()
+    const writePending = useRef(false)
     const query = useQuery({
         queryKey: [...PACKING_ORDERS_QUERY_KEY, userId],
         queryFn: ({ signal }) => getPackingOrders(signal),
@@ -95,18 +104,10 @@ export function usePackingOrders(reservationsPage = false) {
         queryFn: ({ signal }) => getPackingReservations(signal),
         enabled: Boolean(session.data) && reservationsPage,
     })
-    const [formOpen, setFormOpen] = useState(false)
-    const [formRequested, setFormRequested] = useState(false)
-    const [editingOrder, setEditingOrder] = useState<PackingOrder | null>(null)
-    const [detailId, setDetailId] = useState<number | null>(null)
-    const [actionOrder, setActionOrder] = useState<{
-        order: PackingOrder
-        action: PackingAction
-    } | null>(null)
     const options = useQuery({
         queryKey: ["packing-options", userId],
         queryFn: ({ signal }) => getPackingOptions(signal),
-        enabled: Boolean(session.data) && formOpen,
+        enabled: canManage && formOpen,
     })
     const detail = useQuery({
         queryKey: ["packing-detail", detailId, userId],
@@ -134,8 +135,13 @@ export function usePackingOrders(reservationsPage = false) {
                 ...PACKING_PREFIXES,
                 "packing-options",
                 "inventory-stocks",
+                "inventory-reports",
+                "inventory-control-options",
+                "operational-reports",
+                "transfer-options",
+                "delivery-order-options",
                 "dashboard",
-                ...(completed ? ["inventory-stock-options", "lots", "lot-detail"] : []),
+                ...(completed ? ["inventory-stock-options", "inventory-movements", "lots", "lot-detail", "operational-report-options"] : []),
             ])
                 void client.invalidateQueries({ queryKey: [prefix] })
         },
@@ -212,62 +218,58 @@ export function usePackingOrders(reservationsPage = false) {
     const { reset: resetSave, mutateAsync: saveAsync, isPending: isSaving } = save
     const { reset: resetAction, mutateAsync: actionAsync, isPending: isActing } = action
     const openAdd = useCallback(() => {
+        if (writePending.current) return
         resetSave()
-        setEditingOrder(null)
-        setFormRequested(true)
-        setFormOpen(true)
-    }, [resetSave])
+        openForm()
+    }, [resetSave, openForm])
     const openEdit = useCallback(
         (order: PackingOrder) => {
+            if (writePending.current) return
             resetSave()
-            setEditingOrder(order)
-            setFormRequested(true)
-            setFormOpen(true)
+            openForm(order)
         },
-        [resetSave],
+        [resetSave, openForm],
     )
     const openAction = useCallback(
         (order: PackingOrder, next: PackingAction) => {
+            if (writePending.current) return
             resetAction()
             setActionOrder({ order, action: next })
         },
-        [resetAction],
+        [resetAction, setActionOrder],
     )
     const handleSave = useCallback(
         async (values: PackingFormValues, order: PackingOrder | null) => {
-            if (isSaving) return false
+            if (writePending.current) return false
+            writePending.current = true
             try {
                 await saveAsync({ values, order })
                 return true
             } catch {
                 return false
+            } finally {
+                writePending.current = false
             }
         },
-        [isSaving, saveAsync],
+        [saveAsync],
     )
     const handleAction = useCallback(
         async (input?: CompletePackingInput) => {
-            if (isActing || !actionOrder) return false
+            const target = getState().target
+            if (writePending.current || !target) return false
+            writePending.current = true
             try {
-                await actionAsync({ ...actionOrder, input })
+                await actionAsync({ ...target, input })
                 return true
             } catch {
                 return false
+            } finally {
+                writePending.current = false
             }
         },
-        [isActing, actionOrder, actionAsync],
+        [getState, actionAsync],
     )
-    const loadStatus = session.isPending
-        ? "loading"
-        : session.data === undefined
-          ? "error"
-          : !session.data
-            ? "signed-out"
-            : activeQuery.data !== undefined
-              ? "ready"
-              : activeQuery.isError
-                ? "error"
-                : "loading"
+    const loadStatus = getLoadStatus(session, [activeQuery])
     return {
         orders: query.data ?? EMPTY_ORDERS,
         reservations: reservations.data ?? EMPTY_RESERVATIONS,

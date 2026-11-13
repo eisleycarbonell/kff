@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { memo, useMemo } from "react"
 import { useTable } from "@tanstack/react-table"
 import {
     ArrowDown,
@@ -48,16 +48,23 @@ import {
 const pageSizeItems = [5, 10, 20, 50].map((size) => ({ value: String(size), label: String(size) }))
 
 type StockTableProps = {
+    mode?: "adjustment" | "count"
     stocks: Stock[]
     canManage: boolean
     onRecord: () => void
     onAdjust: (stock: Stock) => void
 }
 
-export function StockTable({ stocks, canManage, onRecord, onAdjust }: StockTableProps) {
+export const StockTable = memo(function StockTable({
+    stocks,
+    canManage,
+    onRecord,
+    onAdjust,
+    mode = "adjustment",
+}: StockTableProps) {
     const columns = useMemo(
-        () => createStockColumns({ onAdjust, canManage }),
-        [onAdjust, canManage],
+        () => createStockColumns({ onAdjust, canManage, mode }),
+        [onAdjust, canManage, mode],
     )
     const table = useTable({
         features: stockTableFeatures,
@@ -69,6 +76,7 @@ export function StockTable({ stocks, canManage, onRecord, onAdjust }: StockTable
             pagination: { pageIndex: 0, pageSize: 10 },
             columnVisibility: {
                 item: false,
+                lot: false,
                 location: false,
                 sku: false,
                 itemType: false,
@@ -203,7 +211,9 @@ export function StockTable({ stocks, canManage, onRecord, onAdjust }: StockTable
                                             </Button>
                                         ) : canManage ? (
                                             <Button variant="outline" onClick={onRecord}>
-                                                Record adjustment
+                                                {mode === "count"
+                                                    ? "Record count"
+                                                    : "Record adjustment"}
                                             </Button>
                                         ) : null}
                                     </EmptyContent>
@@ -289,4 +299,4 @@ export function StockTable({ stocks, canManage, onRecord, onAdjust }: StockTable
             </div>
         </div>
     )
-}
+})

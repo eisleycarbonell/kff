@@ -17,15 +17,20 @@ import {
 } from './supplier.rules.ts';
 
 type Reader = Pick<typeof db, 'select'>;
+// Keep the outer reference qualified: Drizzle strips Column qualifiers in
+// single-table SELECT projections, which would turn this into supplier_id = supplier_id.
+const supplierIdReference = sql`${suppliers}.${sql.identifier(suppliers.supplierId.name)}`;
+const linkedSupplierId = sql`${supplierItems}.${sql.identifier(supplierItems.supplierId.name)}`;
+const purchaseSupplierId = sql`${purchaseOrders}.${sql.identifier(purchaseOrders.supplierId.name)}`;
 const supplierFields = {
     supplierId: suppliers.supplierId,
     name: suppliers.name,
     email: suppliers.email,
     isActive: suppliers.isActive,
-    itemCount: sql<number>`(select count(*) from ${supplierItems} where ${supplierItems.supplierId}=${suppliers.supplierId})::integer`,
-    activeItemCount: sql<number>`(select count(*) from ${supplierItems} where ${supplierItems.supplierId}=${suppliers.supplierId} and ${supplierItems.isActive})::integer`,
-    preferredItemCount: sql<number>`(select count(*) from ${supplierItems} where ${supplierItems.supplierId}=${suppliers.supplierId} and ${supplierItems.isActive} and ${supplierItems.isPreferred})::integer`,
-    hasOpenPurchaseOrders: sql<boolean>`exists(select 1 from ${purchaseOrders} where ${purchaseOrders.supplierId}=${suppliers.supplierId} and ${purchaseOrders.status} in ('Draft','Sent','Partially Received'))`,
+    itemCount: sql<number>`(select count(*) from ${supplierItems} where ${linkedSupplierId}=${supplierIdReference})::integer`,
+    activeItemCount: sql<number>`(select count(*) from ${supplierItems} where ${linkedSupplierId}=${supplierIdReference} and ${supplierItems.isActive})::integer`,
+    preferredItemCount: sql<number>`(select count(*) from ${supplierItems} where ${linkedSupplierId}=${supplierIdReference} and ${supplierItems.isActive} and ${supplierItems.isPreferred})::integer`,
+    hasOpenPurchaseOrders: sql<boolean>`exists(select 1 from ${purchaseOrders} where ${purchaseSupplierId}=${supplierIdReference} and ${purchaseOrders.status} in ('Draft','Sent','Partially Received'))`,
     createdBy: suppliers.createdBy,
     createdAt: suppliers.createdAt,
     updatedBy: suppliers.updatedBy,
@@ -235,7 +240,7 @@ export async function createSupplierItem(
         const supplier = await lockSupplier(tx, id);
         if (!supplier) return null;
         if (!supplier.isActive)
-            throw new AppError(409, 'Reactivate the supplier before adding item offers.');
+            throw new AppError(409, 'Reactivate the supplier before linking items.');
         const item = await lockItemDefinition(tx, input.itemId, input.defaultUomId ?? null);
         if (!item.isActive || item.itemType === 'Finished Good')
             throw new AppError(400, 'Select an active raw material, packaging material, or label.');
@@ -256,7 +261,7 @@ export async function createSupplierItem(
         if (duplicate)
             throw new AppError(
                 409,
-                'This item is already linked to this supplier. Edit or reactivate the existing offer.',
+                'This item is already linked to this supplier. Reactivate the existing item link.',
             );
         if (status.isPreferred) await requirePreferredAvailable(tx, input.itemId);
         const [created] = await tx

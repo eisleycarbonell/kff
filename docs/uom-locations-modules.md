@@ -40,8 +40,9 @@ failures pass through the shared safe database-error middleware.
 - DTOs include class name, exact factor, `isInUse`, `isClassAnchor`, and audits.
   Class DTOs include `unitCount`, nullable `baseUomName`, and audits.
 - References are checked across items, supplier items, BOMs, item packaging,
-  purchase-order lines, and packing-order materials. Once referenced, class,
-  factor, and base status are locked; a name correction remains possible.
+  purchase-order lines, packing-order materials, and sales-order lines. Once
+  referenced, class, factor, and base status are locked; a name correction remains
+  possible.
   Equivalent factors such as 1 and 1.00000000 compare exactly with scaled BigInt.
 - A base with other units is a class anchor: its definition and deletion are
   locked even before operational use. Delete only unused non-anchor units.
@@ -56,13 +57,15 @@ failures pass through the shared safe database-error middleware.
   (100 characters), one of Warehouse, Packing, Branch, Store, Quarantine, Scrap,
   or In Transit, and active status (default true on create).
 - DTOs include `isInUse`, `hasOperationalActivity`, and server audit fields.
-  Historical stock, reservations, ledger entries, packing orders, or transfers
-  make a location in use. Its type then remains locked; code/name corrections
+  Historical stock, reservations, ledger entries, packing orders, transfers, or
+  delivery orders make a location in use. Its type then remains locked; code/name corrections
   are allowed.
 - Locations deactivate/reactivate through PATCH. There is no hard-delete API.
   Deactivation is blocked by positive on-hand stock, unreleased outstanding
-  reservations, packing orders in Draft/Planned/In Progress, or transfers in
-  Draft/In Transit. Check both source and destination links.
+  reservations, packing orders in Draft/Planned/In Progress, transfers in
+  Draft/In Transit, or delivery orders in Draft/In Transit. Check source and
+  destination links for packing/transfers, and source and original In Transit
+  links for customer deliveries.
 - A location update locks its row FOR UPDATE before rechecking references and
   operational activity. Inventory writers must call the intentional service
   export `requireActiveLocation(transaction, locationId)` in their transaction
@@ -89,8 +92,10 @@ The location bulk action deactivates only eligible selected rows, reports partia
 success, and retains failed rows for retry.
 
 Query keys are scoped by signed-in user: `uoms`, `uom-classes`, and `locations`.
-UOM changes also invalidate `item-uoms`, `items`, `inventory-stocks`, and
-`inventory-stock-options`; location changes invalidate both inventory keys.
+UOM changes also invalidate `item-uoms`, `items`, `inventory-stocks`,
+`inventory-stock-options`, `sales-order-options`, `delivery-order-options`,
+`sales-orders`, and `delivery-orders`. Location changes invalidate both inventory
+keys plus `delivery-order-options` and `delivery-orders`.
 Do not import another feature's internal schemas/hooks to perform invalidation.
 
 ## Verification

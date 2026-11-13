@@ -32,7 +32,7 @@ export function assertSupplierItemDefinition(input: {
         throw new AppError(400, "The supplier unit must belong to the item's primary unit class.");
     }
     if (input.isActive && !input.supplierActive) {
-        throw new AppError(409, 'Reactivate the supplier before activating its item offers.');
+        throw new AppError(409, 'Reactivate the supplier before linking its items.');
     }
     if (input.isActive && (!input.itemActive || input.itemType === 'Finished Good')) {
         throw new AppError(400, 'Select an active raw material, packaging material, or label.');

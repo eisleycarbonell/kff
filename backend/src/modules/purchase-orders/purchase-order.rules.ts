@@ -8,6 +8,35 @@ export const PURCHASE_ORDER_STATUSES = [
     'Cancelled',
 ] as const;
 export type PurchaseOrderStatus = (typeof PURCHASE_ORDER_STATUSES)[number];
+// ECMAScript String.trim whitespace, also used when matching imported SQL references.
+export const PURCHASE_ORDER_TRIM_CHARACTERS =
+    '\u0009\u000a\u000b\u000c\u000d\u0020\u00a0\u1680' +
+    '\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a' +
+    '\u2028\u2029\u202f\u205f\u3000\ufeff';
+export function generatedPurchaseOrderNumber(id: number, createdAt: Date) {
+    if (!Number.isSafeInteger(id) || id <= 0 || id > 2_147_483_647)
+        throw new Error('The purchase-order identity is invalid.');
+    return `PO-${createdAt.getUTCFullYear()}-${String(id).padStart(4, '0')}`;
+}
+export function assertSupplierMaterials(
+    lines: readonly { itemId: number }[],
+    supplierId: number,
+    offers: readonly { supplierId: number; itemId: number; isActive: boolean }[],
+) {
+    for (const line of lines)
+        if (
+            !offers.some(
+                (offer) =>
+                    offer.supplierId === supplierId &&
+                    offer.itemId === line.itemId &&
+                    offer.isActive,
+            )
+        )
+            throw new AppError(
+                409,
+                'Every purchase material must be actively linked to the selected supplier. Link the material in Suppliers or Items first.',
+            );
+}
 const SCALE = 10_000n;
 
 export function decimal4Units(value: string): bigint {

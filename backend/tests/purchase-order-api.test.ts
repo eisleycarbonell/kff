@@ -91,6 +91,7 @@ const users: UserService = {
 };
 function fakeOrders(overrides: Partial<PurchaseOrderService> = {}): PurchaseOrderService {
     return {
+        allocatePurchaseOrderNumber: async () => ({ poNumber: 'PO-2026-0002' }),
         listPurchaseOrders: async () => [summary],
         getPurchaseOrder: async () => detail,
         getPurchaseOrderOptions: async () => options,
@@ -138,7 +139,6 @@ const json = (method: string, body: unknown, token: string): RequestInit => ({
     body: JSON.stringify(body),
 });
 const input = {
-    poNumber: ' po-2026-0001 ',
     supplierId: 2,
     orderDate: '2026-10-28T00:00:00Z',
     lines: [{ itemId: 3, uomId: 1, qtyOrdered: '100.0000', unitPrice: '110.0000' }],
@@ -172,6 +172,7 @@ test('view-only and inventory-only roles cannot create, edit, send, or cancel pu
             assert.equal(read.status, 200);
             await read.json();
             for (const [path, method, body] of [
+                ['/next-number', 'POST', {}],
                 ['', 'POST', input],
                 ['/1', 'PATCH', { notes: null }],
                 ['/1/send', 'POST', {}],
@@ -185,6 +186,83 @@ test('view-only and inventory-only roles cannot create, edit, send, or cancel pu
         fakeOrders(),
         true,
     ));
+
+test('next-number POST requires purchasing permission, a strict empty body and returns only the generated reference', async () => {
+    let allocations = 0;
+    let orderWrites = 0;
+    await withApi(
+        async (origin, token) => {
+            const anonymous = await fetch(origin + '/next-number', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: '{}',
+            });
+            assert.equal(anonymous.status, 401);
+            await anonymous.json();
+            assert.equal(allocations, 0);
+            // Express normalizes a zero-byte JSON body to {}; validate nonempty invalid payloads here.
+            for (const body of [
+                null,
+                [],
+                { poNumber: 'PO-CUSTOM' },
+                { supplierId: 1 },
+                { createdBy: 7 },
+            ]) {
+                const invalid = await fetch(origin + '/next-number', json('POST', body, token));
+                assert.equal(invalid.status, 400);
+                assert.equal((await invalid.json()).success, false);
+            }
+            assert.equal(allocations, 0);
+            const response = await fetch(origin + '/next-number', json('POST', {}, token));
+            assert.equal(response.status, 200);
+            assert.deepEqual(await response.json(), {
+                success: true,
+                data: { poNumber: 'PO-2026-0042' },
+            });
+            assert.equal(allocations, 1);
+            const get = await fetch(origin + '/next-number', {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            assert.equal(get.status, 400);
+            await get.json();
+            assert.equal(allocations, 1);
+            assert.equal(orderWrites, 0);
+        },
+        fakeOrders({
+            allocatePurchaseOrderNumber: async () => {
+                allocations++;
+                return { poNumber: 'PO-2026-0042' };
+            },
+            createPurchaseOrder: async () => {
+                orderWrites++;
+                return detail;
+            },
+        }),
+    );
+});
+
+test('next-number allocation failures return safe API errors', async () => {
+    await withApi(
+        async (origin, token) => {
+            const response = await fetch(origin + '/next-number', json('POST', {}, token));
+            assert.equal(response.status, 503);
+            assert.deepEqual(await response.json(), {
+                success: false,
+                error: {
+                    message: 'The database is temporarily unavailable. Please try again later.',
+                },
+            });
+        },
+        fakeOrders({
+            allocatePurchaseOrderNumber: async () => {
+                throw new AppError(
+                    503,
+                    'The database is temporarily unavailable. Please try again later.',
+                );
+            },
+        }),
+    );
+});
 
 test('creating and editing drafts pass normalized fields and authenticated audit identity only', async () => {
     let writes = 0;
@@ -204,7 +282,7 @@ test('creating and editing drafts pass normalized fields and authenticated audit
         fakeOrders({
             createPurchaseOrder: async (parsed, actor) => {
                 writes++;
-                assert.deepEqual(parsed, { ...input, poNumber: 'PO-2026-0001' });
+                assert.deepEqual(parsed, input);
                 assert.equal(actor, 7);
                 return detail;
             },
@@ -214,6 +292,61 @@ test('creating and editing drafts pass normalized fields and authenticated audit
                 assert.deepEqual(parsed, { notes: 'revised notes', expectedDeliveryDate: null });
                 assert.equal(actor, 7);
                 return detail;
+            },
+        }),
+    );
+});
+
+test('create accepts an optional custom PO number but blank and omitted references retain automatic numbering', async () => {
+    const received: Array<string | undefined> = [];
+    await withApi(
+        async (origin, token) => {
+            for (const [poNumber, expected] of [
+                [' custom / po-42 ', 'CUSTOM / PO-42'],
+                ['', 'PO-2026-0001'],
+                ['  ', 'PO-2026-0001'],
+                [undefined, 'PO-2026-0001'],
+            ] as const) {
+                const response = await fetch(
+                    origin,
+                    json(
+                        'POST',
+                        { ...input, ...(poNumber === undefined ? {} : { poNumber }) },
+                        token,
+                    ),
+                );
+                assert.equal(response.status, 201);
+                assert.equal((await response.json()).data.poNumber, expected);
+            }
+            assert.deepEqual(received, ['CUSTOM / PO-42', undefined, undefined, undefined]);
+        },
+        fakeOrders({
+            createPurchaseOrder: async (parsed, actor) => {
+                assert.equal(actor, 7);
+                received.push(parsed.poNumber);
+                return { ...detail, poNumber: parsed.poNumber ?? detail.poNumber };
+            },
+        }),
+    );
+});
+
+test('duplicate custom numbers produce a readable conflict without exposing database details', async () => {
+    await withApi(
+        async (origin, token) => {
+            const response = await fetch(
+                origin,
+                json('POST', { ...input, poNumber: ' duplicate-42 ' }, token),
+            );
+            assert.equal(response.status, 409);
+            assert.deepEqual(await response.json(), {
+                success: false,
+                error: { message: 'A purchase order with this PO number already exists.' },
+            });
+        },
+        fakeOrders({
+            createPurchaseOrder: async (parsed) => {
+                assert.equal(parsed.poNumber, 'DUPLICATE-42');
+                throw new AppError(409, 'A purchase order with this PO number already exists.');
             },
         }),
     );
@@ -257,6 +390,9 @@ test('invalid dates, quantities, duplicate lines, IDs, audit spoofing, and lifec
     await withApi(
         async (origin, token) => {
             for (const [path, method, body] of [
+                ['', 'POST', { ...input, poNumber: 'X'.repeat(31) }],
+                ['', 'POST', { ...input, poNumber: null }],
+                ['/1', 'PATCH', { poNumber: 'PO-REPLACED' }],
                 ['', 'POST', { ...input, createdBy: 999 }],
                 ['', 'POST', { ...input, status: 'Completed' }],
                 [

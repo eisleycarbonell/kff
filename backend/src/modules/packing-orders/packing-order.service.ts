@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { db } from '../../db/index.ts';
+import { itemUnitRatio } from '../item-packaging/item-package.service.ts';
 import {
     billOfMaterials,
     inventoryReservations,
@@ -45,6 +46,7 @@ const zero = '0.0000';
 const fields = {
     packingOrderId: packingOrders.packingOrderId,
     packingOrderNumber: packingOrders.packingOrderNumber,
+    formulaRevisionId: packingOrders.formulaRevisionId,
     itemId: packingOrders.itemId,
     itemSku: items.sku,
     itemName: items.name,
@@ -88,9 +90,10 @@ export async function listPackingReservations(database: Reader = db, orderId?: n
     return database
         .select({
             reservationId: inventoryReservations.reservationId,
-            packingOrderMaterialId: inventoryReservations.packingOrderMaterialId,
+            packingOrderMaterialId: packingOrderMaterials.packingOrderMaterialId,
             packingOrderId: packingOrders.packingOrderId,
             packingOrderNumber: packingOrders.packingOrderNumber,
+            formulaRevisionId: packingOrders.formulaRevisionId,
             orderStatus: packingOrders.status,
             itemId: items.itemId,
             itemSku: items.sku,
@@ -269,6 +272,23 @@ async function snapshot(database: Reader, input: PreviewPackingOrderInput, lock 
     const units = await (lock ? unitQuery.for('share') : unitQuery);
     const primary = units.find((row) => row.uomId === product.primaryUomId);
     if (!primary) throw new AppError(400, 'The product primary unit is unavailable.');
+    const ratios = new Map<number, { sourceFactor: string; primaryFactor: string }>();
+    for (const row of bom) {
+        const item = components.find((item) => item.itemId === row.componentItemId);
+        const source = units.find((unit) => unit.uomId === row.uomId);
+        const primaryUnit = units.find((unit) => unit.uomId === item?.primaryUomId);
+        if (item && source && primaryUnit)
+            ratios.set(
+                row.bomId,
+                await itemUnitRatio(
+                    database,
+                    item.itemId,
+                    row.uomId,
+                    source.factorToBase,
+                    primaryUnit.factorToBase,
+                ),
+            );
+    }
     const materials = bom.map((row) => {
         const item = components.find((item) => item.itemId === row.componentItemId);
         if (!item || !item.isActive || item.itemType === 'Finished Good')
@@ -292,12 +312,13 @@ async function snapshot(database: Reader, input: PreviewPackingOrderInput, lock 
             requiredQty: packingRequirement(
                 row.quantity,
                 input.targetQty,
-                bomUnit.factorToBase,
-                primaryUnit.factorToBase,
+                ratios.get(row.bomId)!.sourceFactor,
+                ratios.get(row.bomId)!.primaryFactor,
             ),
         };
     });
     return {
+        formulaRevisionId: bom[0]!.revisionId,
         itemId: product.itemId,
         itemSku: product.itemSku,
         itemName: product.itemName,
@@ -336,6 +357,7 @@ async function eligibleStocks(
     itemIds: number[],
     locationId: number,
     lotIds?: number[],
+    positiveOnly = false,
 ) {
     if (lotIds?.length === 0) return [];
     return database
@@ -356,6 +378,7 @@ async function eligibleStocks(
                 eq(lots.qcStatus, 'Approved'),
                 or(isNull(lots.expirationDate), sql`${lots.expirationDate} > ${today()}`),
                 lotIds ? inArray(lots.lotId, lotIds) : undefined,
+                positiveOnly ? sql`${inventoryStock.qtyOnHand} > 0` : undefined,
             ),
         )
         .orderBy(asc(sql`coalesce(${lots.expirationDate}, '9999-12-31'::date)`), asc(lots.lotId));
@@ -429,6 +452,7 @@ export async function createPackingOrder(
             .values({
                 ...input,
                 targetQty: copied.targetQty,
+                formulaRevisionId: copied.formulaRevisionId,
                 createdBy: actorId,
                 updatedBy: actorId,
             })
@@ -539,6 +563,8 @@ export async function planPackingOrder(id: number, actorId: number, database: ty
             tx,
             materials.map((row) => row.itemId),
             order.sourceLocationId,
+            undefined,
+            true,
         );
         const lotIds = [...new Set(observed.map((row) => row.lotId))].sort((a, b) => a - b);
         // Every inventory writer locks parent lots before locations, stock, then reservations.
@@ -556,6 +582,8 @@ export async function planPackingOrder(id: number, actorId: number, database: ty
                       and(
                           inArray(inventoryReservations.lotId, lotIds),
                           eq(inventoryReservations.locationId, order.sourceLocationId),
+                          isNull(inventoryReservations.releasedAt),
+                          sql`${inventoryReservations.qtyReserved} > ${inventoryReservations.qtyConsumed}`,
                       ),
                   )
                   .orderBy(asc(inventoryReservations.reservationId))
@@ -567,28 +595,31 @@ export async function planPackingOrder(id: number, actorId: number, database: ty
             materials.map((row) => row.itemId),
             order.sourceLocationId,
             lotIds,
+            true,
         );
+        const balancesByStock = new Map(balances.map((row) => [row.stockId, row]));
+        const reservedByLot = new Map<number, bigint>();
+        for (const reservation of reservations)
+            reservedByLot.set(
+                reservation.lotId,
+                (reservedByLot.get(reservation.lotId) ?? 0n) + outstanding([reservation]),
+            );
+        const candidatesByItem = new Map<number, typeof eligible>();
+        for (const row of eligible) {
+            const candidates = candidatesByItem.get(row.itemId) ?? [];
+            candidates.push(row);
+            candidatesByItem.set(row.itemId, candidates);
+        }
+        const reservationsToInsert: (typeof inventoryReservations.$inferInsert)[] = [];
         for (const material of materials) {
-            const candidates = eligible
-                .filter((row) => row.itemId === material.itemId)
-                .map((row) => ({
-                    lotId: row.lotId,
-                    qtyOnHand:
-                        balances.find((balance) => balance.stockId === row.stockId)?.qtyOnHand ??
-                        zero,
-                    qtyReserved: quantityString(
-                        outstanding(
-                            reservations.filter(
-                                (reservation) =>
-                                    reservation.lotId === row.lotId &&
-                                    reservation.releasedAt === null,
-                            ),
-                        ),
-                    ),
-                }));
+            const candidates = (candidatesByItem.get(material.itemId) ?? []).map((row) => ({
+                lotId: row.lotId,
+                qtyOnHand: balancesByStock.get(row.stockId)?.qtyOnHand ?? zero,
+                qtyReserved: quantityString(reservedByLot.get(row.lotId) ?? 0n),
+            }));
             const allocations = allocatePackingMaterial(material.requiredQty, candidates);
             for (const allocation of allocations)
-                await tx.insert(inventoryReservations).values({
+                reservationsToInsert.push({
                     ...allocation,
                     packingOrderMaterialId: material.packingOrderMaterialId,
                     itemId: material.itemId,
@@ -597,6 +628,8 @@ export async function planPackingOrder(id: number, actorId: number, database: ty
                     updatedBy: actorId,
                 });
         }
+        if (reservationsToInsert.length)
+            await tx.insert(inventoryReservations).values(reservationsToInsert);
         await tx
             .update(packingOrders)
             .set({ status: 'Planned', updatedBy: actorId, updatedAt: new Date() })
@@ -624,17 +657,45 @@ async function guardedReservations(
         ? await tx
               .select()
               .from(inventoryReservations)
-              .where(inArray(inventoryReservations.lotId, lotIds))
+              .where(
+                  or(
+                      inArray(
+                          inventoryReservations.reservationId,
+                          observed.map((row) => row.reservationId),
+                      ),
+                      and(
+                          inArray(inventoryReservations.lotId, lotIds),
+                          eq(inventoryReservations.locationId, order.sourceLocationId),
+                          isNull(inventoryReservations.releasedAt),
+                          sql`${inventoryReservations.qtyReserved} > ${inventoryReservations.qtyConsumed}`,
+                      ),
+                  ),
+              )
               .orderBy(asc(inventoryReservations.reservationId))
               .for('update')
         : [];
-    const own = all.filter((row) => ids.includes(row.packingOrderMaterialId));
+    const materialIds = new Set(ids);
+    const own = all.filter(
+        (row): row is typeof row & { packingOrderMaterialId: number } =>
+            row.packingOrderMaterialId !== null && materialIds.has(row.packingOrderMaterialId),
+    );
+    const lotsById = new Map(lockedLots.map((row) => [row.lotId, row]));
+    const materialsById = new Map(materials.map((row) => [row.packingOrderMaterialId, row]));
+    const balancesByLot = new Map(balances.map((row) => [row.lotId, row]));
+    const ownByMaterial = new Map<number, typeof own>();
+    const reservedByLot = new Map<number, bigint>();
+    for (const row of own) {
+        const group = ownByMaterial.get(row.packingOrderMaterialId) ?? [];
+        group.push(row);
+        ownByMaterial.set(row.packingOrderMaterialId, group);
+    }
+    for (const row of all)
+        if (row.locationId === order.sourceLocationId && row.releasedAt === null)
+            reservedByLot.set(row.lotId, (reservedByLot.get(row.lotId) ?? 0n) + outstanding([row]));
     if (validate) {
         for (const row of own) {
-            const lot = lockedLots.find((lot) => lot.lotId === row.lotId);
-            const material = materials.find(
-                (material) => material.packingOrderMaterialId === row.packingOrderMaterialId,
-            );
+            const lot = lotsById.get(row.lotId);
+            const material = materialsById.get(row.packingOrderMaterialId);
             if (
                 !lot ||
                 !material ||
@@ -647,9 +708,7 @@ async function guardedReservations(
             assertPackingLot(lot.qcStatus, lot.expirationDate, today());
         }
         for (const material of materials) {
-            const reserved = outstanding(
-                own.filter((row) => row.packingOrderMaterialId === material.packingOrderMaterialId),
-            );
+            const reserved = outstanding(ownByMaterial.get(material.packingOrderMaterialId) ?? []);
             if (
                 reserved !== quantityUnits(material.requiredQty) ||
                 quantityUnits(material.consumedQty) !== 0n
@@ -657,15 +716,8 @@ async function guardedReservations(
                 throw new AppError(409, 'Every material must be fully reserved before packing.');
         }
         for (const lotId of lotIds) {
-            const balance = balances.find((row) => row.lotId === lotId);
-            const total = outstanding(
-                all.filter(
-                    (row) =>
-                        row.lotId === lotId &&
-                        row.locationId === order.sourceLocationId &&
-                        row.releasedAt === null,
-                ),
-            );
+            const balance = balancesByLot.get(lotId);
+            const total = reservedByLot.get(lotId) ?? 0n;
             if (!balance || quantityUnits(balance.qtyOnHand) < total)
                 throw new AppError(
                     409,
@@ -673,7 +725,7 @@ async function guardedReservations(
                 );
         }
     }
-    return { own, balances, lockedLots };
+    return { own, balances, lockedLots, lotsById, balancesByLot, ownByMaterial };
 }
 export async function startPackingOrder(id: number, actorId: number, database: typeof db = db) {
     return database.transaction(async (tx) => {
@@ -705,11 +757,14 @@ export async function cancelPackingOrder(id: number, actorId: number, database: 
         const materials = await lockMaterials(tx, id);
         const { own } = await guardedReservations(tx, order, materials, false);
         const now = new Date();
-        for (const reservation of own.filter((row) => row.releasedAt === null))
+        const activeIds = own
+            .filter((row) => row.releasedAt === null)
+            .map((row) => row.reservationId);
+        if (activeIds.length)
             await tx
                 .update(inventoryReservations)
                 .set({ releasedAt: now, updatedBy: actorId, updatedAt: now })
-                .where(eq(inventoryReservations.reservationId, reservation.reservationId));
+                .where(inArray(inventoryReservations.reservationId, activeIds));
         await tx
             .update(packingOrders)
             .set({ status: 'Cancelled', updatedBy: actorId, updatedAt: now })
@@ -729,7 +784,7 @@ export async function completePackingOrder(
         assertPackingStatus(order.status, ['In Progress']);
         assertLotDates(input.manufactureDate, input.expirationDate);
         const materials = await lockMaterials(tx, id);
-        const product = await validateItems(tx, order.itemId, materials);
+        await validateItems(tx, order.itemId, materials);
         const guarded = await guardedReservations(tx, order, materials);
         const consumed: { qtyConsumed: string; unitCost: string | null }[] = [];
         const now = new Date();
@@ -740,13 +795,12 @@ export async function completePackingOrder(
                 order.targetQty,
             );
             let remaining = quantityUnits(consumption);
-            for (const reservation of guarded.own.filter(
-                (row) => row.packingOrderMaterialId === material.packingOrderMaterialId,
-            )) {
+            for (const reservation of guarded.ownByMaterial.get(material.packingOrderMaterialId) ??
+                []) {
                 const reserved = outstanding([reservation]);
                 const amount = remaining < reserved ? remaining : reserved;
-                const lot = guarded.lockedLots.find((row) => row.lotId === reservation.lotId);
-                const balance = guarded.balances.find((row) => row.lotId === reservation.lotId);
+                const lot = guarded.lotsById.get(reservation.lotId);
+                const balance = guarded.balancesByLot.get(reservation.lotId);
                 if (!lot || !balance)
                     throw new AppError(409, 'The reserved stock is no longer available.');
                 if (amount > 0n) {
@@ -807,7 +861,7 @@ export async function completePackingOrder(
                 packingOrderId: id,
                 manufactureDate: input.manufactureDate,
                 expirationDate: input.expirationDate,
-                qcStatus: product.requiresQc ? 'Quarantine' : 'Approved',
+                qcStatus: 'Approved',
                 unitCost: packingUnitCost(consumed, input.actualQty),
                 createdBy: actorId,
                 updatedBy: actorId,

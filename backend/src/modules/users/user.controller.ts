@@ -30,28 +30,34 @@ export function createUserController(service: UserService) {
         },
 
         async createUser(
-            _request: Request,
+            request: Request,
             response: ValidatedResponse<typeof createUserRequestSchema>,
         ) {
-            const user = await service.createUser(response.locals.validated.body);
+            const user = await service.createUser(
+                response.locals.validated.body,
+                Number(request.user!.id),
+            );
             return sendSuccessResponse(response, user, HttpStatusCode.CREATED);
         },
 
         async updateUser(
-            _request: Request,
+            request: Request,
             response: ValidatedResponse<typeof updateUserRequestSchema>,
         ) {
             const { params, body } = response.locals.validated;
-            const user = await service.updateUser(params.id, body);
+            const user = await service.updateUser(params.id, body, Number(request.user!.id));
             if (!user) throw new AppError(HttpStatusCode.NOT_FOUND, 'User not found.');
             return sendSuccessResponse(response, user);
         },
 
         async deleteUser(
-            _request: Request,
+            request: Request,
             response: ValidatedResponse<typeof userIdRequestSchema>,
         ) {
-            const user = await service.deleteUser(response.locals.validated.params.id);
+            const user = await service.deleteUser(
+                response.locals.validated.params.id,
+                Number(request.user!.id),
+            );
             if (!user) throw new AppError(HttpStatusCode.NOT_FOUND, 'User not found.');
             return response.status(HttpStatusCode.NO_CONTENT).send();
         },

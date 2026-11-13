@@ -209,6 +209,21 @@ function formInput(values: ReceivingFormValues) {
 export function toReceivingInput(values: ReceivingFormValues): ReceivingInput {
     return receivingInputSchema.parse(formInput(values))
 }
+
+/** Adopt refreshed balances only after the receiver explicitly reviews them. */
+export function reviewReceivingBalances<T extends ReceivingFormValues>(
+    values: T,
+    options: ReceivingOptions,
+): T {
+    const order = options.orders.find((candidate) => candidate.poId === values.poId)
+    return {
+        ...values,
+        lines: values.lines.map((line) => {
+            const source = order?.lines.find((candidate) => candidate.poLineId === line.poLineId)
+            return source ? { ...line, expectedQtyReceived: source.qtyReceived } : { ...line }
+        }),
+    }
+}
 export function validateReceipt(
     values: ReceivingFormValues,
     options: ReceivingOptions,
@@ -272,11 +287,10 @@ export function validateReceipt(
                 (location) =>
                     location.locationId === line.locationId &&
                     location.isActive &&
-                    (location.locationType === "Warehouse" ||
-                        location.locationType === "Quarantine"),
+                    location.locationType === "Warehouse",
             )
         )
-            fields.locationId = "Select an active warehouse or quarantine location."
+            fields.locationId = "Select an active warehouse location."
         if (Object.keys(fields).length) lineErrors[index] = fields
     })
     if (lineErrors.some((fields) => fields && Object.keys(fields).length))

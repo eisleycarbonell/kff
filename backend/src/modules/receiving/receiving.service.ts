@@ -1,6 +1,7 @@
-import { and, asc, desc, eq, inArray, lt } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, lt, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { db } from '../../db/index.ts';
+import { itemUnitRatio } from '../item-packaging/item-package.service.ts';
 import {
     purchaseOrders,
     purchaseOrderLines,
@@ -11,6 +12,7 @@ import {
     locations,
     inventoryStock,
     inventoryTransactions,
+    itemPackaging,
 } from '../../db/schema.ts';
 import { AppError } from '../../errors/app-error.ts';
 import { requireActiveLocation } from '../locations/location.service.ts';
@@ -53,8 +55,8 @@ async function readReceipts(database: Reader, ids?: number[]) {
             purchaseUomName: purchaseUom.name,
             primaryUomId: primaryUom.uomId,
             primaryUomName: primaryUom.name,
-            purchaseUomFactor: purchaseUom.factorToBase,
-            primaryUomFactor: primaryUom.factorToBase,
+            purchaseUomFactor: sql<string>`coalesce(${itemPackaging.baseQty},${purchaseUom.factorToBase})::text`,
+            primaryUomFactor: sql<string>`case when ${itemPackaging.packagingId} is null then ${primaryUom.factorToBase}::text else '1' end`,
             qtyPrimary: inventoryTransactions.qtyChange,
             unitPrice: purchaseOrderLines.unitPrice,
             unitCost: lots.unitCost,
@@ -76,6 +78,10 @@ async function readReceipts(database: Reader, ids?: number[]) {
         .innerJoin(locations, eq(inventoryTransactions.locationId, locations.locationId))
         .innerJoin(purchaseUom, eq(purchaseOrderLines.uomId, purchaseUom.uomId))
         .innerJoin(primaryUom, eq(items.primaryUomId, primaryUom.uomId))
+        .leftJoin(
+            itemPackaging,
+            and(eq(itemPackaging.itemId, items.itemId), eq(itemPackaging.uomId, purchaseUom.uomId)),
+        )
         .where(
             and(
                 eq(inventoryTransactions.transactionType, 'Receive'),
@@ -117,10 +123,10 @@ export async function getReceivingOptions(database: Reader = db) {
                 requiresQc: items.requiresQc,
                 uomId: purchaseUom.uomId,
                 uomName: purchaseUom.name,
-                purchaseUomFactor: purchaseUom.factorToBase,
+                purchaseUomFactor: sql<string>`coalesce(${itemPackaging.baseQty},${purchaseUom.factorToBase})::text`,
                 primaryUomId: primaryUom.uomId,
                 primaryUomName: primaryUom.name,
-                primaryUomFactor: primaryUom.factorToBase,
+                primaryUomFactor: sql<string>`case when ${itemPackaging.packagingId} is null then ${primaryUom.factorToBase}::text else '1' end`,
                 qtyOrdered: purchaseOrderLines.qtyOrdered,
                 qtyReceived: purchaseOrderLines.qtyReceived,
                 unitPrice: purchaseOrderLines.unitPrice,
@@ -130,6 +136,13 @@ export async function getReceivingOptions(database: Reader = db) {
             .innerJoin(items, eq(purchaseOrderLines.itemId, items.itemId))
             .innerJoin(purchaseUom, eq(purchaseOrderLines.uomId, purchaseUom.uomId))
             .innerJoin(primaryUom, eq(items.primaryUomId, primaryUom.uomId))
+            .leftJoin(
+                itemPackaging,
+                and(
+                    eq(itemPackaging.itemId, items.itemId),
+                    eq(itemPackaging.uomId, purchaseUom.uomId),
+                ),
+            )
             .where(
                 and(
                     inArray(purchaseOrders.status, ['Sent', 'Partially Received']),
@@ -146,23 +159,27 @@ export async function getReceivingOptions(database: Reader = db) {
                 isActive: locations.isActive,
             })
             .from(locations)
-            .where(inArray(locations.locationType, ['Warehouse', 'Quarantine']))
+            .where(eq(locations.locationType, 'Warehouse'))
             .orderBy(asc(locations.name)),
     ]);
+    const linesByOrder = new Map<number, typeof lines>();
+    for (const line of lines) {
+        const group = linesByOrder.get(line.poId) ?? [];
+        group.push(line);
+        linesByOrder.set(line.poId, group);
+    }
     return {
         orders: orders
             .map((order) => ({
                 ...order,
                 status: order.status as 'Sent' | 'Partially Received',
-                lines: lines
-                    .filter((line) => line.poId === order.poId)
-                    .map(({ poId: _poId, ...line }) => ({
-                        ...line,
-                        qtyRemaining: receiptQuantityString(
-                            receiptQuantityUnits(line.qtyOrdered) -
-                                receiptQuantityUnits(line.qtyReceived),
-                        ),
-                    })),
+                lines: (linesByOrder.get(order.poId) ?? []).map(({ poId: _poId, ...line }) => ({
+                    ...line,
+                    qtyRemaining: receiptQuantityString(
+                        receiptQuantityUnits(line.qtyOrdered) -
+                            receiptQuantityUnits(line.qtyReceived),
+                    ),
+                })),
             }))
             .filter((order) => order.lines.length > 0),
         locations: locationRows,
@@ -246,16 +263,36 @@ export async function receivePurchaseOrder(
             .where(inArray(uoms.uomId, unitIds))
             .orderBy(asc(uoms.uomId))
             .for('share');
+        const linesById = new Map(poLines.map((line) => [line.poLineId, line]));
+        const itemsById = new Map(materials.map((item) => [item.itemId, item]));
+        const unitsById = new Map(units.map((unit) => [unit.uomId, unit]));
+        const ratios = new Map<number, { sourceFactor: string; primaryFactor: string }>();
+        for (const line of targetLines) {
+            const item = itemsById.get(line.itemId)!;
+            const source = unitsById.get(line.uomId);
+            const primary = unitsById.get(item.primaryUomId);
+            if (source && primary)
+                ratios.set(
+                    line.poLineId,
+                    await itemUnitRatio(
+                        tx,
+                        item.itemId,
+                        line.uomId,
+                        source.factorToBase,
+                        primary.factorToBase,
+                    ),
+                );
+        }
         const prepared = input.lines.map((entry) => {
-            const line = poLines.find((row) => row.poLineId === entry.poLineId)!;
-            const item = materials.find((row) => row.itemId === line.itemId);
+            const line = linesById.get(entry.poLineId)!;
+            const item = itemsById.get(line.itemId);
             if (!item || !item.isActive || item.itemType === 'Finished Good')
                 throw new AppError(
                     400,
                     'Receive only active raw materials, packaging materials, or labels.',
                 );
-            const purchaseUnit = units.find((unit) => unit.uomId === line.uomId);
-            const primaryUnit = units.find((unit) => unit.uomId === item.primaryUomId);
+            const purchaseUnit = unitsById.get(line.uomId);
+            const primaryUnit = unitsById.get(item.primaryUomId);
             if (!purchaseUnit || !primaryUnit || purchaseUnit.uomClassId !== primaryUnit.uomClassId)
                 throw new AppError(
                     400,
@@ -267,22 +304,20 @@ export async function receivePurchaseOrder(
                 item,
                 qtyPrimary: convertReceiptQuantity(
                     entry.qtyReceived,
-                    purchaseUnit.factorToBase,
-                    primaryUnit.factorToBase,
+                    ratios.get(line.poLineId)!.sourceFactor,
+                    ratios.get(line.poLineId)!.primaryFactor,
                 ),
                 unitCost: receiptUnitCost(
                     line.unitPrice,
-                    purchaseUnit.factorToBase,
-                    primaryUnit.factorToBase,
+                    ratios.get(line.poLineId)!.sourceFactor,
+                    ratios.get(line.poLineId)!.primaryFactor,
                 ),
             };
         });
-        const createdLots = [];
-        for (const preparedLine of prepared) {
-            const { entry, item, unitCost, qtyPrimary } = preparedLine;
-            const [lot] = await tx
-                .insert(lots)
-                .values({
+        const created = await tx
+            .insert(lots)
+            .values(
+                prepared.map(({ entry, item, unitCost }) => ({
                     lotNumber: entry.lotNumber,
                     supplierLotNumber: entry.supplierLotNumber,
                     itemId: item.itemId,
@@ -290,15 +325,19 @@ export async function receivePurchaseOrder(
                     packingOrderId: null,
                     manufactureDate: entry.manufactureDate,
                     expirationDate: entry.expirationDate,
-                    qcStatus: item.requiresQc ? 'Quarantine' : 'Approved',
+                    qcStatus: 'Approved' as const,
                     unitCost,
                     createdBy: actorId,
                     updatedBy: actorId,
-                })
-                .returning({ lotId: lots.lotId });
-            if (!lot) throw new Error('The received lot could not be created.');
-            createdLots.push({ ...preparedLine, lotId: lot.lotId, qtyPrimary });
-        }
+                })),
+            )
+            .returning({ lotId: lots.lotId, lotNumber: lots.lotNumber });
+        const lotsByNumber = new Map(created.map((lot) => [lot.lotNumber, lot.lotId]));
+        const createdLots = prepared.map((line) => {
+            const lotId = lotsByNumber.get(line.entry.lotNumber);
+            if (!lotId) throw new Error('The received lot could not be created.');
+            return { ...line, lotId };
+        });
         // New lots are private until commit. Acquire all destination guards before balance/ledger writes.
         for (const locationId of [...new Set(input.lines.map((entry) => entry.locationId))].sort(
             (a, b) => a - b,
@@ -311,35 +350,51 @@ export async function receivePurchaseOrder(
             if (!location) throw new AppError(400, 'Select an existing receiving location.');
             assertReceivingLocation(location.locationType);
         }
-        const transactionIds = [];
-        for (const received of createdLots) {
-            await tx.insert(inventoryStock).values({
+        await tx.insert(inventoryStock).values(
+            createdLots.map((received) => ({
                 itemId: received.item.itemId,
                 lotId: received.lotId,
                 locationId: received.entry.locationId,
                 qtyOnHand: received.qtyPrimary,
-            });
-            const [ledger] = await tx
-                .insert(inventoryTransactions)
-                .values({
+            })),
+        );
+        const ledgerRows = await tx
+            .insert(inventoryTransactions)
+            .values(
+                createdLots.map((received) => ({
                     itemId: received.item.itemId,
                     lotId: received.lotId,
                     locationId: received.entry.locationId,
                     qtyChange: received.qtyPrimary,
-                    transactionType: 'Receive',
+                    transactionType: 'Receive' as const,
                     poLineId: received.entry.poLineId,
                     referenceId: order.poNumber,
                     authorizedByUserId: actorId,
-                })
-                .returning({ transactionId: inventoryTransactions.transactionId });
-            if (!ledger) throw new Error('The receiving transaction could not be recorded.');
-            transactionIds.push(ledger.transactionId);
-        }
-        for (const [poLineId, qtyReceived] of plan.next)
-            await tx
-                .update(purchaseOrderLines)
-                .set({ qtyReceived, updatedBy: actorId, updatedAt: new Date() })
-                .where(eq(purchaseOrderLines.poLineId, poLineId));
+                })),
+            )
+            .returning({
+                transactionId: inventoryTransactions.transactionId,
+                lotId: inventoryTransactions.lotId,
+            });
+        const ledgerByLot = new Map(ledgerRows.map((row) => [row.lotId, row.transactionId]));
+        const transactionIds = createdLots.map((received) => {
+            const id = ledgerByLot.get(received.lotId);
+            if (!id) throw new Error('The receiving transaction could not be recorded.');
+            return id;
+        });
+        await tx
+            .update(purchaseOrderLines)
+            .set({
+                qtyReceived: sql`case ${purchaseOrderLines.poLineId} ${sql.join(
+                    [...plan.next].map(
+                        ([id, quantity]) => sql`when ${id} then ${quantity}::numeric`,
+                    ),
+                    sql` `,
+                )} end`,
+                updatedBy: actorId,
+                updatedAt: new Date(),
+            })
+            .where(inArray(purchaseOrderLines.poLineId, [...plan.next.keys()]));
         await tx
             .update(purchaseOrders)
             .set({ status: plan.poStatus, updatedBy: actorId, updatedAt: new Date() })

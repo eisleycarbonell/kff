@@ -1,6 +1,11 @@
 import { z } from "zod"
 
-export const QC_STATUSES = ["Quarantine", "Approved", "Rejected", "Expired"] as const
+export const QC_STATUSES = [
+    "Quarantine",
+    "Approved",
+    "Rejected",
+    "Expired",
+] as const
 export const LOCATION_TYPES = [
     "Warehouse",
     "Packing",
@@ -16,7 +21,10 @@ const signedQuantity = z.string().regex(/^-?\d+(?:\.\d{1,4})?$/)
 const countedQuantity = z
     .string()
     .trim()
-    .regex(/^\d{1,10}(?:\.\d{1,4})?$/, "Enter a non-negative quantity with up to 4 decimal places.")
+    .regex(
+        /^\d{1,10}(?:\.\d{1,4})?$/,
+        "Enter a non-negative quantity with up to 4 decimal places.",
+    )
 export const stockSchema = z.object({
     stockId: id,
     itemId: id,
@@ -41,6 +49,7 @@ export const stockSchema = z.object({
     locationCode: z.string(),
     locationName: z.string(),
     locationType: z.enum(LOCATION_TYPES),
+    locationIsActive: z.boolean(),
     qtyOnHand: countedQuantity,
     qtyReserved: quantity,
     qtyAvailable: signedQuantity,
@@ -67,7 +76,11 @@ export const stockOptionsSchema = z.object({
         }),
     ),
     reasons: z.array(
-        z.object({ reasonId: id, codeName: z.string(), description: z.string().nullable() }),
+        z.object({
+            reasonId: id,
+            codeName: z.string(),
+            description: z.string().nullable(),
+        }),
     ),
 })
 export const adjustmentInputSchema = z.strictObject({
@@ -95,11 +108,15 @@ export type AdjustmentFormValues = Omit<
     reasonId: number | null
     referenceId: string
 }
-export type AdjustmentFormErrors = Partial<Record<keyof AdjustmentFormValues, string>>
+export type AdjustmentFormErrors = Partial<
+    Record<keyof AdjustmentFormValues, string>
+>
 const SCALE = BigInt(10_000)
 export function quantityUnits(value: string): bigint {
     const negative = value.startsWith("-")
-    const [whole, fraction = ""] = (negative ? value.slice(1) : value).split(".")
+    const [whole, fraction = ""] = (negative ? value.slice(1) : value).split(
+        ".",
+    )
     const units = BigInt(whole) * SCALE + BigInt(fraction.padEnd(4, "0"))
     return negative ? -units : units
 }
@@ -111,7 +128,10 @@ const integerFormat = new Intl.NumberFormat("en", { maximumFractionDigits: 0 })
 export function formatStockQuantity(value: string): string {
     const units = quantityUnits(value)
     const absolute = units < BigInt(0) ? -units : units
-    const fraction = (absolute % SCALE).toString().padStart(4, "0").replace(/0+$/, "")
+    const fraction = (absolute % SCALE)
+        .toString()
+        .padStart(4, "0")
+        .replace(/0+$/, "")
     return `${units < BigInt(0) ? "-" : ""}${integerFormat.format(absolute / SCALE)}${fraction ? `.${fraction}` : ""}`
 }
 export function compareStockQuantities(left: string, right: string): number {
@@ -153,7 +173,9 @@ export function stockTotalsByUom(stocks: Stock[]) {
             qtyAvailable: quantityString(group.qtyAvailable),
         }))
 }
-export function toStockAdjustment(values: AdjustmentFormValues): StockAdjustmentInput {
+export function toStockAdjustment(
+    values: AdjustmentFormValues,
+): StockAdjustmentInput {
     return adjustmentInputSchema.parse({
         ...values,
         referenceId: values.referenceId.trim() || null,
@@ -171,12 +193,14 @@ export function validateStockAdjustment(
     const errors: AdjustmentFormErrors = {}
     if (!result.success)
         for (const issue of result.error.issues)
-            errors[issue.path[0] as keyof AdjustmentFormValues] ??= issue.message
+            errors[issue.path[0] as keyof AdjustmentFormValues] ??=
+                issue.message
     if (!options.lots.some((lot) => lot.lotId === values.lotId))
         errors.lotId = "Select an existing lot."
     if (
         !options.locations.some(
-            (location) => location.locationId === values.locationId && location.isActive,
+            (location) =>
+                location.locationId === values.locationId && location.isActive,
         )
     )
         errors.locationId = "Select an active location."
@@ -184,9 +208,16 @@ export function validateStockAdjustment(
         errors.reasonId = "Select an adjustment reason."
     if (result.success) {
         if (compareStockQuantities(result.data.qtyOnHand, reserved) < 0)
-            errors.qtyOnHand = "Counted quantity cannot be below active reservations."
-        else if (compareStockQuantities(result.data.qtyOnHand, result.data.expectedQtyOnHand) === 0)
-            errors.qtyOnHand = "Enter a count that differs from the current balance."
+            errors.qtyOnHand =
+                "Counted quantity cannot be below active reservations."
+        else if (
+            compareStockQuantities(
+                result.data.qtyOnHand,
+                result.data.expectedQtyOnHand,
+            ) === 0
+        )
+            errors.qtyOnHand =
+                "Enter a count that differs from the current balance."
     }
     return errors
 }

@@ -154,7 +154,7 @@ function SupplierFormContent({
                             <FieldDescription id={`${id}-status-help`}>
                                 {supplier?.hasOpenPurchaseOrders
                                     ? "Complete or cancel open purchase orders before deactivating this supplier."
-                                    : "Deactivating a supplier also disables its item offers and clears preferred status. Reactivation leaves offers disabled until you enable them individually."}
+                                    : "Deactivating a supplier unlinks its items. After reactivating the supplier, link its items again before purchasing."}
                             </FieldDescription>
                         </FieldContent>
                     </Field>

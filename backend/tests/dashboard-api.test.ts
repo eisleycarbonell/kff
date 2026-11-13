@@ -35,12 +35,25 @@ const mockDashboardData: Awaited<ReturnType<DashboardService['getDashboardData']
         packagingValue: '15000.0000',
         finishedGoodsValue: '60000.0000',
         totalItemsCount: 42,
-        rawMaterialsOnHand: '500.0000',
-        rawMaterialsReserved: '100.0000',
-        rawMaterialsAvailable: '400.0000',
-        finishedGoodsOnHand: '250.0000',
-        finishedGoodsReserved: '50.0000',
-        finishedGoodsAvailable: '200.0000',
+        currencyCode: 'PHP',
+        rawMaterialQuantities: [
+            {
+                primaryUomId: 1,
+                primaryUomName: 'kg',
+                onHand: '500.0000',
+                reserved: '100.0000',
+                available: '400.0000',
+            },
+        ],
+        finishedGoodsQuantities: [
+            {
+                primaryUomId: 2,
+                primaryUomName: 'pc',
+                onHand: '250.0000',
+                reserved: '50.0000',
+                available: '200.0000',
+            },
+        ],
         activePackingOrdersCount: 2,
         pendingPurchaseOrdersCount: 1,
         activeTransfersCount: 1,
@@ -50,9 +63,15 @@ const mockDashboardData: Awaited<ReturnType<DashboardService['getDashboardData']
     stockByType: [
         {
             itemType: 'Raw Material - Bulk',
-            totalOnHand: '500.0000',
-            totalReserved: '100.0000',
-            totalAvailable: '400.0000',
+            quantities: [
+                {
+                    primaryUomId: 1,
+                    primaryUomName: 'kg',
+                    onHand: '500.0000',
+                    reserved: '100.0000',
+                    available: '400.0000',
+                },
+            ],
             totalValue: '50000.0000',
             itemCount: 12,
         },
@@ -63,9 +82,15 @@ const mockDashboardData: Awaited<ReturnType<DashboardService['getDashboardData']
             locationCode: 'WH-01',
             locationName: 'Main Warehouse',
             locationType: 'Warehouse',
-            totalOnHand: '500.0000',
-            totalReserved: '100.0000',
-            totalAvailable: '400.0000',
+            quantities: [
+                {
+                    primaryUomId: 1,
+                    primaryUomName: 'kg',
+                    onHand: '500.0000',
+                    reserved: '100.0000',
+                    available: '400.0000',
+                },
+            ],
             itemCount: 12,
         },
     ],
@@ -115,50 +140,67 @@ async function withApi(
 }
 
 test('dashboard endpoint rejects unauthenticated requests with 401', async () => {
-    await withApi({ async getDashboardData() { return mockDashboardData; } }, async (origin) => {
-        const response = await fetch(`${origin}/api/dashboard`, {
-            headers: { Accept: 'application/json' },
-        });
-        assert.equal(response.status, 401);
-        const body = await response.json();
-        assert.equal(body.success, false);
-        assert.equal(body.error.message, 'Please sign in.');
-    });
+    await withApi(
+        {
+            async getDashboardData() {
+                return mockDashboardData;
+            },
+        },
+        async (origin) => {
+            const response = await fetch(`${origin}/api/dashboard`, {
+                headers: { Accept: 'application/json' },
+            });
+            assert.equal(response.status, 401);
+            const body = await response.json();
+            assert.equal(body.success, false);
+            assert.equal(body.error.message, 'Please sign in.');
+        },
+    );
 });
 
 test('dashboard endpoint returns 200 and valid data for authenticated user', async () => {
-    await withApi({ async getDashboardData() { return mockDashboardData; } }, async (origin, cookie) => {
-        const response = await fetch(`${origin}/api/dashboard`, {
-            headers: {
-                Accept: 'application/json',
-                Cookie: cookie,
+    await withApi(
+        {
+            async getDashboardData() {
+                return mockDashboardData;
             },
-        });
-        assert.equal(response.status, 200);
-        const body = await response.json();
-        assert.equal(body.success, true);
-        assert.equal(body.data.summary.totalInventoryValue, '125000.0000');
-        assert.equal(body.data.summary.totalItemsCount, 42);
-        assert.equal(body.data.stockByType.length, 1);
-        assert.equal(body.data.stockByLocation.length, 1);
-    });
+        },
+        async (origin, cookie) => {
+            const response = await fetch(`${origin}/api/dashboard`, {
+                headers: {
+                    Accept: 'application/json',
+                    Cookie: cookie,
+                },
+            });
+            assert.equal(response.status, 200);
+            const body = await response.json();
+            assert.equal(body.success, true);
+            assert.equal(body.data.summary.totalInventoryValue, '125000.0000');
+            assert.equal(body.data.summary.totalItemsCount, 42);
+            assert.equal(body.data.stockByType.length, 1);
+            assert.equal(body.data.stockByLocation.length, 1);
+        },
+    );
 });
 
 test('dashboard endpoint propagates service errors cleanly', async () => {
-    await withApi({
-        async getDashboardData() {
-            throw new AppError(503, 'Database temporarily unavailable.');
-        },
-    }, async (origin, cookie) => {
-        const response = await fetch(`${origin}/api/dashboard`, {
-            headers: {
-                Accept: 'application/json',
-                Cookie: cookie,
+    await withApi(
+        {
+            async getDashboardData() {
+                throw new AppError(503, 'Database temporarily unavailable.');
             },
-        });
-        assert.equal(response.status, 503);
-        const body = await response.json();
-        assert.equal(body.success, false);
-        assert.equal(body.error.message, 'Database temporarily unavailable.');
-    });
+        },
+        async (origin, cookie) => {
+            const response = await fetch(`${origin}/api/dashboard`, {
+                headers: {
+                    Accept: 'application/json',
+                    Cookie: cookie,
+                },
+            });
+            assert.equal(response.status, 503);
+            const body = await response.json();
+            assert.equal(body.success, false);
+            assert.equal(body.error.message, 'Database temporarily unavailable.');
+        },
+    );
 });

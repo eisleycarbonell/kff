@@ -14,11 +14,28 @@ The users module remains the architecture reference.
   purchasing/packing relationships, lot history, and ledger references.
 - Primary UOM options come from `uoms` and `uom_classes`, including their class.
 - Items referenced by suppliers, BOMs, packaging configurations, purchasing,
-  packing, lots, stock, reservations, transfers, or ledger entries have locked
-  item type and primary UOM. The backend checks this under an item-row lock.
+  packing, lots, stock, reservations, transfers, sales orders, or ledger entries
+  have locked item type and primary UOM. The backend checks this under an item-row lock.
 - Stock quantities belong in [Inventory Stocks](inventory-stocks-module.md) at
   `/inventory`. Keep catalog fields and stock balances in their separate modules.
 - Catalog edits do not change inventory quantities or historical lot costs.
+- Raw materials, packaging and labels show a visible Suppliers column. Click
+  supplier badges or Link suppliers to inspect and maintain their supplier tags.
+  The dialog writes the existing supplier-item relationship through Suppliers;
+  it requires `canManagePurchasing` for changes and preserves inactive links.
+  An item may have several suppliers. Finished goods display Packed internally.
+  Purchase Orders only permits active materials linked to its selected supplier.
+  Create/save a material first, then link its suppliers before purchasing it.
+- Item responses include `supplierLinks` with supplier/link IDs, name and both
+  active flags. Supplier edits refresh this metadata and PO options.
+- The old `requiresQc` field remains for historical compatibility. The item form
+  no longer offers a QC workflow; new receipt and packed lots are approved
+  automatically under the simplified inventory flow.
+- Items can optionally select an active brand from [Brands](brands-packing-formulas-modules.md).
+  Clearing sends `brandId: null`; omitted PATCH values retain the assignment.
+  An inactive current brand is preserved until explicitly changed or cleared.
+- Saved catalog changes refresh sales/delivery order options and collections so
+  product labels and active selections reflect current master data.
 
 ## Authentication and access
 
@@ -55,7 +72,7 @@ This prevents public account creation from bypassing catalog permissions.
 ## Fields and validation
 
 Writable fields are `sku`, `name`, `itemType`, `primaryUomId`, `unitCost`,
-`netWeightG`, `shelfLifeDays`, `requiresQc`, and `isActive`.
+`netWeightG`, `shelfLifeDays`, `requiresQc`, `isActive`, and optional nullable `brandId`.
 
 - SKU: trimmed, uppercase, required, maximum 50 characters; database uniqueness
   remains authoritative. Name is trimmed, required, and limited to 120 characters.
@@ -84,4 +101,6 @@ From `backend/`: `npm run typecheck` and `npm test`.
 From `frontend/`: `npm run test:api`, affected-file lint, TypeScript, and
 `npm run build`. Tests use fake services/fetch and do not modify live databases.
 Check persistence and visual interactions separately against the configured
-local environment. The existing tables support this module without a migration.
+local environment. Brand assignments require the additive migration documented
+in [Brands and Packing Formulas](brands-packing-formulas-modules.md). Item DTOs
+also include nullable `brandCode` and `brandName`.

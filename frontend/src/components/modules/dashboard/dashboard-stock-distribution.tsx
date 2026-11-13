@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
     formatCurrency,
-    formatQuantity,
+    formatUnitTotals,
     type DashboardStockByLocation,
     type DashboardStockByType,
 } from "@/components/modules/dashboard/dashboard.schema"
@@ -16,7 +16,9 @@ import {
 export function DashboardStockDistribution({
     stockByType,
     stockByLocation,
+    currencyCode,
 }: {
+    currencyCode: string
     stockByType: DashboardStockByType[]
     stockByLocation: DashboardStockByLocation[]
 }) {
@@ -31,7 +33,8 @@ export function DashboardStockDistribution({
                 <div className="space-y-0.5">
                     <CardTitle className="text-base font-semibold">Stock Distribution</CardTitle>
                     <CardDescription className="text-xs">
-                        Breakdown of inventory balances across spice categories and physical facilities
+                        Breakdown of inventory balances across spice categories and physical
+                        facilities
                     </CardDescription>
                 </div>
                 <div className="flex items-center gap-1.5 rounded-lg border bg-muted/40 p-1">
@@ -61,7 +64,8 @@ export function DashboardStockDistribution({
                     <div className="grid gap-3 sm:grid-cols-2">
                         {stockByType.map((item) => {
                             const val = parseFloat(item.totalValue) || 0
-                            const percentage = totalVal > 0 ? Math.min(100, Math.round((val / totalVal) * 100)) : 0
+                            const percentage =
+                                totalVal > 0 ? Math.min(100, Math.round((val / totalVal) * 100)) : 0
 
                             const typeColor =
                                 item.itemType === "Raw Material - Bulk"
@@ -79,13 +83,19 @@ export function DashboardStockDistribution({
                                 >
                                     <div className="flex items-start justify-between gap-2">
                                         <div>
-                                            <p className="text-sm font-semibold tracking-tight">{item.itemType}</p>
+                                            <p className="text-sm font-semibold tracking-tight">
+                                                {item.itemType}
+                                            </p>
                                             <p className="mt-0.5 text-xs text-muted-foreground">
-                                                {item.itemCount} distinct SKU{item.itemCount !== 1 ? "s" : ""} in stock
+                                                {item.itemCount} distinct SKU
+                                                {item.itemCount !== 1 ? "s" : ""} in stock
                                             </p>
                                         </div>
-                                        <Badge variant="outline" className="text-xs font-semibold tabular-nums">
-                                            {formatCurrency(item.totalValue)}
+                                        <Badge
+                                            variant="outline"
+                                            className="text-xs font-semibold tabular-nums"
+                                        >
+                                            {formatCurrency(item.totalValue, currencyCode)}
                                         </Badge>
                                     </div>
 
@@ -93,7 +103,9 @@ export function DashboardStockDistribution({
                                     <div className="mt-3.5">
                                         <div className="flex items-center justify-between text-[11px] text-muted-foreground">
                                             <span>Share of total value</span>
-                                            <span className="font-medium text-foreground tabular-nums">{percentage}%</span>
+                                            <span className="font-medium text-foreground tabular-nums">
+                                                {percentage}%
+                                            </span>
                                         </div>
                                         <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted">
                                             <div
@@ -106,21 +118,27 @@ export function DashboardStockDistribution({
                                     {/* Metrics row */}
                                     <div className="mt-4 grid grid-cols-3 gap-2 border-t border-border/50 pt-2.5 text-center">
                                         <div>
-                                            <p className="text-[11px] text-muted-foreground">On Hand</p>
+                                            <p className="text-[11px] text-muted-foreground">
+                                                On Hand
+                                            </p>
                                             <p className="mt-0.5 text-xs font-semibold tabular-nums">
-                                                {formatQuantity(item.totalOnHand)}
+                                                {formatUnitTotals(item.quantities, "onHand")}
                                             </p>
                                         </div>
                                         <div>
-                                            <p className="text-[11px] text-muted-foreground">Reserved</p>
+                                            <p className="text-[11px] text-muted-foreground">
+                                                Reserved
+                                            </p>
                                             <p className="mt-0.5 text-xs font-medium text-amber-600 dark:text-amber-400 tabular-nums">
-                                                {formatQuantity(item.totalReserved)}
+                                                {formatUnitTotals(item.quantities, "reserved")}
                                             </p>
                                         </div>
                                         <div>
-                                            <p className="text-[11px] text-muted-foreground">Available</p>
+                                            <p className="text-[11px] text-muted-foreground">
+                                                Available
+                                            </p>
                                             <p className="mt-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">
-                                                {formatQuantity(item.totalAvailable)}
+                                                {formatUnitTotals(item.quantities, "available")}
                                             </p>
                                         </div>
                                     </div>
@@ -145,7 +163,9 @@ export function DashboardStockDistribution({
                                 {stockByLocation.map((loc) => (
                                     <tr key={loc.locationId} className="hover:bg-muted/20">
                                         <td className="py-2.5 px-3 font-medium">
-                                            <span className="font-semibold text-foreground">{loc.locationName}</span>
+                                            <span className="font-semibold text-foreground">
+                                                {loc.locationName}
+                                            </span>
                                             <span className="ml-2 font-mono text-[10px] text-muted-foreground">
                                                 {loc.locationCode}
                                             </span>
@@ -159,13 +179,13 @@ export function DashboardStockDistribution({
                                             {loc.itemCount}
                                         </td>
                                         <td className="py-2.5 px-3 text-right font-medium tabular-nums">
-                                            {formatQuantity(loc.totalOnHand)}
+                                            {formatUnitTotals(loc.quantities, "onHand")}
                                         </td>
                                         <td className="py-2.5 px-3 text-right tabular-nums text-amber-600 dark:text-amber-400">
-                                            {formatQuantity(loc.totalReserved)}
+                                            {formatUnitTotals(loc.quantities, "reserved")}
                                         </td>
                                         <td className="py-2.5 px-3 text-right font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
-                                            {formatQuantity(loc.totalAvailable)}
+                                            {formatUnitTotals(loc.quantities, "available")}
                                         </td>
                                     </tr>
                                 ))}

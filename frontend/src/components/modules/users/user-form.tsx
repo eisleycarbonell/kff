@@ -3,9 +3,9 @@
 import { useId, useState, type FormEvent } from "react"
 
 import {
-    USER_ROLES,
     validateUser,
     type User,
+    type UserRole,
     type UserFormErrors,
     type UserFormValues,
 } from "@/components/modules/users/user.schema"
@@ -41,19 +41,16 @@ type UserFormProps = {
     onOpenChange: (open: boolean) => void
     user: User | null
     users: User[]
+    roles: UserRole[]
     onSave: (values: UserFormValues, user: User | null) => Promise<boolean>
     isSaving?: boolean
 }
-
-const roleItems = USER_ROLES.map((role) => ({
-    value: role.id,
-    label: role.name,
-}))
 
 function UserFormContent({
     onOpenChange,
     user,
     users,
+    roles,
     onSave,
     isSaving = false,
 }: Omit<UserFormProps, "open">) {
@@ -63,14 +60,12 @@ function UserFormContent({
         lastName: user?.lastName ?? "",
         email: user?.email ?? "",
         mobileNumber: user?.mobileNumber ?? "",
-        roleId: user?.roleId ?? USER_ROLES[USER_ROLES.length - 1].id,
+        roleId: user?.roleId ?? 0,
         isEmailVerified: user?.isEmailVerified ?? false,
         password: "",
     }))
     const [errors, setErrors] = useState<UserFormErrors>({})
-    const availableRoles = roleItems.some((role) => role.value === values.roleId)
-        ? roleItems
-        : [...roleItems, { value: values.roleId, label: `Role ${values.roleId}` }]
+    const availableRoles = roles.map((role) => ({ value: role.roleId, label: role.name }))
 
     function updateField<Key extends keyof UserFormValues>(name: Key, value: UserFormValues[Key]) {
         setValues((current) => ({ ...current, [name]: value }))
@@ -92,7 +87,7 @@ function UserFormContent({
             email: values.email.trim().toLowerCase(),
             mobileNumber: values.mobileNumber.trim(),
         }
-        const nextErrors = validateUser(normalized, users, user?.userId)
+        const nextErrors = validateUser(normalized, users, user?.userId, roles)
         setErrors(nextErrors)
 
         const firstInvalidField = Object.keys(nextErrors)[0]
@@ -119,11 +114,7 @@ function UserFormContent({
                         : "Create a user profile and assign their access level."}
                 </DialogDescription>
             </DialogHeader>
-            <form
-                onSubmit={handleSubmit}
-                className="space-y-5"
-                aria-busy={isSaving}
-            >
+            <form onSubmit={handleSubmit} className="space-y-5" aria-busy={isSaving}>
                 <FieldGroup className="gap-4">
                     <div className="grid gap-4 sm:grid-cols-2">
                         <Field data-invalid={Boolean(errors.firstName)}>
@@ -201,7 +192,9 @@ function UserFormContent({
                                 value={values.password}
                                 onChange={(event) => updateField("password", event.target.value)}
                                 aria-invalid={Boolean(errors.password)}
-                                aria-describedby={errors.password ? `${id}-password-error` : undefined}
+                                aria-describedby={
+                                    errors.password ? `${id}-password-error` : undefined
+                                }
                                 className="h-9"
                             />
                             <FieldError id={`${id}-password-error`}>{errors.password}</FieldError>
@@ -235,7 +228,7 @@ function UserFormContent({
                         <Select
                             name="roleId"
                             items={availableRoles}
-                            value={values.roleId}
+                            value={values.roleId || null}
                             disabled={isSaving}
                             onValueChange={(value) => {
                                 if (value !== null) updateField("roleId", value)
@@ -248,14 +241,11 @@ function UserFormContent({
                                 aria-describedby={errors.roleId ? `${id}-role-error` : undefined}
                                 className="h-9 w-full"
                             >
-                                <SelectValue />
+                                <SelectValue placeholder="Select a role" />
                             </SelectTrigger>
                             <SelectContent>
                                 {availableRoles.map((role) => (
-                                    <SelectItem
-                                        key={role.value}
-                                        value={role.value}
-                                    >
+                                    <SelectItem key={role.value} value={role.value}>
                                         {role.label}
                                     </SelectItem>
                                 ))}
@@ -263,10 +253,7 @@ function UserFormContent({
                         </Select>
                         <FieldError id={`${id}-role-error`}>{errors.roleId}</FieldError>
                     </Field>
-                    <Field
-                        orientation="horizontal"
-                        className="rounded-lg border p-3"
-                    >
+                    <Field orientation="horizontal" className="rounded-lg border p-3">
                         <Checkbox
                             id={`${id}-verified`}
                             name="isEmailVerified"

@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { memo, useMemo } from "react"
 import { useTable } from "@tanstack/react-table"
 import {
     ArrowDown,
@@ -49,7 +49,7 @@ type PurchaseOrderTableProps = {
     onSend: (order: PurchaseOrder) => void
 }
 
-export function PurchaseOrderTable({
+export const PurchaseOrderTable = memo(function PurchaseOrderTable({
     orders,
     onAdd,
     onEdit,
@@ -198,6 +198,7 @@ export function PurchaseOrderTable({
                                     <Button
                                         variant="outline"
                                         className="mt-4"
+                                        disabled={!hasFilters && isBusy}
                                         onClick={hasFilters ? clearFilters : onAdd}
                                     >
                                         {hasFilters ? "Clear filters" : "Create purchase order"}
@@ -282,4 +283,4 @@ export function PurchaseOrderTable({
             </div>
         </div>
     )
-}
+})

@@ -1,5 +1,7 @@
 "use client"
-import { useCallback, useState } from "react"
+import { createDialogStore } from "@/lib/create-dialog-store"
+import { getLoadStatus } from "@/lib/load-status"
+import { useCallback, useRef } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Toast } from "@base-ui/react/toast"
 import { apiRequest, ApiError } from "@/lib/api-request"
@@ -31,6 +33,7 @@ export async function updateLocation(id: number, input: Partial<LocationInput>):
     )
 }
 const EMPTY: Location[] = []
+const useModuleDialogs = createDialogStore<Location,Location[]>()
 export function useLocations() {
     const session = useSession()
     const client = useQueryClient()
@@ -41,10 +44,9 @@ export function useLocations() {
         queryFn: ({ signal }) => getLocations(signal),
         enabled: Boolean(session.data),
     })
-    const [formOpen, setFormOpen] = useState(false)
-    const [formRequested, setFormRequested] = useState(false)
-    const [editingLocation, setEditingLocation] = useState<Location | null>(null)
-    const [deactivatingLocations, setDeactivatingLocations] = useState<Location[]>([])
+    const { formOpen, formRequested, editing: editingLocation, openForm, setFormOpen, target, setTarget: setDeactivatingLocations, } = useModuleDialogs()
+    const writePending = useRef(false)
+    const deactivatingLocations = target ?? EMPTY
     const canManage = session.data?.permissions.canManageInventory === true
     const loadError = query.error ?? session.error
     function cache(saved: Location) {
@@ -55,7 +57,20 @@ export function useLocations() {
         )
     }
     function refresh() {
-        for (const key of ["locations", "inventory-stocks", "inventory-stock-options"])
+        for (const key of [
+            "locations",
+            "inventory-reports",
+            "inventory-control-options",
+            "inventory-controls",
+            "item-packaging-options",
+            "reorder-policies-options",
+            "operational-reports",
+            "inventory-report-options",
+            "inventory-stocks",
+            "inventory-stock-options",
+            "delivery-order-options",
+            "delivery-orders",
+        ])
             void client.invalidateQueries({ queryKey: [key] })
     }
     function mutationError(error: Error) {
@@ -122,16 +137,15 @@ export function useLocations() {
         },
         onError: mutationError,
     })
+    const { reset: resetSave } = save
     const openAdd = useCallback(() => {
-        setEditingLocation(null)
-        setFormRequested(true)
-        setFormOpen(true)
-    }, [])
+        resetSave()
+        openForm()
+    }, [openForm, resetSave])
     const openEdit = useCallback((location: Location) => {
-        setEditingLocation(location)
-        setFormRequested(true)
-        setFormOpen(true)
-    }, [])
+        resetSave()
+        openForm(location)
+    }, [openForm, resetSave])
     const openDeactivate = useCallback(
         (locations: Location[]) =>
             setDeactivatingLocations(
@@ -139,19 +153,9 @@ export function useLocations() {
                     (location) => location.isActive && !location.hasOperationalActivity,
                 ),
             ),
-        [],
+        [setDeactivatingLocations],
     )
-    const loadStatus = session.isPending
-        ? "loading"
-        : session.data === undefined
-          ? "error"
-          : !session.data
-            ? "signed-out"
-            : query.data !== undefined
-              ? "ready"
-              : query.isError
-                ? "error"
-                : "loading"
+    const loadStatus = getLoadStatus(session, [query])
     return {
         locations: query.data ?? EMPTY,
         canManage,
@@ -174,12 +178,15 @@ export function useLocations() {
             if (session.data) void query.refetch()
         },
         handleSave: async (values: LocationInput, location: Location | null) => {
-            if (save.isPending) return false
+            if (writePending.current) return false
+            writePending.current = true
             try {
                 await save.mutateAsync({ values, location })
                 return true
             } catch {
                 return false
+            } finally {
+                writePending.current = false
             }
         },
         handleDeactivate: () => {

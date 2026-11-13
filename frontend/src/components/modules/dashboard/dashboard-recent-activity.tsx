@@ -51,7 +51,7 @@ export function DashboardRecentActivityCard({ activity }: { activity: DashboardR
                     bg: "bg-teal-500/10",
                     badgeVariant: "secondary" as const,
                 }
-            case "Adjust":
+            case "Adjustment":
                 return {
                     icon: Sliders,
                     color: "text-purple-600 dark:text-purple-400",
