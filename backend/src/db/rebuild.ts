@@ -1,5 +1,6 @@
 import { createInterface } from 'node:readline/promises';
 import { stdin, stdout } from 'node:process';
+import { resolveDirectDatabaseUrl } from './connection.ts';
 import { db } from './index.ts';
 import {
     databaseTarget,
@@ -22,7 +23,7 @@ try {
         );
     } else {
         requireTestDataOptIn();
-        console.log(`Database to rebuild: ${databaseTarget(process.env.DATABASE_URL)}`);
+        console.log(`Database to rebuild: ${databaseTarget(resolveDirectDatabaseUrl())}`);
         console.log(
             'All KFF application records, including users and inventory history, will be deleted.',
         );
