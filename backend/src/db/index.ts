@@ -41,11 +41,7 @@ const clientProxy: Sql = new Proxy(lazyClientTarget, {
     },
     apply(_target, thisArg, argArray) {
         const client = getPostgresClient();
-        return Reflect.apply(
-            client as unknown as (...args: unknown[]) => unknown,
-            thisArg,
-            argArray,
-        );
+        return Reflect.apply(client as unknown as (...args: unknown[]) => unknown, thisArg, argArray);
     },
 });
 

@@ -2,6 +2,17 @@ export const API_BASE_URL = (
     process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001/api"
 ).replace(/\/+$/, "")
 
+function resolveRequestBaseUrl(): string {
+    if (
+        typeof window !== "undefined" &&
+        process.env.NEXT_PUBLIC_API_PROXY === "true" &&
+        /^https?:\/\//i.test(API_BASE_URL)
+    ) {
+        return "/api"
+    }
+    return API_BASE_URL
+}
+
 export class ApiError extends Error {
     readonly status: number
     constructor(status: number, message: string) {
@@ -21,7 +32,7 @@ export async function apiRequest(
 ): Promise<unknown> {
     let response: Response
     try {
-        response = await fetch(`${API_BASE_URL}${path}`, {
+        response = await fetch(`${resolveRequestBaseUrl()}${path}`, {
             ...options,
             credentials: "include",
             headers: {
