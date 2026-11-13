@@ -115,8 +115,42 @@ function installDevWatchpackGuard() {
 
 installDevWatchpackGuard();
 
+function resolveApiProxyDestination(): string | null {
+  const raw = (
+    process.env.BACKEND_URL ??
+    process.env.API_PROXY_TARGET ??
+    process.env.NEXT_PUBLIC_API_BASE_URL ??
+    ""
+  )
+    .trim()
+    .replace(/\/+$/, "");
+
+  if (!/^https?:\/\//i.test(raw)) {
+    return null;
+  }
+
+  return raw.endsWith("/api") ? `${raw}/:path*` : `${raw}/api/:path*`;
+}
+
+const apiProxyDestination =
+  process.env.NODE_ENV === "production" ? resolveApiProxyDestination() : null;
+
 const nextConfig: NextConfig = {
-  /* config options here */
+  ...(apiProxyDestination
+    ? {
+      env: {
+        NEXT_PUBLIC_API_PROXY: "true",
+      },
+      async rewrites() {
+        return [
+          {
+            source: "/api/:path*",
+            destination: apiProxyDestination,
+          },
+        ];
+      },
+    }
+    : {}),
 };
 
 export default nextConfig;
