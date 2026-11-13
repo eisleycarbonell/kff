@@ -137,7 +137,7 @@ export default function UnitsOfMeasurePage() {
                         onAdd={
                             catalog.classes.length
                                 ? catalog.openAdd
-                                : () => catalog.setClassesOpen(true)
+                                : catalog.openClasses
                         }
                         onEdit={catalog.openEdit}
                         onDelete={catalog.openDelete}

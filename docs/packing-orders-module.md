@@ -70,8 +70,12 @@ Completion atomically:
 - Adds destination stock and a linked Produce ledger entry.
 - Records actual output, completion time, actor, and Completed status.
 
-The finished lot has optional manufacture and expiration dates, the product's
-required QC status, and a unit cost derived from consumed lots. Unknown input
+The finished lot has optional manufacture and expiration dates, an initial
+Approved status, and a unit cost derived from consumed lots. The legacy item's
+`requiresQc` flag does not place new outputs on hold: the separate QC Decisions
+workflow is retired. Inventory managers may correct lot status through Lots,
+subject to reservation and expiry protections. Existing held/rejected lots keep
+their status. Unknown input
 costs remain unknown. Lot numbers are unique and normalized. When both dates are
 present, expiration must be later than manufacture. Repeated or stale workflow
 actions fail safely and cannot duplicate inventory.

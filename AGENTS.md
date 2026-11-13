@@ -39,6 +39,16 @@ implemented in the current code.
 - Follow the operational sequence: supplier and purchase order, receiving into
   raw/packaging storage, packing order and material reservations, packing into
   finished-goods storage, then transfer through In Transit to a branch or store.
+- The Create Purchase Order form opens with a backend-generated PO number.
+  Users may keep it or replace it with a unique custom number before saving;
+  saved numbers remain immutable. Allocating a number does not create an order.
+  PO materials require an active link to the selected supplier. Suppliers and
+  Items maintain the same supplier-item relationship, with multiple suppliers
+  permitted for one material.
+- Count Sessions, QC Decisions and Stock Dispositions are retired workflows;
+  preserve their read history without accepting new requests/actions. Use direct
+  Stock Adjustments for count corrections and Scrap & Disposal for permanent
+  removal. New received/packed lots start Approved; legacy held statuses remain.
 - Use the documented item types, compatible UOM classes, and each item's primary
   UOM for inventory quantities. Example codes, prices, dates, quantities, and
   warehouse names illustrate the flow; real operations use configured master data.

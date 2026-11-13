@@ -1,3 +1,4 @@
+import { memo } from "react"
 import {
     CalendarCheck,
     ClipboardList,
@@ -13,7 +14,7 @@ import {
     type Reservation,
 } from "@/components/modules/packing-orders/packing-order.schema"
 
-export function PackingOrderStatistics({ orders }: { orders: PackingOrder[] }) {
+export const PackingOrderStatistics = memo(function PackingOrderStatistics({ orders }: { orders: PackingOrder[] }) {
     const statistics = [
         {
             label: "Packing orders",
@@ -52,8 +53,8 @@ export function PackingOrderStatistics({ orders }: { orders: PackingOrder[] }) {
             ))}
         </div>
     )
-}
-export function ReservationStatistics({ reservations }: { reservations: Reservation[] }) {
+})
+export const ReservationStatistics = memo(function ReservationStatistics({ reservations }: { reservations: Reservation[] }) {
     const active = reservations.filter((row) => reservationStatus(row) === "Active")
     const statistics = [
         {
@@ -93,4 +94,4 @@ export function ReservationStatistics({ reservations }: { reservations: Reservat
             ))}
         </div>
     )
-}
+})

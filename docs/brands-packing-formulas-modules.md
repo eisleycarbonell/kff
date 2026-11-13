@@ -35,21 +35,22 @@ order, ledger or reservation records. Existing items initially have no brand.
 ## Packing formulas
 
 Each Finished Good has at most one current formula, stored as its existing
-`bill_of_materials` component rows. The finished product's `itemId` identifies
-the grouped formula; no separate formula ID or header table is introduced.
+`bill_of_materials` component rows. The finished product's `itemId` identifies the grouped current BOM.
+[Formula Revisions](inventory-controls-and-reports.md) provides release headers.
 Quantities describe the material required per one primary finished-product unit.
 Product, brand, output UOM, material details, component count and audits are
 returned for inspection. Read access is authenticated; writes require
-`canManagePacking`, including formula removal.
+`canManagePacking`; release review additionally requires `canManageUsers`
+and an independent user.
 
 | Method | API | Behavior |
 | --- | --- | --- |
 | GET | `/api/packing-formulas` | Complete grouped formulas and components |
 | GET | `/api/packing-formulas/options` | Active finished products, materials and units |
 | GET | `/api/packing-formulas/:itemId` | Formula or 404 |
-| POST | `/api/packing-formulas` | Create `{itemId, components}`; 201; existing formula conflicts |
-| PATCH | `/api/packing-formulas/:itemId` | Atomically replace `{components}` |
-| DELETE | `/api/packing-formulas/:itemId` | Remove current formula; 204; historical orders remain intact |
+| POST | `/api/packing-formulas` | 409; prepare a Formula Revision |
+| PATCH | `/api/packing-formulas/:itemId` | 409; release a Replace revision |
+| DELETE | `/api/packing-formulas/:itemId` | 409; release a Retire revision |
 
 Each component contains `{componentItemId, quantity, uomId}`. Require 1-100
 distinct active raw materials, packaging hardware or labels. Self-reference and
@@ -68,10 +69,11 @@ material snapshot; editing/removing today's formula does not recalculate them,
 change reservations, or prevent valid historical-order completion. A product
 without a current formula cannot create new packing orders.
 
-The editor supports current formula maintenance. Formal revision numbers,
-effective dates, maker/checker approvals and approved formula releases remain
-outside this implementation. Concurrent edits serialize, but there is no
-version-token conflict check for a form left open while another editor saves.
+Current BOM maintenance uses numbered, dated revisions with independent release
+approval. Existing BOMs are a legacy published baseline. Release is manual on or
+after the effective date; there is no scheduled automatic publication. Failed
+release rolls back the published rows and approval state. See the complete
+[release contract and UI path](inventory-controls-and-reports.md).
 
 All inputs reject unknown fields and client-provided audits. APIs use the shared
 success/error envelopes and safe database-error boundary. Reads missing records

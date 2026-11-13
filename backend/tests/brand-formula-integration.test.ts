@@ -27,7 +27,7 @@ test(
                 environment: { KFF_ALLOW_TEST_DATA: 'true' },
             });
             const brandService = await import('../src/modules/brands/brand.service.ts');
-            const formulaService =
+            const published =
                 await import('../src/modules/packing-formulas/packing-formula.service.ts');
             const itemService = await import('../src/modules/items/item.service.ts');
             const packing = await import('../src/modules/packing-orders/packing-order.service.ts');
@@ -36,7 +36,7 @@ test(
             // Read the configured pack by following garlic's existing formula rather than fixed item IDs.
             const [finishedSeed] =
                 await client`select item_id from items where sku like 'SAMPLE-FG-GARLIC-%'`;
-            const definition = await formulaService.getFormula(finishedSeed!.item_id, database);
+            const definition = await published.getFormula(finishedSeed!.item_id, database);
             assert.ok(definition);
             const hardware = definition.components.find(
                 (row) => row.componentItemId !== raw!.item_id,
@@ -47,6 +47,67 @@ test(
             const [destination] =
                 await client`select location_id from locations where code='WH-FG'`;
             const actorId = actor!.user_id as number;
+            const { createControl, actOnControl } =
+                await import('../src/modules/inventory-controls/inventory-control.service.ts');
+            const { createControlSchema } =
+                await import('../src/modules/inventory-controls/inventory-control.schema.ts');
+            const [maker] =
+                await client`select user_id from users where email='warehouse@spice.local'`;
+            let revisionSequence = 0;
+            const prepareRevision = async (
+                itemId: number,
+                components: { componentItemId: number; quantity: string; uomId: number }[],
+                changeType: 'Replace' | 'Retire' = 'Replace',
+            ) => {
+                const prepared = (await createControl(
+                    createControlSchema.parse({
+                        kind: 'Formula',
+                        requestNumber: 'NATIVE-REV-' + ++revisionSequence,
+                        notes: 'Controlled formula release verification.',
+                        itemId,
+                        components,
+                        changeType,
+                        effectiveDate: new Date().toISOString().slice(0, 10),
+                    }),
+                    maker!.user_id,
+                    database,
+                ))!;
+                await actOnControl(
+                    prepared.requestId,
+                    { action: 'submit', reviewNote: 'Prepared for review.' },
+                    maker!.user_id,
+                    database,
+                );
+                return prepared;
+            };
+            const release = async (id: number) =>
+                actOnControl(
+                    id,
+                    { action: 'approve', reviewNote: 'Independent formula release review.' },
+                    actorId,
+                    database,
+                );
+            const formulaService = {
+                ...published,
+                updateFormula: async (
+                    id: number,
+                    input: {
+                        components: { componentItemId: number; quantity: string; uomId: number }[];
+                    },
+                    _actor: number,
+                    _database: typeof database,
+                ) => {
+                    const r = await prepareRevision(id, input.components);
+                    await release(r.requestId);
+                    return published.getFormula(id, database);
+                },
+                removeFormula: async (id: number, _database: typeof database) => {
+                    const r = await prepareRevision(id, [], 'Retire');
+                    await release(r.requestId);
+                    return true;
+                },
+            };
+
             const brand = await brandService.createBrand(
                 { code: 'TEST-BRAND', name: 'Test Brand', isActive: true },
                 actorId,
@@ -77,21 +138,24 @@ test(
                 },
                 { componentItemId: hardware.componentItemId, quantity: '1', uomId: hardware.uomId },
             ];
-            await context.test('concurrent creates serialize on the finished product', async () => {
-                const results = await Promise.allSettled(
-                    [1, 2].map(() =>
-                        formulaService.createFormula(
-                            { itemId: product!.itemId, components },
-                            actorId,
-                            database,
-                        ),
-                    ),
-                );
-                assert.equal(results.filter((row) => row.status === 'fulfilled').length, 1);
-                const failed = results.find((row) => row.status === 'rejected');
-                assert.ok(failed && failed.status === 'rejected');
-                assert.equal(failed.reason.status, 409);
-            });
+            await context.test(
+                'concurrent revisions receive unique numbers and older releases cannot supersede a newer one',
+                async () => {
+                    const revisions = await Promise.all([
+                        prepareRevision(product!.itemId, components),
+                        prepareRevision(product!.itemId, components),
+                    ]);
+                    const ordered = revisions.sort(
+                        (a, b) => a.formula!.revisionNumber - b.formula!.revisionNumber,
+                    );
+                    assert.notEqual(
+                        ordered[0]!.formula!.revisionNumber,
+                        ordered[1]!.formula!.revisionNumber,
+                    );
+                    await release(ordered[1]!.requestId);
+                    await assert.rejects(release(ordered[0]!.requestId), /newer revision/);
+                },
+            );
             await context.test('incompatible units fail without replacing a formula', async () => {
                 const before = await formulaService.getFormula(product!.itemId, database);
                 await assert.rejects(

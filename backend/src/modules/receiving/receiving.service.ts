@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, inArray, lt, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { db } from '../../db/index.ts';
+import { itemUnitRatio } from '../item-packaging/item-package.service.ts';
 import {
     purchaseOrders,
     purchaseOrderLines,
@@ -11,6 +12,7 @@ import {
     locations,
     inventoryStock,
     inventoryTransactions,
+    itemPackaging,
 } from '../../db/schema.ts';
 import { AppError } from '../../errors/app-error.ts';
 import { requireActiveLocation } from '../locations/location.service.ts';
@@ -53,8 +55,8 @@ async function readReceipts(database: Reader, ids?: number[]) {
             purchaseUomName: purchaseUom.name,
             primaryUomId: primaryUom.uomId,
             primaryUomName: primaryUom.name,
-            purchaseUomFactor: purchaseUom.factorToBase,
-            primaryUomFactor: primaryUom.factorToBase,
+            purchaseUomFactor: sql<string>`coalesce(${itemPackaging.baseQty},${purchaseUom.factorToBase})::text`,
+            primaryUomFactor: sql<string>`case when ${itemPackaging.packagingId} is null then ${primaryUom.factorToBase}::text else '1' end`,
             qtyPrimary: inventoryTransactions.qtyChange,
             unitPrice: purchaseOrderLines.unitPrice,
             unitCost: lots.unitCost,
@@ -76,6 +78,10 @@ async function readReceipts(database: Reader, ids?: number[]) {
         .innerJoin(locations, eq(inventoryTransactions.locationId, locations.locationId))
         .innerJoin(purchaseUom, eq(purchaseOrderLines.uomId, purchaseUom.uomId))
         .innerJoin(primaryUom, eq(items.primaryUomId, primaryUom.uomId))
+        .leftJoin(
+            itemPackaging,
+            and(eq(itemPackaging.itemId, items.itemId), eq(itemPackaging.uomId, purchaseUom.uomId)),
+        )
         .where(
             and(
                 eq(inventoryTransactions.transactionType, 'Receive'),
@@ -117,10 +123,10 @@ export async function getReceivingOptions(database: Reader = db) {
                 requiresQc: items.requiresQc,
                 uomId: purchaseUom.uomId,
                 uomName: purchaseUom.name,
-                purchaseUomFactor: purchaseUom.factorToBase,
+                purchaseUomFactor: sql<string>`coalesce(${itemPackaging.baseQty},${purchaseUom.factorToBase})::text`,
                 primaryUomId: primaryUom.uomId,
                 primaryUomName: primaryUom.name,
-                primaryUomFactor: primaryUom.factorToBase,
+                primaryUomFactor: sql<string>`case when ${itemPackaging.packagingId} is null then ${primaryUom.factorToBase}::text else '1' end`,
                 qtyOrdered: purchaseOrderLines.qtyOrdered,
                 qtyReceived: purchaseOrderLines.qtyReceived,
                 unitPrice: purchaseOrderLines.unitPrice,
@@ -130,6 +136,13 @@ export async function getReceivingOptions(database: Reader = db) {
             .innerJoin(items, eq(purchaseOrderLines.itemId, items.itemId))
             .innerJoin(purchaseUom, eq(purchaseOrderLines.uomId, purchaseUom.uomId))
             .innerJoin(primaryUom, eq(items.primaryUomId, primaryUom.uomId))
+            .leftJoin(
+                itemPackaging,
+                and(
+                    eq(itemPackaging.itemId, items.itemId),
+                    eq(itemPackaging.uomId, purchaseUom.uomId),
+                ),
+            )
             .where(
                 and(
                     inArray(purchaseOrders.status, ['Sent', 'Partially Received']),
@@ -146,7 +159,7 @@ export async function getReceivingOptions(database: Reader = db) {
                 isActive: locations.isActive,
             })
             .from(locations)
-            .where(inArray(locations.locationType, ['Warehouse', 'Quarantine']))
+            .where(eq(locations.locationType, 'Warehouse'))
             .orderBy(asc(locations.name)),
     ]);
     const linesByOrder = new Map<number, typeof lines>();
@@ -253,6 +266,23 @@ export async function receivePurchaseOrder(
         const linesById = new Map(poLines.map((line) => [line.poLineId, line]));
         const itemsById = new Map(materials.map((item) => [item.itemId, item]));
         const unitsById = new Map(units.map((unit) => [unit.uomId, unit]));
+        const ratios = new Map<number, { sourceFactor: string; primaryFactor: string }>();
+        for (const line of targetLines) {
+            const item = itemsById.get(line.itemId)!;
+            const source = unitsById.get(line.uomId);
+            const primary = unitsById.get(item.primaryUomId);
+            if (source && primary)
+                ratios.set(
+                    line.poLineId,
+                    await itemUnitRatio(
+                        tx,
+                        item.itemId,
+                        line.uomId,
+                        source.factorToBase,
+                        primary.factorToBase,
+                    ),
+                );
+        }
         const prepared = input.lines.map((entry) => {
             const line = linesById.get(entry.poLineId)!;
             const item = itemsById.get(line.itemId);
@@ -274,13 +304,13 @@ export async function receivePurchaseOrder(
                 item,
                 qtyPrimary: convertReceiptQuantity(
                     entry.qtyReceived,
-                    purchaseUnit.factorToBase,
-                    primaryUnit.factorToBase,
+                    ratios.get(line.poLineId)!.sourceFactor,
+                    ratios.get(line.poLineId)!.primaryFactor,
                 ),
                 unitCost: receiptUnitCost(
                     line.unitPrice,
-                    purchaseUnit.factorToBase,
-                    primaryUnit.factorToBase,
+                    ratios.get(line.poLineId)!.sourceFactor,
+                    ratios.get(line.poLineId)!.primaryFactor,
                 ),
             };
         });
@@ -295,7 +325,7 @@ export async function receivePurchaseOrder(
                     packingOrderId: null,
                     manufactureDate: entry.manufactureDate,
                     expirationDate: entry.expirationDate,
-                    qcStatus: item.requiresQc ? ('Quarantine' as const) : ('Approved' as const),
+                    qcStatus: 'Approved' as const,
                     unitCost,
                     createdBy: actorId,
                     updatedBy: actorId,

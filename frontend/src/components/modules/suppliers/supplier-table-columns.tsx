@@ -150,22 +150,8 @@ export function createSupplierColumns({
                 </Badge>
             ),
         }),
-        helper.accessor("itemCount", {
-            header: "Linked items",
-            enableGlobalFilter: false,
-            sortFn: (left, right, columnId) =>
-                left.getValue<number>(columnId) - right.getValue<number>(columnId),
-            cell: ({ cell }) => <span className="tabular-nums">{cell.getValue()}</span>,
-        }),
         helper.accessor("activeItemCount", {
-            header: "Active offers",
-            enableGlobalFilter: false,
-            sortFn: (left, right, columnId) =>
-                left.getValue<number>(columnId) - right.getValue<number>(columnId),
-            cell: ({ cell }) => <span className="tabular-nums">{cell.getValue()}</span>,
-        }),
-        helper.accessor("preferredItemCount", {
-            header: "Preferred offers",
+            header: "Linked items",
             enableGlobalFilter: false,
             sortFn: (left, right, columnId) =>
                 left.getValue<number>(columnId) - right.getValue<number>(columnId),
@@ -218,7 +204,7 @@ export function createSupplierColumns({
                             <DropdownMenuLabel>Supplier actions</DropdownMenuLabel>
                             <DropdownMenuItem onClick={() => onViewItems(row.original)}>
                                 <Package />
-                                View supplied items
+                                Link items
                             </DropdownMenuItem>
                             {canManage && (
                                 <>

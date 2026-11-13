@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { memo, useMemo } from "react"
 import { useTable } from "@tanstack/react-table"
 import {
     ArrowDown,
@@ -50,7 +50,7 @@ type SalesOrderTableProps = {
     onAction: (order: SalesOrder, action: "confirm" | "cancel") => void
 }
 
-export function SalesOrderTable({
+export const SalesOrderTable = memo(function SalesOrderTable({
     orders,
     canManage,
     onAdd,
@@ -269,4 +269,4 @@ export function SalesOrderTable({
             </div>
         </div>
     )
-}
+})

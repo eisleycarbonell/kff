@@ -95,6 +95,12 @@ export function PackingOrderDetail({
                                     ],
                                     ["Scheduled", order.scheduledDate ?? "Unscheduled"],
                                     [
+                                        "Formula revision request",
+                                        order.formulaRevisionId
+                                            ? String(order.formulaRevisionId)
+                                            : "Legacy published formula",
+                                    ],
+                                    [
                                         "Material source",
                                         `${order.sourceLocationCode} · ${order.sourceLocationName}`,
                                     ],

@@ -1,7 +1,8 @@
+import { memo } from "react"
 import { FlaskConical, PackageCheck, Boxes } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import type { PackingFormula } from "@/components/modules/packing-formulas/packing-formula.schema"
-export function PackingFormulaStatistics({ formulas }: { formulas: PackingFormula[] }) {
+export const PackingFormulaStatistics = memo(function PackingFormulaStatistics({ formulas }: { formulas: PackingFormula[] }) {
     const cards = [
         { label: "Packing formulas", value: formulas.length, icon: FlaskConical },
         {
@@ -34,4 +35,4 @@ export function PackingFormulaStatistics({ formulas }: { formulas: PackingFormul
             ))}
         </div>
     )
-}
+})

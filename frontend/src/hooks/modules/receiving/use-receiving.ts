@@ -1,9 +1,11 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Toast } from "@base-ui/react/toast"
 import { apiRequest, ApiError } from "@/lib/api-request"
+import { createDialogStore } from "@/lib/create-dialog-store"
+import { getLoadStatus } from "@/lib/load-status"
 import { SESSION_QUERY_KEY, useSession } from "@/hooks/use-session"
 import {
     receivingReceiptSchema,
@@ -43,6 +45,7 @@ export const RECEIVING_QUERY_KEY = ["receiving"] as const
 export const RECEIVING_OPTIONS_QUERY_KEY = ["receiving-options"] as const
 const EMPTY_RECEIPTS: ReceivingReceipt[] = []
 const EMPTY_OPTIONS: ReceivingOptions = { orders: [], locations: [] }
+const useReceivingDialogs = createDialogStore()
 
 export function useReceiving() {
     const session = useSession()
@@ -50,8 +53,7 @@ export function useReceiving() {
     const { add: showToast } = Toast.useToastManager()
     const canReceive = session.data?.permissions.canManageInventory === true
     const queryKey = [...RECEIVING_QUERY_KEY, session.data?.userId]
-    const [formOpen, setFormOpen] = useState(false)
-    const [formRequested, setFormRequested] = useState(false)
+    const { formOpen, formRequested, openForm, setFormOpen } = useReceivingDialogs()
     const submissionPending = useRef(false)
     const receiptsQuery = useQuery({
         queryKey,
@@ -89,6 +91,13 @@ export function useReceiving() {
                 "purchase-order-options",
                 "suppliers",
                 "inventory-stocks",
+                "inventory-reports",
+                "inventory-control-options",
+                "operational-reports",
+                "operational-report-options",
+                "packing-preview",
+                "transfer-options",
+                "delivery-order-options",
                 "inventory-stock-options",
                 "lots",
                 "lot-detail",
@@ -121,9 +130,8 @@ export function useReceiving() {
     const openAdd = useCallback(() => {
         if (!canReceive || submissionPending.current) return
         reset()
-        setFormRequested(true)
-        setFormOpen(true)
-    }, [canReceive, reset])
+        openForm()
+    }, [canReceive, reset, openForm])
     const handleReceive = useCallback(
         async (values: ReceivingFormValues) => {
             if (submissionPending.current) return false
@@ -152,17 +160,7 @@ export function useReceiving() {
         const result = await refetchOptions()
         return result.isSuccess ? result.data : null
     }, [canReceive, refetchOptions, signedIn])
-    const loadStatus = session.isPending
-        ? "loading"
-        : session.data === undefined
-          ? "error"
-          : !session.data
-            ? "signed-out"
-            : receiptsQuery.data !== undefined
-              ? "ready"
-              : receiptsQuery.isError
-                ? "error"
-                : "loading"
+    const loadStatus = getLoadStatus(session, [receiptsQuery])
     return {
         receipts: receiptsQuery.data ?? EMPTY_RECEIPTS,
         canReceive,

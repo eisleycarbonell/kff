@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { memo, useMemo } from "react"
 import { useTable } from "@tanstack/react-table"
 import {
     ArrowDown,
@@ -37,7 +37,7 @@ const pageSizeItems = [5, 10, 20, 50].map((size) => ({ value: String(size), labe
 
 type LotTableProps = { lots: Lot[]; canManage: boolean; isBusy: boolean; onView: (lot: Lot) => void; onEdit: (lot: Lot) => void }
 
-export function LotTable({ lots, canManage, isBusy, onView, onEdit }: LotTableProps) {
+export const LotTable = memo(function LotTable({ lots, canManage, isBusy, onView, onEdit }: LotTableProps) {
     const columns = useMemo(() => createLotColumns({ canManage, isBusy, onView, onEdit }), [canManage, isBusy, onView, onEdit])
     const table = useTable({
         features: lotTableFeatures,
@@ -251,4 +251,4 @@ export function LotTable({ lots, canManage, isBusy, onView, onEdit }: LotTablePr
             </div>
         </div>
     )
-}
+})

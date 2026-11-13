@@ -16,6 +16,7 @@ import {
 } from "lucide-react"
 import { NavMain } from "@/components/layout/nav-main"
 import { NavUser } from "@/components/layout/nav-user"
+import { useCompanySettings } from "@/hooks/modules/company-settings/use-company-settings"
 import { useSession } from "@/hooks/use-session"
 import {
     Sidebar,
@@ -51,7 +52,7 @@ const data = {
                 { title: "Lots / Batches", url: "/inventory/lots" },
                 { title: "Stock Movements", url: "/inventory/transactions" },
                 { title: "Stock Adjustments", url: "/inventory/adjustments" },
-                { title: "Stock Counts", url: "/inventory/counts" },
+                { title: "Scrap & Disposal", url: "/inventory/scrap" },
             ],
         },
         {
@@ -113,6 +114,10 @@ const data = {
                 },
                 { title: "Brands", url: "/brands" },
                 { title: "Packing Formulas", url: "/bom" },
+                { title: "Formula Revisions", url: "/formula-revisions" },
+                { title: "Item Packaging", url: "/item-packaging" },
+                { title: "Reorder Levels", url: "/reorder-policies" },
+                { title: "Reason Codes", url: "/reason-codes" },
                 {
                     title: "Suppliers",
                     url: "/suppliers",
@@ -132,7 +137,13 @@ const data = {
             title: "Reports",
             url: "#",
             icon: ChartNoAxesCombined,
-            items: [{ title: "Inventory Reports", url: "/reports/inventory" }],
+            items: [
+                { title: "Inventory Reports", url: "/reports/inventory" },
+                { title: "Packing Report", url: "/reports/packing" },
+                { title: "Purchasing Report", url: "/reports/purchasing" },
+                { title: "Transfer Report", url: "/reports/transfers" },
+                { title: "Lot Genealogy", url: "/reports/genealogy" },
+            ],
         },
         {
             title: "Users & Access",
@@ -160,6 +171,7 @@ const data = {
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const session = useSession()
+    const company = useCompanySettings()
     const items = data.navMain.filter(
         (item) =>
             item.title !== "Users & Access" || session.data?.permissions.canManageUsers === true,
@@ -174,7 +186,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                                 <Command className="size-4" />
                             </div>
                             <div className="grid flex-1 text-left text-sm leading-tight">
-                                <span className="truncate font-medium">Kusina Filipino Food</span>
+                                <span className="truncate font-medium">
+                                    {company.settings?.companyName ?? "Kusina Filipino Food"}
+                                </span>
                                 <span className="truncate text-xs">Team workspace</span>
                             </div>
                         </SidebarMenuButton>

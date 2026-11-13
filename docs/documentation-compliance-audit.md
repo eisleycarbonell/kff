@@ -4,6 +4,31 @@ Review date: 7 November 2026. Scope: current repository source and available aut
 
 ## Implementation follow-up
 
+**PO numbering update (12 November 2026):** clicking Create purchase order gets
+a generated number before opening the form, then prefills the editable number
+field. The user may keep it or replace it with a unique custom reference.
+Allocation consumes the shared counter without creating an order or inventory;
+abandoned forms can leave gaps. The returned number is not reserved, so saving
+rechecks uniqueness and returns 409 if another user claimed it. Blank or
+omitted create API values retain automatic generation. Custom values are trimmed and uppercased,
+limited to 30 characters, and checked case-insensitively against all orders,
+including legacy and cancelled records. Duplicate custom values return 409.
+Every saved number remains immutable. See the current
+[purchase-order contract](purchase-orders-module.md) and
+[canonical purchasing flow](system-flow.md#5-purchasing).
+
+**Current scope update (11 November 2026):** the owner simplified the operating
+flow after the implementation follow-ups below. Purchase Orders now use
+server-generated immutable numbers and active supplier-item links to restrict
+material selection. Suppliers and Items expose those shared links. Count
+Sessions, QC Decisions and Stock Dispositions are retired from the active UI;
+their existing records remain readable history and their writes are disabled.
+Direct Stock Adjustments and independently reviewed Scrap & Disposal remain.
+New received and packed lots start Approved. The current requirements and
+remaining limits are in the [system flow](system-flow.md) and affected module
+contracts. Findings below are dated review records, not a new work list or
+evidence that the retired modules should be restored.
+
 Brands and current packing-formula maintenance have since been implemented,
 including item-brand selection, `/brands` and `/bom` screens, authenticated APIs,
 exact compatible component units, preserved historical order snapshots, and
@@ -13,6 +38,14 @@ approvals and company settings are still outside the implemented scope. See the
 [current module contract](brands-packing-formulas-modules.md) and
 [UI setup guide](ui-setup-and-happy-path.md). The previously exported audit PDF
 represents the original review, not this later implementation update.
+
+The five inventory reports at `/reports/inventory` have also since been
+implemented, with authenticated read-only APIs, operational filters, exact
+primary-unit summaries, CSV export, stock/reservation reconciliation and
+report-specific sample exercises. This resolves the inventory portion of
+finding 2; dedicated packing, purchasing, transfer and genealogy reports remain
+outside the implementation. See [Inventory Reports](inventory-reports-module.md)
+and [prepared report records](test-data.md).
 
 ## Verdict
 
@@ -139,7 +172,7 @@ These are source assessments, not signed UAT results. Scenario numbers refer to 
 
 | IDs | Assessment |
 | --- | --- |
-| 01. Supplier offers | Source supports multiple supplier offers and preferred-offer protection. |
+| 01. Supplier item links | Suppliers and Items share Link/Unlink actions, current counts and PO filtering. Legacy optional terms remain compatible; the offer editor and offer counters are removed. |
 | 02-03. Batch receiving / over-receipt | Service and rules support the required behavior; no live receiving transaction/concurrency test was run. |
 | 04-06. Packing shortage / start / below-target completion | Source and tests support intended behavior; real PostgreSQL integration suite skipped. |
 | 07. Count below reservation | Source and rule tests enforce rejection; live database behavior not demonstrated. |
@@ -175,3 +208,24 @@ Most HTTP tests use fake services and frontend tests mock requests. Passing them
 5. Run PostgreSQL integration tests, add missing real receiving/count verification, demonstrate PDF acceptance scenarios with configured data, and confirm migration, reconciliation and operational readiness.
 
 Keep the [canonical system flow](system-flow.md) as the shared specification. If the PDF's additional enterprise requirements become implementation scope, extend its relevant existing sections and module contracts explicitly; do not interpret the PDF's target procedures as already deployed capabilities.
+
+
+## Follow-up: implemented module gaps (2026-11-08)
+
+The earlier gap findings above are retained as the original audit. The following
+items are now implemented: company settings; item packaging/conversion and barcode
+maintenance; reason codes; saved reorder levels; independently reviewed count
+sessions with unchanged observations; QC evidence/decisions; stock disposition
+and scrap; numbered formula releases/effective dates/retirement; dedicated
+packing, purchasing, transfer and lot-genealogy reports. Dashboard quantity totals
+are grouped by UOM, open lists filter before limits, and shortage alerts include
+active unstocked items and use saved thresholds. See the authoritative
+[extension contract](inventory-controls-and-reports.md), [system flow](system-flow.md)
+and [sample scenarios](test-data.md).
+
+Remaining limits include manual effective-date release (no scheduler), text
+evidence references (no attachment service), manually entered request numbers,
+no historical stock reconstruction, multicurrency conversion, scanner workflow,
+invoice/payment accounting or scheduled reports. Existing manual stock adjustments
+remain a separate direct correction workflow. These limits are explicit and are
+not represented as completed modules.

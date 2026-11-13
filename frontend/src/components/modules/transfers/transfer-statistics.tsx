@@ -1,8 +1,9 @@
+import { memo } from "react"
 import { ClipboardList, Truck, PackageCheck, XCircle } from "lucide-react"
 import type { Transfer } from "@/components/modules/transfers/transfer.schema"
 import { Card, CardContent } from "@/components/ui/card"
 
-export function TransferStatistics({ transfers }: { transfers: Transfer[] }) {
+export const TransferStatistics = memo(function TransferStatistics({ transfers }: { transfers: Transfer[] }) {
     const statistics = [
         {
             label: "Draft transfers",
@@ -47,4 +48,4 @@ export function TransferStatistics({ transfers }: { transfers: Transfer[] }) {
             ))}
         </div>
     )
-}
+})

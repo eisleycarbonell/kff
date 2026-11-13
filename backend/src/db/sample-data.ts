@@ -28,6 +28,16 @@ import {
     salesOrderLines,
     deliveryOrders,
     deliveryOrderLines,
+    companySettings,
+    reorderPolicies,
+    reviewRequests,
+    reviewEvents,
+    countSessions,
+    countObservations,
+    inventoryDisposals,
+    qcDecisions,
+    formulaRevisions,
+    formulaRevisionMaterials,
     type NewInventoryTransaction,
     type Item,
     type Lot,
@@ -99,6 +109,18 @@ async function populateSampleData(tx: Transaction, now: Date, passwordHash: stri
     const admin = userRows.find((user) => user.email === SAMPLE_ADMIN_EMAIL);
     if (!admin) throw new Error('The sample administrator was not created.');
     const actor = admin.userId;
+    const maker = userRows.find((u) => u.email === 'warehouse@spice.local')!.userId;
+    await tx
+        .insert(companySettings)
+        .values({
+            settingsId: 1,
+            companyName: 'KFF Sample Trading & Packing',
+            currencyCode: 'PHP',
+            defaultReorderLevel: '10.0000',
+            expiryWarningDays: 30,
+            createdBy: actor,
+            updatedBy: actor,
+        });
     const audit = { createdBy: actor, updatedBy: actor, createdAt: day(-40), updatedAt: day(-1) };
     await tx.update(roles).set({ createdBy: actor, updatedBy: actor });
     await tx.update(users).set({ createdBy: actor, updatedBy: actor });
@@ -479,9 +501,25 @@ async function populateSampleData(tx: Transaction, now: Date, passwordHash: stri
         ]);
         await tx
             .insert(itemPackaging)
-            .values({ itemId: finished!.itemId, uomId: box!.uomId, baseQty: '12.0000', ...audit });
+            .values({
+                itemId: finished!.itemId,
+                uomId: box!.uomId,
+                baseQty: '12.0000',
+                barcode: 'SAMPLE-' + product.code + '-BOX',
+                grossWeightG: String(product.grams * 12),
+                ...audit,
+            });
     }
 
+    // Low Stock must include active catalog items that have never had a lot or receipt.
+    await tx.insert(items).values({
+        sku: 'SAMPLE-RM-REPORT-ZERO',
+        name: 'Sample Unstocked Report Material',
+        itemType: 'Raw Material - Bulk',
+        primaryUomId: kg!.uomId,
+        unitCost: '0.0000',
+        ...audit,
+    });
     const packedLots = new Map<string, Lot>();
     const pack = async (
         code: string,
@@ -1018,4 +1056,187 @@ async function populateSampleData(tx: Transaction, now: Date, passwordHash: stri
             qtyOnHand: quantityString(units),
         })),
     );
+    await tx.insert(reorderPolicies).values([
+        { itemId: garlic.itemId, reorderLevel: '25.0000', ...audit },
+        { itemId: finishedItems.get('GARLIC')!.itemId, reorderLevel: '100.0000', ...audit },
+    ]);
+    async function request(
+        number: string,
+        kind: 'Count' | 'Scrap' | 'Disposition' | 'QC' | 'Formula',
+        status: 'Draft' | 'Submitted' | 'Approved',
+        notes: string,
+    ) {
+        const [row] = await tx
+            .insert(reviewRequests)
+            .values({
+                requestNumber: number,
+                kind,
+                status,
+                notes,
+                evidenceReference: 'Training record ' + number,
+                createdBy: maker,
+                updatedBy: status === 'Approved' ? actor : maker,
+                createdAt: now,
+                updatedAt: now,
+                ...(status !== 'Draft' ? { submittedBy: maker, submittedAt: now } : {}),
+                ...(status === 'Approved'
+                    ? {
+                          reviewedBy: actor,
+                          reviewedAt: now,
+                          reviewNote: 'Independent sample review: unchanged count confirmed.',
+                      }
+                    : {}),
+            })
+            .returning();
+        await tx
+            .insert(reviewEvents)
+            .values([
+                {
+                    requestId: row!.requestId,
+                    action: 'create',
+                    note: notes,
+                    actorId: maker,
+                    createdAt: now,
+                },
+                ...(status !== 'Draft'
+                    ? [
+                          {
+                              requestId: row!.requestId,
+                              action: 'submit',
+                              note: 'Prepared for independent review.',
+                              actorId: maker,
+                              createdAt: now,
+                          },
+                      ]
+                    : []),
+                ...(status === 'Approved'
+                    ? [
+                          {
+                              requestId: row!.requestId,
+                              action: 'approve',
+                              note: 'Independent sample review: unchanged count confirmed.',
+                              actorId: actor,
+                              createdAt: now,
+                          },
+                      ]
+                    : []),
+            ]);
+        return row!.requestId;
+    }
+    const garlicLot = purchasedLots.get(garlic.itemId)!;
+    const garlicBalance = quantityString(
+        balances.get(garlicLot.lotId + ':' + location('WH-RM'))!.units,
+    );
+    for (const status of ['Draft', 'Approved'] as const) {
+        const requestId = await request(
+            'SAMPLE-COUNT-SESSION-' + status.toUpperCase(),
+            'Count',
+            status,
+            'Physical count observation for garlic; no ledger movement for unchanged counts.',
+        );
+        await tx
+            .insert(countSessions)
+            .values({ requestId, locationId: location('WH-RM'), reasonId: countReason!.reasonId });
+        await tx
+            .insert(countObservations)
+            .values({
+                requestId,
+                lotId: garlicLot.lotId,
+                expectedQty: garlicBalance,
+                countedQty: status === 'Approved' ? garlicBalance : null,
+                observedBy: status === 'Approved' ? maker : null,
+                observedAt: status === 'Approved' ? now : null,
+            });
+    }
+    const scrapId = await request(
+        'SAMPLE-SCRAP-REVIEW',
+        'Scrap',
+        'Submitted',
+        'Dispose of a measured portion of expired chili after independent review.',
+    );
+    await tx
+        .insert(inventoryDisposals)
+        .values({
+            requestId: scrapId,
+            lotId: expiredLot!.lotId,
+            sourceLocationId: location('QC-HOLD'),
+            reasonId: expiredReason!.reasonId,
+            quantity: '0.2500',
+            expectedQty: quantityString(
+                balances.get(expiredLot!.lotId + ':' + location('QC-HOLD'))!.units,
+            ),
+        });
+    const [qcLot] = await tx
+        .select()
+        .from(lots)
+        .where(sql`${lots.lotNumber} = 'SAMPLE-LOT-GARLIC-QC'`);
+    const qcId = await request(
+        'SAMPLE-QC-REVIEW',
+        'QC',
+        'Submitted',
+        'Laboratory evidence supports approving quarantined garlic; release storage separately.',
+    );
+    await tx
+        .insert(qcDecisions)
+        .values({
+            requestId: qcId,
+            lotId: qcLot!.lotId,
+            previousStatus: 'Quarantine',
+            newStatus: 'Approved',
+        });
+    const dispositionId = await request(
+        'SAMPLE-DISPOSITION-DRAFT',
+        'Disposition',
+        'Draft',
+        'Move expired chili into the scrap holding location; this does not dispose of stock.',
+    );
+    await tx
+        .insert(inventoryDisposals)
+        .values({
+            requestId: dispositionId,
+            lotId: expiredLot!.lotId,
+            sourceLocationId: location('QC-HOLD'),
+            destinationLocationId: location('SCRAP'),
+            reasonId: expiredReason!.reasonId,
+            quantity: '0.5000',
+            expectedQty: quantityString(
+                balances.get(expiredLot!.lotId + ':' + location('QC-HOLD'))!.units,
+            ),
+        });
+    const revisionId = await request(
+        'SAMPLE-FORMULA-REVIEW',
+        'Formula',
+        'Submitted',
+        'Release revision one of the garlic formula for future packing orders.',
+    );
+    await tx
+        .insert(formulaRevisions)
+        .values({
+            requestId: revisionId,
+            itemId: finishedItems.get('GARLIC')!.itemId,
+            revisionNumber: 1,
+            effectiveDate: date(0),
+            changeType: 'Replace',
+        });
+    const product = sampleProducts.find((p) => p.code === 'GARLIC')!;
+    await tx
+        .insert(formulaRevisionMaterials)
+        .values([
+            {
+                requestId: revisionId,
+                componentItemId: garlic.itemId,
+                quantity: quantityString(BigInt(product.grams) * 10n),
+                uomId: kg!.uomId,
+            },
+            ...[
+                componentItems.get(product.pack)!,
+                componentItems.get('LABEL-GARLIC')!,
+                componentItems.get('SEAL')!,
+            ].map((item) => ({
+                requestId: revisionId,
+                componentItemId: item.itemId,
+                quantity: '1.000000',
+                uomId: pc!.uomId,
+            })),
+        ]);
 }

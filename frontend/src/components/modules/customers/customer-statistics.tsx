@@ -1,9 +1,10 @@
+import { memo } from "react"
 import { UserCheck, UserRoundX, UsersRound } from "lucide-react"
 
 import type { Customer } from "@/components/modules/customers/customer.schema"
 import { Card, CardContent } from "@/components/ui/card"
 
-export function CustomerStatistics({ customers }: { customers: Customer[] }) {
+export const CustomerStatistics = memo(function CustomerStatistics({ customers }: { customers: Customer[] }) {
     const activeCount = customers.filter((customer) => customer.isActive).length
     const statistics = [
         {
@@ -44,4 +45,4 @@ export function CustomerStatistics({ customers }: { customers: Customer[] }) {
             ))}
         </div>
     )
-}
+})

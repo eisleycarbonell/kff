@@ -2,9 +2,7 @@
 
 import dynamic from "next/dynamic"
 import Link from "next/link"
-import { useCallback, useState } from "react"
 
-import type { Lot } from "@/components/modules/lots/lot.schema"
 import { LotStatistics } from "@/components/modules/lots/lot-statistics"
 import { LotTable } from "@/components/modules/lots/lot-table"
 import { PageHeader } from "@/components/shared/page-header"
@@ -35,23 +33,14 @@ export default function LotsPage() {
         formRequested,
         editingLot,
         openEdit,
+        viewingLot,
+        detailOpen,
+        setDetailOpen,
+        openDetail,
         handleSave,
         isSaving,
         saveError,
     } = useLots()
-    const [viewingLot, setViewingLot] = useState<Lot | null>(null)
-    const [detailOpen, setDetailOpen] = useState(false)
-    const openDetail = useCallback((lot: Lot) => {
-        setViewingLot(lot)
-        setDetailOpen(true)
-    }, [])
-    const editLot = useCallback(
-        (lot: Lot) => {
-            setDetailOpen(false)
-            openEdit(lot)
-        },
-        [openEdit],
-    )
 
     return (
         <>
@@ -112,12 +101,44 @@ export default function LotsPage() {
                         </Alert>
                     )}
                     <LotStatistics lots={lots} />
+                    <details className="rounded-xl border bg-card p-5 text-sm">
+                        <summary className="cursor-pointer rounded-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                            Why does a lot have reserved stock?
+                        </summary>
+                        <div className="mt-4 space-y-3 text-muted-foreground">
+                            <p>
+                                <strong className="font-medium text-foreground">Reserved</strong>{" "}
+                                shows stock already committed to an active order, so
+                                another order cannot use it. It is still included in
+                                on-hand stock. For example, 150 kg on hand with 30 kg
+                                reserved leaves 120 kg available.
+                            </p>
+                            <p>
+                                Packing reservations protect selected materials until
+                                packing completion records consumption and releases any
+                                unused quantity. Customer delivery reservations protect
+                                dispatched goods in In Transit until the customer receives
+                                them. Confirming a sales order or saving a draft delivery
+                                does not reserve warehouse stock.
+                            </p>
+                            <p>
+                                These columns total the lot across all locations. Open a
+                                lot to see its location balances, source purchase or
+                                packing order, and movement history. Use{" "}
+                                <Link href="/inventory" className="font-medium text-foreground underline underline-offset-4">
+                                    Inventory Stock
+                                </Link>{" "}
+                                to compare locations. Available stock must also meet
+                                quality, expiry, and location rules before use.
+                            </p>
+                        </div>
+                    </details>
                     <LotTable
                         lots={lots}
                         canManage={canManage}
                         isBusy={isSaving}
                         onView={openDetail}
-                        onEdit={editLot}
+                        onEdit={openEdit}
                     />
                 </>
             )}
@@ -139,7 +160,7 @@ export default function LotsPage() {
                     lot={viewingLot}
                     canManage={canManage}
                     isBusy={isSaving}
-                    onEdit={editLot}
+                    onEdit={openEdit}
                 />
             )}
         </>

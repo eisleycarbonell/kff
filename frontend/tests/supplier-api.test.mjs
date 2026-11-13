@@ -362,3 +362,54 @@ test("item form validation enforces active purchase items, unique links, immutab
         )
     }
 })
+
+
+test("link, unlink and relink send only relationship fields and retain the same record", async () => {
+    let savedLink = null
+    let creates = 0
+    globalThis.fetch = async (url, request) => {
+        const body = request.body ? JSON.parse(request.body) : null
+        if (url.endsWith("/suppliers") && !request.method) {
+            return response([{ ...supplier, itemCount: savedLink ? 1 : 0,
+                activeItemCount: savedLink?.isActive ? 1 : 0 }])
+        }
+        if (request.method === "POST") {
+            assert.equal(url, "https://suppliers.example.test/api/suppliers/4/items")
+            assert.deepEqual(body, { itemId: 12, isActive: true })
+            assert.equal(++creates, 1)
+            savedLink = { ...item }
+            return response(savedLink, 201)
+        }
+        assert.equal(url, "https://suppliers.example.test/api/suppliers/4/items/8")
+        assert.equal(request.method, "PATCH")
+        assert.deepEqual(Object.keys(body), ["isActive"])
+        savedLink = { ...savedLink, isActive: body.isActive }
+        return response(savedLink)
+    }
+    assert.equal((await api.getSuppliers())[0].activeItemCount, 0)
+    const linked = await api.setSupplierItemLink(4, 12, null, true)
+    assert.equal((await api.getSuppliers())[0].activeItemCount, 1)
+    const unlinked = await api.setSupplierItemLink(4, 12, linked.supplierItemId, false)
+    const afterUnlink = (await api.getSuppliers())[0]
+    assert.equal(afterUnlink.activeItemCount, 0)
+    assert.equal(afterUnlink.itemCount, 1, "historical records are not current links")
+    const relinked = await api.setSupplierItemLink(4, 12, unlinked.supplierItemId, true)
+    assert.equal(relinked.supplierItemId, linked.supplierItemId)
+    assert.equal(relinked.defaultPrice, item.defaultPrice, "link toggles preserve stored defaults")
+    assert.equal((await api.getSuppliers())[0].activeItemCount, 1)
+    assert.equal(creates, 1)
+})
+
+test("link actions reject mismatched records and preserve permission/conflict errors", async () => {
+    for (const changes of [{ supplierId: 99 }, { itemId: 99 }, { isActive: false }]) {
+        globalThis.fetch = async () => response({ ...item, ...changes })
+        await assert.rejects(api.setSupplierItemLink(4, 12, 8, true), /invalid material link/)
+    }
+    for (const status of [403, 409]) {
+        globalThis.fetch = async () => Response.json({
+            success: false, error: { message: "Unable to link this material." },
+        }, { status })
+        await assert.rejects(api.setSupplierItemLink(4, 12, null, true),
+            (error) => error instanceof ApiError && error.status === status)
+    }
+})

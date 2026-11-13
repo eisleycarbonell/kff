@@ -8,7 +8,7 @@ import {
     EmptyContent,
 } from "@/components/ui/empty"
 
-import { useMemo } from "react"
+import { memo, useMemo } from "react"
 import { useTable } from "@tanstack/react-table"
 import {
     ArrowDown,
@@ -53,7 +53,7 @@ type UomTableProps = {
     onDelete: (unit: Uom) => void
 }
 
-export function UomTable({ uoms, classes, canManage, onAdd, onEdit, onDelete }: UomTableProps) {
+export const UomTable = memo(function UomTable({ uoms, classes, canManage, onAdd, onEdit, onDelete }: UomTableProps) {
     const columns = useMemo(
         () => createUomColumns({ onEdit, onDelete, canManage }),
         [onEdit, onDelete, canManage],
@@ -275,4 +275,4 @@ export function UomTable({ uoms, classes, canManage, onAdd, onEdit, onDelete }: 
             </div>
         </div>
     )
-}
+})

@@ -1,8 +1,9 @@
+import { memo } from "react"
 import { ClipboardList, Truck, PackageCheck } from "lucide-react"
 import type { DeliveryOrder } from "@/components/modules/delivery-orders/delivery-order.schema"
 import { Card, CardContent } from "@/components/ui/card"
 
-export function DeliveryOrderStatistics({ orders }: { orders: DeliveryOrder[] }) {
+export const DeliveryOrderStatistics = memo(function DeliveryOrderStatistics({ orders }: { orders: DeliveryOrder[] }) {
     const statistics = [
         {
             label: "Draft deliveries",
@@ -41,4 +42,4 @@ export function DeliveryOrderStatistics({ orders }: { orders: DeliveryOrder[] })
             ))}
         </div>
     )
-}
+})

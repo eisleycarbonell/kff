@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { memo, useMemo } from "react"
 import { useTable } from "@tanstack/react-table"
 import {
     ArrowDown,
@@ -55,7 +55,7 @@ type StockTableProps = {
     onAdjust: (stock: Stock) => void
 }
 
-export function StockTable({
+export const StockTable = memo(function StockTable({
     stocks,
     canManage,
     onRecord,
@@ -299,4 +299,4 @@ export function StockTable({
             </div>
         </div>
     )
-}
+})

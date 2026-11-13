@@ -287,11 +287,10 @@ export function validateReceipt(
                 (location) =>
                     location.locationId === line.locationId &&
                     location.isActive &&
-                    (location.locationType === "Warehouse" ||
-                        location.locationType === "Quarantine"),
+                    location.locationType === "Warehouse",
             )
         )
-            fields.locationId = "Select an active warehouse or quarantine location."
+            fields.locationId = "Select an active warehouse location."
         if (Object.keys(fields).length) lineErrors[index] = fields
     })
     if (lineErrors.some((fields) => fields && Object.keys(fields).length))

@@ -1,9 +1,11 @@
 "use client"
 
-import { useCallback, useRef, useState } from "react"
+import { useCallback, useRef } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Toast } from "@base-ui/react/toast"
 import { apiRequest, ApiError } from "@/lib/api-request"
+import { createDialogStore } from "@/lib/create-dialog-store"
+import { getLoadStatus } from "@/lib/load-status"
 import { SESSION_QUERY_KEY, useSession } from "@/hooks/use-session"
 import {
     brandSchema,
@@ -50,6 +52,8 @@ export async function updateBrand(brandId: number, input: UpdateBrandInput): Pro
 export const BRANDS_QUERY_KEY = ["brands"] as const
 const EMPTY_BRANDS: Brand[] = []
 
+const useDialogs = createDialogStore<Brand>()
+
 export function useBrands() {
     const session = useSession()
     const client = useQueryClient()
@@ -61,10 +65,8 @@ export function useBrands() {
         queryFn: ({ signal }) => getBrands(signal),
         enabled: Boolean(session.data),
     })
-    const [formOpen, setFormOpen] = useState(false)
-    const [formRequested, setFormRequested] = useState(false)
-    const [editingBrand, setEditingBrand] = useState<Brand | null>(null)
-    const [deactivatingBrand, setDeactivatingBrand] = useState<Brand | null>(null)
+    const { formOpen, setFormOpen, formRequested, editing: editingBrand, target: deactivatingBrand,
+        getState, setTarget: setDeactivatingBrand, openForm } = useDialogs()
     // Also guard the interval before React renders the pending mutation state.
     const writePending = useRef(false)
 
@@ -78,6 +80,8 @@ export function useBrands() {
         for (const key of [
             "items",
             "item-brands",
+            "inventory-reports",
+            "inventory-report-options",
             "packing-formulas",
             "packing-formula-options",
             "sales-order-options",
@@ -136,20 +140,16 @@ export function useBrands() {
     const openAdd = useCallback(() => {
         if (!canManage || writePending.current) return
         resetSave()
-        setEditingBrand(null)
-        setFormRequested(true)
-        setFormOpen(true)
-    }, [canManage, resetSave])
+        openForm()
+    }, [canManage, resetSave, openForm])
 
     const openEdit = useCallback(
         (brand: Brand) => {
             if (!canManage || writePending.current) return
             resetSave()
-            setEditingBrand(brand)
-            setFormRequested(true)
-            setFormOpen(true)
+            openForm(brand)
         },
-        [canManage, resetSave],
+        [canManage, resetSave, openForm],
     )
 
     const openDeactivate = useCallback(
@@ -158,7 +158,7 @@ export function useBrands() {
             resetStatus()
             setDeactivatingBrand(brand)
         },
-        [canManage, resetStatus],
+        [canManage, resetStatus, setDeactivatingBrand],
     )
 
     const handleSave = useCallback(
@@ -194,29 +194,19 @@ export function useBrands() {
     )
 
     const handleDeactivate = useCallback(async () => {
-        if (writePending.current || !deactivatingBrand) return
+        const brand = getState().target
+        if (writePending.current || !brand) return
         writePending.current = true
         try {
-            await changeBrandStatus({ brand: deactivatingBrand, isActive: false })
+            await changeBrandStatus({ brand, isActive: false })
         } catch {
             // Keep the confirmation open so the failed change can be retried.
         } finally {
             writePending.current = false
         }
-    }, [changeBrandStatus, deactivatingBrand])
+    }, [changeBrandStatus, getState])
 
-    const loadStatus = session.isPending
-        ? "loading"
-        : session.data === undefined
-          ? "error"
-          : !session.data
-            ? "signed-out"
-            : brandsQuery.data !== undefined
-              ? "ready"
-              : brandsQuery.isError
-                ? "error"
-                : "loading"
-
+    const loadStatus = getLoadStatus(session, [brandsQuery])
     return {
         brands: brandsQuery.data ?? EMPTY_BRANDS,
         canManage,

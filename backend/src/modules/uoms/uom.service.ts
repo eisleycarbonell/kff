@@ -7,6 +7,7 @@ import {
     supplierItems,
     billOfMaterials,
     itemPackaging,
+    formulaRevisionMaterials,
     purchaseOrderLines,
     packingOrderMaterials,
     salesOrderLines,
@@ -24,6 +25,7 @@ const isInUse = sql<boolean>`(
  exists(select 1 from ${items} where ${items.primaryUomId}=${uoms.uomId}) or
  exists(select 1 from ${supplierItems} where ${supplierItems.defaultUomId}=${uoms.uomId}) or
  exists(select 1 from ${billOfMaterials} where ${billOfMaterials.uomId}=${uoms.uomId}) or
+ exists(select 1 from ${formulaRevisionMaterials} where ${formulaRevisionMaterials.uomId}=${uoms.uomId}) or
  exists(select 1 from ${itemPackaging} where ${itemPackaging.uomId}=${uoms.uomId}) or
  exists(select 1 from ${purchaseOrderLines} where ${purchaseOrderLines.uomId}=${uoms.uomId}) or
  exists(select 1 from ${packingOrderMaterials} where ${packingOrderMaterials.uomId}=${uoms.uomId}) or

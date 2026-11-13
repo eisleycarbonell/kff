@@ -1,7 +1,8 @@
+import { memo } from "react"
 import { Ruler, Layers, Scale } from "lucide-react"
 import type { Uom, UomClass } from "@/components/modules/uoms/uom.schema"
 import { Card, CardContent } from "@/components/ui/card"
-export function UomStatistics({ units, classes }: { units: Uom[]; classes: UomClass[] }) {
+export const UomStatistics = memo(function UomStatistics({ units, classes }: { units: Uom[]; classes: UomClass[] }) {
     const statistics = [
         {
             label: "Total units",
@@ -40,4 +41,4 @@ export function UomStatistics({ units, classes }: { units: Uom[]; classes: UomCl
             ))}
         </div>
     )
-}
+})

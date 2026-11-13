@@ -13,18 +13,24 @@ const id = z.int().positive().max(2_147_483_647);
 const timestamp = z.iso.datetime({ offset: true });
 const decimal = z.string().trim();
 
+const unitTotalsSchema = z.array(
+    z.object({
+        primaryUomId: id,
+        primaryUomName: z.string(),
+        onHand: decimal,
+        reserved: decimal,
+        available: decimal,
+    }),
+);
 export const dashboardSummarySchema = z.object({
     totalInventoryValue: decimal,
     rawMaterialValue: decimal,
     packagingValue: decimal,
     finishedGoodsValue: decimal,
     totalItemsCount: z.number().int().nonnegative(),
-    rawMaterialsOnHand: decimal,
-    rawMaterialsReserved: decimal,
-    rawMaterialsAvailable: decimal,
-    finishedGoodsOnHand: decimal,
-    finishedGoodsReserved: decimal,
-    finishedGoodsAvailable: decimal,
+    currencyCode: z.string(),
+    rawMaterialQuantities: unitTotalsSchema,
+    finishedGoodsQuantities: unitTotalsSchema,
     activePackingOrdersCount: z.number().int().nonnegative(),
     pendingPurchaseOrdersCount: z.number().int().nonnegative(),
     activeTransfersCount: z.number().int().nonnegative(),
@@ -34,9 +40,7 @@ export const dashboardSummarySchema = z.object({
 
 export const dashboardStockByTypeSchema = z.object({
     itemType: z.enum(ITEM_TYPES),
-    totalOnHand: decimal,
-    totalReserved: decimal,
-    totalAvailable: decimal,
+    quantities: unitTotalsSchema,
     totalValue: decimal,
     itemCount: z.number().int().nonnegative(),
 });
@@ -46,9 +50,7 @@ export const dashboardStockByLocationSchema = z.object({
     locationCode: z.string(),
     locationName: z.string(),
     locationType: z.string(),
-    totalOnHand: decimal,
-    totalReserved: decimal,
-    totalAvailable: decimal,
+    quantities: unitTotalsSchema,
     itemCount: z.number().int().nonnegative(),
 });
 

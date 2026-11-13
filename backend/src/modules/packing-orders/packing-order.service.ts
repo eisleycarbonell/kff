@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { db } from '../../db/index.ts';
+import { itemUnitRatio } from '../item-packaging/item-package.service.ts';
 import {
     billOfMaterials,
     inventoryReservations,
@@ -45,6 +46,7 @@ const zero = '0.0000';
 const fields = {
     packingOrderId: packingOrders.packingOrderId,
     packingOrderNumber: packingOrders.packingOrderNumber,
+    formulaRevisionId: packingOrders.formulaRevisionId,
     itemId: packingOrders.itemId,
     itemSku: items.sku,
     itemName: items.name,
@@ -91,6 +93,7 @@ export async function listPackingReservations(database: Reader = db, orderId?: n
             packingOrderMaterialId: packingOrderMaterials.packingOrderMaterialId,
             packingOrderId: packingOrders.packingOrderId,
             packingOrderNumber: packingOrders.packingOrderNumber,
+            formulaRevisionId: packingOrders.formulaRevisionId,
             orderStatus: packingOrders.status,
             itemId: items.itemId,
             itemSku: items.sku,
@@ -269,6 +272,23 @@ async function snapshot(database: Reader, input: PreviewPackingOrderInput, lock 
     const units = await (lock ? unitQuery.for('share') : unitQuery);
     const primary = units.find((row) => row.uomId === product.primaryUomId);
     if (!primary) throw new AppError(400, 'The product primary unit is unavailable.');
+    const ratios = new Map<number, { sourceFactor: string; primaryFactor: string }>();
+    for (const row of bom) {
+        const item = components.find((item) => item.itemId === row.componentItemId);
+        const source = units.find((unit) => unit.uomId === row.uomId);
+        const primaryUnit = units.find((unit) => unit.uomId === item?.primaryUomId);
+        if (item && source && primaryUnit)
+            ratios.set(
+                row.bomId,
+                await itemUnitRatio(
+                    database,
+                    item.itemId,
+                    row.uomId,
+                    source.factorToBase,
+                    primaryUnit.factorToBase,
+                ),
+            );
+    }
     const materials = bom.map((row) => {
         const item = components.find((item) => item.itemId === row.componentItemId);
         if (!item || !item.isActive || item.itemType === 'Finished Good')
@@ -292,12 +312,13 @@ async function snapshot(database: Reader, input: PreviewPackingOrderInput, lock 
             requiredQty: packingRequirement(
                 row.quantity,
                 input.targetQty,
-                bomUnit.factorToBase,
-                primaryUnit.factorToBase,
+                ratios.get(row.bomId)!.sourceFactor,
+                ratios.get(row.bomId)!.primaryFactor,
             ),
         };
     });
     return {
+        formulaRevisionId: bom[0]!.revisionId,
         itemId: product.itemId,
         itemSku: product.itemSku,
         itemName: product.itemName,
@@ -431,6 +452,7 @@ export async function createPackingOrder(
             .values({
                 ...input,
                 targetQty: copied.targetQty,
+                formulaRevisionId: copied.formulaRevisionId,
                 createdBy: actorId,
                 updatedBy: actorId,
             })
@@ -762,7 +784,7 @@ export async function completePackingOrder(
         assertPackingStatus(order.status, ['In Progress']);
         assertLotDates(input.manufactureDate, input.expirationDate);
         const materials = await lockMaterials(tx, id);
-        const product = await validateItems(tx, order.itemId, materials);
+        await validateItems(tx, order.itemId, materials);
         const guarded = await guardedReservations(tx, order, materials);
         const consumed: { qtyConsumed: string; unitCost: string | null }[] = [];
         const now = new Date();
@@ -839,7 +861,7 @@ export async function completePackingOrder(
                 packingOrderId: id,
                 manufactureDate: input.manufactureDate,
                 expirationDate: input.expirationDate,
-                qcStatus: product.requiresQc ? 'Quarantine' : 'Approved',
+                qcStatus: 'Approved',
                 unitCost: packingUnitCost(consumed, input.actualQty),
                 createdBy: actorId,
                 updatedBy: actorId,

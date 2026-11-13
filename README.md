@@ -29,6 +29,7 @@ samples, first-start loading, and these double-click Windows scripts:
 - [Stock Transfers and In Transit module contract](docs/stock-transfers-module.md)
 
 Inventory Stocks: [module contract and adjustment rules](docs/inventory-stocks-module.md).
+Inventory Reports: [five reports, filters, exports and sample exercises](docs/inventory-reports-module.md).
 
 ## Sample login
 
@@ -44,3 +45,7 @@ Open <http://localhost:3000/> and use `demo@spice.local` as the username and
 success. It preserves existing users and operational data and refuses to run in
 production. Optional `DEMO_USER_EMAIL` and `DEMO_USER_PASSWORD` environment variables
 override these defaults; an existing account with a different password is left intact.
+
+Inventory controls and the additional operational reports are documented in
+[Controls and Reports](docs/inventory-controls-and-reports.md). Existing databases
+can apply the additive extension with `npm run db:migrate:controls` from `backend/`.

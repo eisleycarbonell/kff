@@ -1,3 +1,15 @@
+import { createSettingsRouter } from './modules/company-settings/company-setting.routes.ts';
+import type { SettingsService } from './modules/company-settings/company-setting.controller.ts';
+import { createReasonCodeRouter } from './modules/reason-codes/reason-code.routes.ts';
+import type { ReasonCodeService } from './modules/reason-codes/reason-code.controller.ts';
+import { createItemPackageRouter } from './modules/item-packaging/item-package.routes.ts';
+import type { ItemPackageService } from './modules/item-packaging/item-package.controller.ts';
+import { createReorderPolicyRouter } from './modules/reorder-policies/reorder-policy.routes.ts';
+import type { ReorderPolicyService } from './modules/reorder-policies/reorder-policy.controller.ts';
+import { createControlRouter } from './modules/inventory-controls/inventory-control.routes.ts';
+import type { ControlService } from './modules/inventory-controls/inventory-control.controller.ts';
+import { createOperationalReportRouter } from './modules/operational-reports/operational-report.routes.ts';
+import type { OperationalReportService } from './modules/operational-reports/operational-report.controller.ts';
 import { createUomRouter } from './modules/uoms/uom.routes.ts';
 import type { UomService } from './modules/uoms/uom.controller.ts';
 import { createLocationRouter } from './modules/locations/location.routes.ts';
@@ -47,6 +59,8 @@ import type { BrandService } from './modules/brands/brand.controller.ts';
 import { createFormulaRouter } from './modules/packing-formulas/packing-formula.routes.ts';
 import type { FormulaService } from './modules/packing-formulas/packing-formula.controller.ts';
 import type { DeliveryOrderService } from './modules/delivery-orders/delivery-order.controller.ts';
+import { createInventoryReportRouter } from './modules/inventory-reports/inventory-report.routes.ts';
+import type { InventoryReportService } from './modules/inventory-reports/inventory-report.controller.ts';
 
 /** Build the HTTP app without opening a port or importing a live database client. */
 export function createApp(modules: {
@@ -70,6 +84,13 @@ export function createApp(modules: {
     deliveryOrderService?: DeliveryOrderService;
     brandService?: BrandService;
     formulaService?: FormulaService;
+    inventoryReportService?: InventoryReportService;
+    settingsService?: SettingsService;
+    reasonCodeService?: ReasonCodeService;
+    itemPackageService?: ItemPackageService;
+    reorderPolicyService?: ReorderPolicyService;
+    controlService?: ControlService;
+    operationalReportService?: OperationalReportService;
 }) {
     const app = express();
 
@@ -93,6 +114,42 @@ export function createApp(modules: {
     });
 
     const authenticate = createAuthMiddleware(modules.authService);
+    if (modules.operationalReportService)
+        app.use(
+            '/api/reports/operations',
+            createOperationalReportRouter(modules.operationalReportService, authenticate),
+        );
+    if (modules.settingsService)
+        app.use(
+            '/api/company-settings',
+            createSettingsRouter(modules.settingsService, authenticate),
+        );
+    if (modules.reasonCodeService)
+        app.use(
+            '/api/reason-codes',
+            createReasonCodeRouter(modules.reasonCodeService, authenticate),
+        );
+    if (modules.itemPackageService)
+        app.use(
+            '/api/item-packaging',
+            createItemPackageRouter(modules.itemPackageService, authenticate),
+        );
+    if (modules.reorderPolicyService)
+        app.use(
+            '/api/reorder-policies',
+            createReorderPolicyRouter(modules.reorderPolicyService, authenticate),
+        );
+    if (modules.controlService)
+        app.use(
+            '/api/inventory-controls',
+            createControlRouter(modules.controlService, authenticate),
+        );
+
+    if (modules.inventoryReportService)
+        app.use(
+            '/api/reports/inventory',
+            createInventoryReportRouter(modules.inventoryReportService, authenticate),
+        );
     if (modules.brandService)
         app.use('/api/brands', createBrandRouter(modules.brandService, authenticate));
     if (modules.formulaService)

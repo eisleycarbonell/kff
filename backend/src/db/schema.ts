@@ -275,8 +275,227 @@ export const scrapReasonCodes = pgTable('scrap_reason_codes', {
     codeName: varchar('code_name', { length: 50 }).notNull().unique(),
     category: scrapCategoryEnum('category').notNull(),
     description: text('description'),
+    isActive: boolean('is_active').default(true).notNull(),
     ...auditFields,
 });
+
+export const companySettings = pgTable(
+    'company_settings',
+    {
+        settingsId: integer('settings_id').primaryKey().default(1),
+        companyName: varchar('company_name', { length: 120 })
+            .notNull()
+            .default('Kusina Filipino Food'),
+        address: text('address'),
+        email: varchar('email', { length: 254 }),
+        phone: varchar('phone', { length: 40 }),
+        currencyCode: varchar('currency_code', { length: 3 }).notNull().default('PHP'),
+        defaultReorderLevel: qty('default_reorder_level').notNull().default('10'),
+        expiryWarningDays: integer('expiry_warning_days').notNull().default(30),
+        version: integer('version').notNull().default(1),
+        ...auditFields,
+    },
+    (t) => [
+        check('settings_singleton', sql`${t.settingsId}=1`),
+        check(
+            'settings_limits',
+            sql`${t.defaultReorderLevel}>=0 and ${t.expiryWarningDays} between 0 and 3650 and ${t.version}>0`,
+        ),
+    ],
+);
+
+export const reorderPolicies = pgTable(
+    'reorder_policies',
+    {
+        itemId: integer('item_id')
+            .primaryKey()
+            .references(() => items.itemId, { onDelete: 'restrict' }),
+        reorderLevel: qty('reorder_level').notNull(),
+        ...auditFields,
+    },
+    (t) => [check('reorder_level_nonnegative', sql`${t.reorderLevel}>=0`)],
+);
+
+// One approval header; each domain below owns its typed, foreign-key protected data.
+export const reviewRequests = pgTable(
+    'review_requests',
+    {
+        requestId: integer('request_id').primaryKey().generatedByDefaultAsIdentity(),
+        requestNumber: varchar('request_number', { length: 40 }).notNull().unique(),
+        kind: varchar('kind', { length: 20 }).notNull(),
+        status: varchar('status', { length: 20 }).notNull().default('Draft'),
+        notes: text('notes').notNull(),
+        evidenceReference: text('evidence_reference'),
+        submittedBy: integer('submitted_by').references(() => users.userId, {
+            onDelete: 'restrict',
+        }),
+        submittedAt: tz('submitted_at'),
+        reviewedBy: integer('reviewed_by').references(() => users.userId, { onDelete: 'restrict' }),
+        reviewedAt: tz('reviewed_at'),
+        reviewNote: text('review_note'),
+        createdBy: integer('created_by')
+            .notNull()
+            .references(() => users.userId, { onDelete: 'restrict' }),
+        createdAt: tz('created_at').notNull().defaultNow(),
+        updatedBy: integer('updated_by').references(() => users.userId, { onDelete: 'restrict' }),
+        updatedAt: tz('updated_at').notNull().defaultNow(),
+    },
+    (t) => [
+        check(
+            'review_kind_valid',
+            sql`${t.kind} in ('Count','Scrap','Disposition','QC','Formula')`,
+        ),
+        check(
+            'review_status_valid',
+            sql`${t.status} in ('Draft','Submitted','Approved','Rejected','Cancelled')`,
+        ),
+        check(
+            'review_independent',
+            sql`${t.reviewedBy} is null or (${t.reviewedBy}<>${t.createdBy} and ${t.reviewedBy}<>${t.submittedBy})`,
+        ),
+        check(
+            'review_approval_evidence',
+            sql`${t.status}<>'Approved' or (${t.submittedBy} is not null and ${t.submittedAt} is not null and ${t.reviewedBy} is not null and ${t.reviewedAt} is not null)`,
+        ),
+        index('review_kind_status_idx').on(t.kind, t.status),
+    ],
+);
+export const countSessions = pgTable('count_sessions', {
+    requestId: integer('request_id')
+        .primaryKey()
+        .references(() => reviewRequests.requestId, { onDelete: 'restrict' }),
+    locationId: integer('location_id')
+        .notNull()
+        .references(() => locations.locationId, { onDelete: 'restrict' }),
+    reasonId: integer('reason_id')
+        .notNull()
+        .references(() => scrapReasonCodes.reasonId, { onDelete: 'restrict' }),
+});
+export const reviewEvents = pgTable(
+    'review_events',
+    {
+        eventId: integer('event_id').primaryKey().generatedByDefaultAsIdentity(),
+        requestId: integer('request_id')
+            .notNull()
+            .references(() => reviewRequests.requestId, { onDelete: 'restrict' }),
+        action: varchar('action', { length: 30 }).notNull(),
+        note: text('note').notNull(),
+        details: jsonb('details').$type<Record<string, unknown>>().notNull().default({}),
+        actorId: integer('actor_id')
+            .notNull()
+            .references(() => users.userId, { onDelete: 'restrict' }),
+        createdAt: tz('created_at').notNull().defaultNow(),
+    },
+    (t) => [index('review_events_request_idx').on(t.requestId, t.eventId)],
+);
+export const countObservations = pgTable(
+    'count_observations',
+    {
+        observationId: integer('observation_id').primaryKey().generatedByDefaultAsIdentity(),
+        requestId: integer('request_id')
+            .notNull()
+            .references(() => countSessions.requestId, { onDelete: 'restrict' }),
+        lotId: integer('lot_id')
+            .notNull()
+            .references(() => lots.lotId, { onDelete: 'restrict' }),
+        expectedQty: qty('expected_qty').notNull(),
+        countedQty: qty('counted_qty'),
+        observedBy: integer('observed_by').references(() => users.userId, { onDelete: 'restrict' }),
+        observedAt: tz('observed_at'),
+    },
+    (t) => [
+        unique('count_request_lot_uq').on(t.requestId, t.lotId),
+        check(
+            'count_quantities_nonnegative',
+            sql`${t.expectedQty}>=0 and (${t.countedQty} is null or ${t.countedQty}>=0)`,
+        ),
+    ],
+);
+export const inventoryDisposals = pgTable(
+    'inventory_disposals',
+    {
+        requestId: integer('request_id')
+            .primaryKey()
+            .references(() => reviewRequests.requestId, { onDelete: 'restrict' }),
+        lotId: integer('lot_id')
+            .notNull()
+            .references(() => lots.lotId, { onDelete: 'restrict' }),
+        sourceLocationId: integer('source_location_id')
+            .notNull()
+            .references(() => locations.locationId, { onDelete: 'restrict' }),
+        destinationLocationId: integer('destination_location_id').references(
+            () => locations.locationId,
+            { onDelete: 'restrict' },
+        ),
+        reasonId: integer('reason_id')
+            .notNull()
+            .references(() => scrapReasonCodes.reasonId, { onDelete: 'restrict' }),
+        quantity: qty('quantity').notNull(),
+        expectedQty: qty('expected_qty').notNull(),
+    },
+    (t) => [
+        check('disposal_qty_valid', sql`${t.quantity}>0 and ${t.expectedQty}>=0`),
+        check(
+            'disposal_locations_distinct',
+            sql`${t.destinationLocationId} is null or ${t.destinationLocationId}<>${t.sourceLocationId}`,
+        ),
+    ],
+);
+export const qcDecisions = pgTable(
+    'qc_decisions',
+    {
+        requestId: integer('request_id')
+            .primaryKey()
+            .references(() => reviewRequests.requestId, { onDelete: 'restrict' }),
+        lotId: integer('lot_id')
+            .notNull()
+            .references(() => lots.lotId, { onDelete: 'restrict' }),
+        previousStatus: qcStatusEnum('previous_status').notNull(),
+        newStatus: qcStatusEnum('new_status').notNull(),
+    },
+    (t) => [check('qc_status_changed', sql`${t.previousStatus}<>${t.newStatus}`)],
+);
+export const formulaRevisions = pgTable(
+    'formula_revisions',
+    {
+        requestId: integer('request_id')
+            .primaryKey()
+            .references(() => reviewRequests.requestId, { onDelete: 'restrict' }),
+        itemId: integer('item_id')
+            .notNull()
+            .references(() => items.itemId, { onDelete: 'restrict' }),
+        revisionNumber: integer('revision_number').notNull(),
+        effectiveDate: date('effective_date').notNull(),
+        changeType: varchar('change_type', { length: 10 }).notNull().default('Replace'),
+    },
+    (t) => [
+        unique('formula_revision_number_uq').on(t.itemId, t.revisionNumber),
+        check(
+            'formula_revision_valid',
+            sql`${t.revisionNumber}>0 and ${t.changeType} in ('Replace','Retire')`,
+        ),
+    ],
+);
+export const formulaRevisionMaterials = pgTable(
+    'formula_revision_materials',
+    {
+        materialId: integer('material_id').primaryKey().generatedByDefaultAsIdentity(),
+        requestId: integer('request_id')
+            .notNull()
+            .references(() => formulaRevisions.requestId, { onDelete: 'restrict' }),
+        componentItemId: integer('component_item_id')
+            .notNull()
+            .references(() => items.itemId, { onDelete: 'restrict' }),
+        quantity: numeric('quantity', { precision: 14, scale: 6 }).notNull(),
+        uomId: integer('uom_id')
+            .notNull()
+            .references(() => uoms.uomId, { onDelete: 'restrict' }),
+    },
+    (t) => [
+        unique('formula_revision_component_uq').on(t.requestId, t.componentItemId),
+        check('formula_revision_qty_positive', sql`${t.quantity}>0`),
+    ],
+);
 
 // =========================================================================
 // 4. CUSTOMERS, SUPPLIERS & MULTI-SUPPLIER ITEM CATALOG
@@ -352,6 +571,9 @@ export const billOfMaterials = pgTable(
     'bill_of_materials',
     {
         bomId: integer('bom_id').primaryKey().generatedByDefaultAsIdentity(),
+        revisionId: integer('revision_id').references(() => formulaRevisions.requestId, {
+            onDelete: 'restrict',
+        }),
         parentItemId: integer('parent_item_id')
             .notNull()
             .references(() => items.itemId, { onDelete: 'cascade' }),
@@ -464,6 +686,10 @@ export const packingOrders = pgTable(
     {
         packingOrderId: integer('packing_order_id').primaryKey().generatedByDefaultAsIdentity(),
         packingOrderNumber: varchar('packing_order_number', { length: 30 }).notNull().unique(),
+        formulaRevisionId: integer('formula_revision_id').references(
+            () => formulaRevisions.requestId,
+            { onDelete: 'restrict' },
+        ),
         // Finished-good SKU to produce.
         itemId: integer('item_id')
             .notNull()
@@ -890,6 +1116,12 @@ export const inventoryTransactions = pgTable(
     'inventory_transactions',
     {
         transactionId: integer('transaction_id').primaryKey().generatedByDefaultAsIdentity(),
+        reviewRequestId: integer('review_request_id').references(() => reviewRequests.requestId, {
+            onDelete: 'restrict',
+        }),
+        countObservationId: integer('count_observation_id')
+            .unique()
+            .references(() => countObservations.observationId, { onDelete: 'restrict' }),
         itemId: integer('item_id').notNull(),
         lotId: integer('lot_id').notNull(),
         locationId: integer('location_id')
@@ -944,7 +1176,7 @@ export const inventoryTransactions = pgTable(
                 (${t.transactionType} <> 'Receive' or ${t.poLineId} is not null)
                 and (${t.transactionType} not in ('Consume', 'Produce') or ${t.packingOrderId} is not null)
                 and (${t.transactionType} not in ('Scrap', 'Adjustment') or ${t.reasonId} is not null)
-                and (${t.transactionType} <> 'Transfer' or ${t.transferLineId} is not null or ${t.deliveryOrderLineId} is not null)
+                and (${t.transactionType} <> 'Transfer' or ${t.transferLineId} is not null or ${t.deliveryOrderLineId} is not null or ${t.reviewRequestId} is not null)
                 and (${t.transactionType} <> 'Sale' or ${t.deliveryOrderLineId} is not null)
             )`,
         ),
@@ -957,6 +1189,10 @@ export const inventoryTransactions = pgTable(
         index('txn_delivery_line_idx').on(t.deliveryOrderLineId),
         index('txn_reason_idx').on(t.reasonId),
         index('txn_user_idx').on(t.authorizedByUserId),
+        index('txn_review_idx').on(t.reviewRequestId),
+        uniqueIndex('txn_review_location_uq')
+            .on(t.reviewRequestId, t.locationId)
+            .where(sql`${t.reviewRequestId} is not null and ${t.countObservationId} is null`),
     ],
 );
 
@@ -1042,6 +1278,16 @@ export type LotWithRelations = Lot & {
 // Usage: drizzle(client, { relations: dbRelations })
 export const dbRelations = defineRelations(
     {
+        companySettings,
+        reorderPolicies,
+        reviewRequests,
+        reviewEvents,
+        countSessions,
+        countObservations,
+        inventoryDisposals,
+        qcDecisions,
+        formulaRevisions,
+        formulaRevisionMaterials,
         roles,
         users,
         uomClasses,

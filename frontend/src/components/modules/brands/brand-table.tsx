@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { memo, useMemo } from "react"
 import { useTable } from "@tanstack/react-table"
 import {
     ArrowDown,
@@ -48,7 +48,7 @@ type BrandTableProps = {
     onActivate: (brand: Brand) => Promise<boolean>
 }
 
-export function BrandTable({
+export const BrandTable = memo(function BrandTable({
     brands,
     onAdd,
     onEdit,
@@ -277,4 +277,4 @@ export function BrandTable({
             </div>
         </div>
     )
-}
+})

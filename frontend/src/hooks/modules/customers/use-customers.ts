@@ -1,9 +1,11 @@
 "use client"
 
-import { useCallback, useRef, useState } from "react"
+import { useCallback, useRef } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Toast } from "@base-ui/react/toast"
 import { apiRequest, ApiError } from "@/lib/api-request"
+import { createDialogStore } from "@/lib/create-dialog-store"
+import { getLoadStatus } from "@/lib/load-status"
 import { SESSION_QUERY_KEY, useSession } from "@/hooks/use-session"
 import {
     customerSchema,
@@ -53,6 +55,8 @@ export async function updateCustomer(
 export const CUSTOMERS_QUERY_KEY = ["customers"] as const
 const EMPTY_CUSTOMERS: Customer[] = []
 
+const useDialogs = createDialogStore<Customer>()
+
 export function useCustomers() {
     const session = useSession()
     const client = useQueryClient()
@@ -64,10 +68,8 @@ export function useCustomers() {
         queryFn: ({ signal }) => getCustomers(signal),
         enabled: Boolean(session.data),
     })
-    const [formOpen, setFormOpen] = useState(false)
-    const [formRequested, setFormRequested] = useState(false)
-    const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
-    const [deactivatingCustomer, setDeactivatingCustomer] = useState<Customer | null>(null)
+    const { formOpen, setFormOpen, formRequested, editing: editingCustomer, target: deactivatingCustomer,
+        getState, setTarget: setDeactivatingCustomer, openForm } = useDialogs()
     // Also guard the interval before React renders the pending mutation state.
     const writePending = useRef(false)
 
@@ -143,20 +145,16 @@ export function useCustomers() {
     const openAdd = useCallback(() => {
         if (!canManage || writePending.current) return
         resetSave()
-        setEditingCustomer(null)
-        setFormRequested(true)
-        setFormOpen(true)
-    }, [canManage, resetSave])
+        openForm()
+    }, [canManage, resetSave, openForm])
 
     const openEdit = useCallback(
         (customer: Customer) => {
             if (!canManage || writePending.current) return
             resetSave()
-            setEditingCustomer(customer)
-            setFormRequested(true)
-            setFormOpen(true)
+            openForm(customer)
         },
-        [canManage, resetSave],
+        [canManage, resetSave, openForm],
     )
 
     const openDeactivate = useCallback(
@@ -165,7 +163,7 @@ export function useCustomers() {
             resetStatus()
             setDeactivatingCustomer(customer)
         },
-        [canManage, resetStatus],
+        [canManage, resetStatus, setDeactivatingCustomer],
     )
 
     const handleSave = useCallback(
@@ -201,29 +199,19 @@ export function useCustomers() {
     )
 
     const handleDeactivate = useCallback(async () => {
-        if (writePending.current || !deactivatingCustomer) return
+        const customer = getState().target
+        if (writePending.current || !customer) return
         writePending.current = true
         try {
-            await changeCustomerStatus({ customer: deactivatingCustomer, isActive: false })
+            await changeCustomerStatus({ customer, isActive: false })
         } catch {
             // Keep the confirmation open so the failed change can be retried.
         } finally {
             writePending.current = false
         }
-    }, [changeCustomerStatus, deactivatingCustomer])
+    }, [changeCustomerStatus, getState])
 
-    const loadStatus = session.isPending
-        ? "loading"
-        : session.data === undefined
-          ? "error"
-          : !session.data
-            ? "signed-out"
-            : customersQuery.data !== undefined
-              ? "ready"
-              : customersQuery.isError
-                ? "error"
-                : "loading"
-
+    const loadStatus = getLoadStatus(session, [customersQuery])
     return {
         customers: customersQuery.data ?? EMPTY_CUSTOMERS,
         canManage,

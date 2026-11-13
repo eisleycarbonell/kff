@@ -1,6 +1,6 @@
 # KFF UI setup and happy-path guide
 
-Reviewed against the current UI and [documentation compliance audit](documentation-compliance-audit.md) on 7 November 2026.
+Updated on 12 November 2026 for generated PO-number prefill with optional custom references.
 
 This guide explains what to enter, where to click, and what to check when setting up master data and completing one successful purchase-to-customer cycle. It follows the [canonical system flow](system-flow.md). All quantities, prices, names and codes below are training examples.
 
@@ -10,8 +10,16 @@ Ask your system administrator to provide the application address, a working data
 
 **Brands and packing formulas can now be set up through the UI.** The database
 and first administrator account must already be prepared. Brand creation needs
-Inventory permission; formula creation needs Packing permission. Formal formula
-revision/approval workflows remain outside the current implementation.
+Inventory permission; formula preparation needs Packing permission. Formula
+release requires a different reviewer with Packing and User Management
+permissions. Count Sessions, QC Decisions and Stock Dispositions are removed
+from the active workflow. Stock Adjustments and Scrap & Disposal remain.
+
+For each module's purpose and its connections, see the
+[module reference](system-flow.md#module-purposes-and-connections). Follow the
+numbered steps below in order; each checkpoint states what must be true before
+continuing. Master data is normally set up once, while purchasing, receiving,
+packing and delivery repeat for each operation.
 
 For a repeatable training exercise:
 
@@ -26,15 +34,18 @@ If the sample dataset has already been installed, its test administrator is `dem
 
 ### Which account to use
 
-For a single-person training run, use an account with all five permissions. For a team run, hand each step to the appropriate operator.
+Use an account with all five permissions for the operational training steps.
+A second authorized person must independently review the initial formula
+release (or use an already released formula). For a team run, hand each step to
+the appropriate operator.
 
 | UI permission label | Actions used in this guide |
 | --- | --- |
-| Inventory | Units, locations, items, customers, receiving, QC updates and stock counts; also sales orders |
-| Purchasing | Suppliers, supplier offers and purchase orders |
+| Inventory | Units, locations, items, customers, receiving, lot metadata/status and stock adjustments; also sales orders |
+| Purchasing | Suppliers, item links and purchase orders |
 | Packing | Packing orders, material reservations and completion |
 | Transfers | Internal transfers and customer delivery orders |
-| Users & roles | Creating roles and assigning user accounts |
+| Users & roles | Creating roles and assigning user accounts; together with Packing, independently reviewing formula releases |
 
 Sales and delivery reuse Inventory and Transfers permissions. There are no separate Sales or Delivery permission switches. A missing create/action button usually means your account lacks the required permission.
 
@@ -105,39 +116,53 @@ checked and click **Create brand**. Return to Items / Products.
 
 1. Click **Add item**.
 2. Enter **SKU**, **Item / product name**, **Item type**, **Primary unit of measure** and **Reference cost** using the table.
-3. Keep **Active item** checked. Set **Requires quality check** as shown.
+3. Keep **Active item** checked. New received and packed lots start Approved in
+   the simplified workflow; no separate QC request is required.
 4. For the finished good, select **Brand** `HP-KFF` and enter **Net weight (g)** as `100`. Leave Brand as **No brand** for component items. Other optional fields can remain empty for the exercise.
 5. Click **Create item**. Repeat until all five items exist.
 
-| SKU | Item / product name | Item type | Primary UOM | Reference cost | Requires quality check |
-| --- | --- | --- | --- | --- | --- |
-| `HP-RM-GARLIC` | HP Garlic Powder Bulk | Raw Material - Bulk | kg | `110` | Yes |
-| `HP-PCH-100G` | HP 100g Pouch | Packaging - Hardware | pc | `2` | No |
-| `HP-LBL-GARLIC` | HP Garlic 100g Label | Packaging - Label | pc | `0.5` | No |
-| `HP-SEAL` | HP Tamper Seal | Packaging - Hardware | pc | `0.25` | No |
-| `HP-FG-GARLIC-100G` | HP Garlic Powder 100g | Finished Good | pc | `13.75` | No |
+| SKU | Item / product name | Item type | Primary UOM | Reference cost |
+| --- | --- | --- | --- | --- |
+| `HP-RM-GARLIC` | HP Garlic Powder Bulk | Raw Material - Bulk | kg | `110` |
+| `HP-PCH-100G` | HP 100g Pouch | Packaging - Hardware | pc | `2` |
+| `HP-LBL-GARLIC` | HP Garlic 100g Label | Packaging - Label | pc | `0.5` |
+| `HP-SEAL` | HP Tamper Seal | Packaging - Hardware | pc | `0.25` |
+| `HP-FG-GARLIC-100G` | HP Garlic Powder 100g | Finished Good | pc | `13.75` |
 
 **Checkpoint:** the item types and primary units are correct. Creating items does not create stock. Reference cost is a catalog value; the receiving and packing workflows derive their own historical lot costs. Used item types/primary units become protected, so review them before continuing.
 
-## 6. Create suppliers and their offers
+## 6. Create suppliers and link their items
 
 **Menu:** Master Data > Suppliers (`/suppliers`). **Permission:** Purchasing.
 
 1. Click **Add supplier**, enter `HP Spices Supplier`, keep **Active supplier** checked, and click **Create supplier**.
 2. Repeat for `HP Packaging Supplier`. Supplier email is optional.
-3. On each supplier row, open the three-dot action menu and choose **View supplied items**.
-4. Click **Add supplied item**. Select **Material item**, **Purchase unit** and **Price per purchase unit** from the table below.
-5. Keep **Active offer** checked. Mark **Preferred supplier for this item** if this is its intended preferred offer; only one active preferred supplier can exist for each item.
-6. Optionally enter the supplier's own item code and lead time. Click **Add supplied item** and repeat.
+3. On each supplier row, open the three-dot action menu and choose **Link items**.
+4. The dialog lists only currently linked items. Click **Link another item**, search by material name or SKU and click **Link item** for the matching materials below. Click **Back to linked items** to review the supplier's links and **Unlink** actions. No offer form is required.
+5. Close the dialog. The supplier's **Linked items** count and the summary refresh from saved links. Click **Unlink** to remove a current link; clicking **Link item** again restores the same relationship.
+6. Enter the purchase units and prices below when creating the PO in step 9.
 
-| Supplier | Material item SKU | Purchase unit | Price per purchase unit |
+| Supplier | Material item SKU | Purchase unit on PO | Unit price on PO |
 | --- | --- | --- | --- |
 | HP Spices Supplier | `HP-RM-GARLIC` | kg | `110` |
 | HP Packaging Supplier | `HP-PCH-100G` | pc | `2` |
 | HP Packaging Supplier | `HP-LBL-GARLIC` | pc | `0.5` |
 | HP Packaging Supplier | `HP-SEAL` | pc | `0.25` |
 
-**Checkpoint:** the spice supplier shows one active offer and the packaging supplier shows three. Offers help prefill purchasing; they do not create orders or stock. Always review the unit and price on the PO even when prefilled.
+**Checkpoint:** the spice supplier shows one linked item and the packaging
+supplier shows three. Items shows the same supplier tags. A material can have
+several suppliers without duplicating the catalog item. The summary counts
+links across suppliers, so one item linked to two suppliers counts twice.
+Only active materials linked to the selected active supplier appear on a PO.
+These actions create no orders or stock and do not alter saved PO history.
+
+You can also use the **Suppliers** column in Items / Products to link or unlink
+a material. Both screens update the same relationship and refresh PO choices.
+New links use the item's primary UOM and have no price default; enter the agreed
+price on the PO. Previously saved defaults can still prefill a PO, so review
+the unit and price before saving. Inactive items may retain a link but cannot
+be selected on new POs. Deactivating a supplier unlinks its items; after
+reactivating it, link the relevant items again.
 
 ## 7. Create the customer
 
@@ -152,20 +177,23 @@ checked and click **Create brand**. Return to Items / Products.
 
 ## 8. Create the packing formula through the UI
 
-**Menu:** Master Data > Packing Formulas (`/bom`). **Permission:** Packing.
+**Menu:** Master Data > Formula Revisions (`/formula-revisions`). **Permission:** Packing; review also requires User Management and a different user.
 
-1. Click **Create formula** and select **Finished product** `HP-FG-GARLIC-100G`.
-2. In Material 1 select `HP-RM-GARLIC`, enter **Quantity per finished unit**
-   `0.100`, and choose **Unit** `kg`.
-3. Click **Add material** to add the pouch, label and seal rows below. Each
-   material appears once, and each quantity is for **one finished pc**.
-4. Review all four rows and click **Create formula**.
-5. Find the product in the table and expand **4 materials** to inspect the saved
-   quantities. The Brand column should show `HP KFF Spices`.
-6. Use the row menu's **Edit formula** to correct requirements before creating
-   the packing order. Existing packing orders keep their own snapshots after
-   later formula edits. **Remove formula** removes the current definition and
-   requires confirmation; it does not remove historical packing orders.
+1. Click **Prepare request**, enter a unique request number and notes, select
+   **Finished product** `HP-FG-GARLIC-100G`, choose **Replace** and an effective date.
+2. In the first component select `HP-RM-GARLIC`, enter quantity `0.100` and UOM `kg`.
+3. Use **Add component** to add the pouch, label and seal below. Each material
+   appears once and each quantity is for **one finished pc**.
+4. Review all four rows and **Create draft**. Add an action note and **Submit for review**.
+5. Sign in as a different reviewer with Packing and User Management permissions.
+   Open the request, inspect its requirements and effective date, enter a review
+   note, then **Approve and apply** on or after that date.
+6. Sign back in as the operational training account with all five permissions,
+   or hand subsequent steps to the appropriate operators. The formula reviewer
+   may not have Purchasing, Inventory or Transfers permission.
+7. Open **Packing Formulas** (`/bom`) to inspect/export the published definition.
+   Future changes or retirement use another reviewed revision. Existing packing
+   orders retain their saved requirements after later releases.
 
 | Component SKU | Quantity per finished piece | Component UOM |
 | --- | --- | --- |
@@ -175,8 +203,8 @@ checked and click **Create brand**. Return to Items / Products.
 | `HP-SEAL` | `1` | pc |
 
 **Checkpoint:** the formula is listed and the product is selectable in Create
-packing order without **(no formula)**. There is no separate approval/release
-step today. Step 12 checks the saved formula against available material stock.
+packing order without **(no formula)** after approval. Step 12 checks the saved
+formula against available material stock.
 
 If using existing sample products, inspect their exact formula, units,
 stock and active reservations. Numeric checkpoints below assume the isolated
@@ -188,17 +216,27 @@ items and locations created in this guide.
 
 ### Purchase the garlic
 
-1. Click **Create purchase order**.
-2. Enter **PO number** `HP-PO-001`, choose **HP Spices Supplier**, and enter the operation date as **Order date**. Optional expected delivery must be on or after that date.
+1. Click **Create purchase order** and wait for the form to open with an actual
+   generated value in **PO number**. Keep it for this walkthrough, or replace
+   it with a unique reference before saving.
+2. Choose **HP Spices Supplier**, and enter the operation date as **Order date**.
+   Optional expected delivery
+   must be on or after the order date. Only this supplier's linked active
+   materials are selectable; the garlic should be the only material in this
+   isolated example.
 3. In the first line, select `HP-RM-GARLIC`, **Purchase unit** `kg`, **Ordered quantity** `100`, and **Unit price** `110`.
-4. Review the order value `11000` and click **Create draft**.
+4. Review the order value `11000` and click **Create draft**. Record the generated
+   PO number as your **spice PO** reference for the remaining steps.
 5. Open the order's action menu and choose **Mark as sent**. Confirm the action in the dialog.
 
 ### Purchase the packaging
 
-1. Click **Create purchase order**, enter `HP-PO-002`, and choose **HP Packaging Supplier**.
+1. Click **Create purchase order**, keep the new prefilled **PO number**, and
+   choose **HP Packaging Supplier**. Its
+   dropdown should show the three linked packaging materials, not the garlic.
 2. Enter the operation date. Add the following lines using **Add line** as needed.
-3. Review the order value `2750`, click **Create draft**, then **Mark as sent** and confirm.
+3. Review the order value `2750`, click **Create draft**, and record its generated
+   number as your **packaging PO** reference. Then **Mark as sent** and confirm.
 
 | Material | Purchase unit | Ordered quantity | Unit price | Line value |
 | --- | --- | --- | --- | --- |
@@ -208,6 +246,23 @@ items and locations created in this guide.
 
 **Checkpoint:** both POs show **Sent** and received quantities remain zero. Inventory has not increased. Mark as sent records the business state; it does not email the supplier. Use your normal supplier communication process.
 
+Generated numbers follow a format such as `PO-2026-0001`, using the UTC generation
+year and a shared database identity. The counter does not reset yearly and
+gaps are possible, including when a form is opened and then abandoned. Getting
+the displayed number does not save an order or create stock. This walkthrough
+keeps that prefilled value. To use your own reference, replace **PO number**
+before clicking **Create draft**. Custom numbers
+are trimmed, converted to uppercase and limited to 30 characters. They must be
+unique across all orders, including cancelled and older orders, regardless of
+case. The displayed number is checked again when saving; it is not reserved
+against another user's custom choice. If a prefilled or custom reference has
+already been used, enter a different unique number and retry. A failed
+duplicate submission saves no PO.
+
+Saved generated and custom numbers cannot be edited. If the supplier changes on
+a draft, reselect the materials from the new supplier's options. If an expected
+material is absent, fix its supplier link rather than choosing another item.
+
 ## 10. Receive the purchased materials
 
 **Menu:** Purchasing > Receiving (`/receiving`). **Permission:** Inventory.
@@ -216,15 +271,18 @@ Post receipts only after the goods physically arrive. Each receipt entry represe
 
 ### Receive the garlic
 
-1. Click **Receive stock** and select **Purchase order** `HP-PO-001`.
+1. Click **Receive stock** and select the generated **spice PO** number recorded
+   in step 9.
 2. Select **Material** `HP-RM-GARLIC`. Confirm Ordered `100`, Already received `0`, Remaining `100` kg.
 3. Enter **Receive quantity** `100`, **Receiving destination** `HP-WH-RM`, and **Internal lot number** `HP-LOT-GAR-001`.
-4. Enter the actual supplier lot reference/dates if available. Check the inventory preview: `100 kg`, with QC **Quarantine** because this item requires a quality check.
+4. Enter the actual supplier lot reference/dates if available. Check the
+   inventory preview: `100 kg`, with lot status **Approved**.
 5. Click **Receive stock** and verify the successful receipt and PO status **Completed**.
 
 ### Receive the packaging
 
-1. Open **Receive stock** again and select `HP-PO-002`.
+1. Open **Receive stock** again and select the generated **packaging PO** number
+   recorded in step 9.
 2. Complete one entry per material, using **Add lot** for the additional entries. Choose the correct **Material** in every entry; adding an entry does not guarantee it selects a different PO line.
 3. Use destination `HP-WH-RM` for each entry and the following quantities/lots.
 4. Review all three entries and click **Receive stock**.
@@ -237,16 +295,24 @@ Post receipts only after the goods physically arrive. Each receipt entry represe
 
 **Checkpoint:** both POs are **Completed**. Inventory > Inventory Stock (`/inventory`), filtered to `HP-WH-RM`, shows 100 kg garlic and 1000 pc of each packaging item. Stock Movements (`/inventory/transactions`) shows four positive **Receive** entries linked to the POs, and Lots / Batches shows four purchased lots.
 
-## 11. Approve the garlic lot after its quality check
+## 11. Inspect the material lots and understand availability
 
 **Menu:** Inventory > Lots / Batches (`/inventory/lots`). **Permission:** Inventory.
 
 1. Search for `HP-LOT-GAR-001` and inspect it using **View lot**.
-2. Complete the required physical quality review. In the training exercise, record the agreed training result.
-3. Open the lot's action menu, choose **Edit metadata**, and set **Quality status** to **Approved**.
-4. Click **Save changes**, then verify **Approved** in the lot list/detail.
+2. Verify its purchased origin points to the correct PO line and supplier.
+3. Inspect its location balance: 100 kg on hand, 0 kg reserved and 100 kg
+   available at `HP-WH-RM`. Inspect the three packaging lots in the same way.
+4. Expand **Why does a lot have reserved stock?** when you need an explanation. Reserved
+   stock is already committed to an order but still included in physical on hand.
 
-**Checkpoint:** all four material lots are Approved and unexpired, or undated where allowed. QC approval changes eligibility; it does not create stock or move the lot between locations. This example received into the raw warehouse with a QC hold, so no quarantine-location relocation is needed. Complete QC before reserving; active reservations protect QC/date changes.
+**Checkpoint:** all four newly received lots are Approved and unexpired, or
+undated where allowed. No QC Decision or disposition step is needed. Existing
+held/rejected lots retain their status. Inventory managers may correct lot
+status through **Edit metadata**, subject to reservation and date validation;
+setting Approved does not override operational expiry restrictions, create stock
+or move it between locations. The Lots list totals
+a lot across locations, while detail and Inventory Stock separate locations.
 
 ## 12. Preview and create the packing order
 
@@ -294,7 +360,10 @@ Post receipts only after the goods physically arrive. Each receipt entry represe
 | Seal | `HP-WH-RM` | 500 pc | 0 |
 | Finished garlic 100g | `HP-WH-FG` | 500 pc | 0 |
 
-**Checkpoint:** four **Consume** entries deduct 50 kg garlic and 500 pc of each packaging component; one **Produce** entry adds 500 pc of `HP-LOT-FG-001`. The finished lot traces to `HP-PK-001` and is Approved because its item was configured without a QC requirement. If a finished item requires QC, its output must pass the lot-approval step before dispatch.
+**Checkpoint:** four **Consume** entries deduct 50 kg garlic and 500 pc of each
+packaging component; one **Produce** entry adds 500 pc of `HP-LOT-FG-001`. The
+finished lot traces to `HP-PK-001` and starts Approved, ready for distribution
+when stock, location and expiry checks pass.
 
 ## 15. Transfer 200 finished pieces to the branch
 
@@ -377,7 +446,8 @@ Post receipts only after the goods physically arrive. Each receipt entry represe
 
 Use the operational screens to verify the completed exercise:
 
-- **Purchase Orders:** `HP-PO-001` and `HP-PO-002` are Completed with no remaining receipt quantities.
+- **Purchase Orders:** the generated spice and packaging PO references are
+  Completed with no remaining receipt quantities.
 - **Lots / Batches:** the four material lots link to purchase lines; `HP-LOT-FG-001` links to the completed packing order. Use **View lot** to inspect its locations and movements.
 - **Packing Orders:** `HP-PK-001` is Completed with 500 pc output and the original four-component snapshot.
 - **Material Reservations:** this packing order has no active outstanding allocations. Consumed reservation history remains visible.
@@ -386,7 +456,45 @@ Use the operational screens to verify the completed exercise:
 - **Inventory Stock:** raw materials remain at 50 kg garlic and 500 pc each of packaging; finished stock totals 350 pc in the locations above.
 - **Stock Movements:** four Receive entries, four Consume entries, one Produce entry, four internal-transfer entries, two customer-dispatch Transfer entries and one Sale entry: **16 ledger entries** for this isolated exercise.
 
-Use filters for the `HP-` references, items, lots and locations. Export operational table rows where needed. Do not add kilograms and pieces together. The [audit](documentation-compliance-audit.md) identifies dashboard unit-total, open-work filtering and low-stock gaps; the per-item/lot/location screens are the checkpoints for this guide. Dedicated Reports remains a placeholder.
+Use filters for the `HP-` references, items, lots and locations. Export operational
+table rows where needed. Do not add kilograms and pieces together. The
+historical [audit](documentation-compliance-audit.md) records earlier findings
+and follow-ups. Current Dashboard totals are grouped by primary UOM, open lists
+filter by status, and low-stock alerts include unstocked items. Use operational
+screens and reports to check the exact documents in this exercise.
+
+### Review and export inventory reports
+
+**Menu:** Reports > Inventory Reports (`/reports/inventory`). **Access:** any
+authenticated account, including Viewer. The reports are read-only.
+
+1. Open **Stock by Location**, select the finished product `HP-FG-GARLIC-100G`,
+   and click **Apply filters**. The company total is 350 pc after customer
+   delivery; warehouse and branch quantities remain separate rows. Inspect the
+   primary-unit total, with no addition of kg and pc.
+2. Open **Stock by Lot** with the same item filter. Inspect `HP-LOT-FG-001`, its
+   QC, expiry, location balances and packing source. Stock is current, not a
+   historical balance reconstructed from a date range.
+3. Open **Low Stock**, set the threshold to `10`, and apply. The selected product
+   is absent when its available company stock exceeds 10 pc. Choose a location
+   where it has no stock, or create an active unstocked item, to see a zero row.
+   An explicit threshold overrides saved reorder levels for this report. Leave it
+   blank to use item/company defaults. Reset filters before reviewing other items.
+4. Open **Near Expiry**, reset filters, enter a window and choose whether to
+   include already expired stock. Only positive stock with an expiration date
+   appears. A date equal to today is "Expires today"; dates use UTC.
+5. Open **Inventory Movement**, reset filters, search `HP-`, optionally choose
+   the exercise's UTC date range, and apply. With no movement-type filter the
+   isolated exercise has 16 ledger entries. Selecting **Sale** shows the
+   `-150 pc` customer-delivery entry with its delivery/sales source reference.
+6. Sort columns, use **Columns** or select rows, then choose **Export CSV** for
+   all matching rows across pages or **Export selected** for the selection.
+   Click **Refresh report** after later operations. Errors retain cached rows
+   during a failed background refresh; retry before treating them as current.
+
+See [Inventory Reports](inventory-reports-module.md) for all filters and
+[the sample-data guide](test-data.md) for prepared expiry, reservation, transit
+and unstocked-item records and their test-account setup.
 
 ## 20. Optional practice after the main happy path
 
@@ -401,14 +509,23 @@ These are separate exercises. They change the main example's quantities or statu
 
 ### Record a genuine stock-count difference
 
-**Menu:** Inventory > Stock Counts (`/inventory/counts`). **Permission:** Inventory. An existing Inventory Adjustment reason must already be configured; reason-code maintenance is not available in the UI.
+**Menu:** Inventory > Stock Adjustments (`/inventory/adjustments`).
+**Permission:** Inventory. Configure an active Inventory Adjustment reason in
+**Master Data > Reason Codes** first. This is a direct correction, not a Count
+Session or a separate review request. The old `/inventory/counts` address
+redirects here.
 
 1. Physically count one specific item/lot/location, including its reserved stock.
-2. Click **Record count**, choose **Item and lot**, **Location**, and **Adjustment reason**.
+2. Click **Record adjustment**, choose **Item and lot**, **Location**, and **Adjustment reason**.
 3. Review the displayed on-hand and reserved quantities. Enter the final physical **Counted quantity**, not the difference, and add a **Count reference** if available.
-4. Click **Record count**, then verify the balance and signed **Adjustment** movement.
+4. Click **Record adjustment**, then verify the balance and signed **Adjustment** movement.
 
-For example, if the branch's physical finished stock is actually 48 rather than the recorded 50, entering `48` posts `-2 pc`. This would change the main exercise's company total to 348 pc. Do not perform this correction unless it represents the agreed training scenario or a real verified difference. An unchanged count is currently rejected without saving an observation; count sessions and supervisor approval are not implemented.
+For example, if the branch's physical finished stock is actually 48 rather than
+the recorded 50, entering `48` posts `-2 pc`. This changes the exercise's company
+total to 348 pc. Apply a correction only for a verified difference or the agreed
+training scenario. An unchanged count is rejected without saving a count-session
+observation. The backend also rejects a stale expected balance or a count below
+outstanding reservations. Permanent disposal uses Scrap & Disposal instead.
 
 ## 21. If a step cannot continue
 
@@ -416,17 +533,27 @@ For example, if the branch's physical finished stock is actually 48 rather than 
 | --- | --- |
 | Missing action or view-only message | Ask the administrator to review the account's permission from section 1, then refresh the session. |
 | Unit or location cannot be changed | A used unit's conversion or location type is protected. Select/create the correct master record; do not repurpose a referenced record. |
-| Product says **(no formula)** | Create its formula through Master Data > Packing Formulas as described in step 8. |
+| Product says **(no formula)** | Prepare and independently release its formula through Formula Revisions as described in step 8. |
 | PO missing from Receiving | It must be Sent or Partially Received with an outstanding quantity. A Draft cannot be received. |
+| Material missing from a PO dropdown | Select its supplier first. Add or activate that supplier's material link in Suppliers or Items, check material activity, then refresh options. |
 | Receiving reports changed balances | Click **Review latest balances**, inspect remaining quantities, and correct the entered lot quantities before resubmitting. |
 | Duplicate lot or document number | Find the existing record to determine whether the save succeeded; use a new unique reference only for genuinely new work. |
+| PO number already used | Enter a different unique reference and retry. Prefilled numbers are checked again on save; letter case cannot distinguish two numbers. |
+| Create form cannot get a PO number | Review the displayed error, check Purchasing permission and retry Create purchase order. Getting a number alone does not save an order. |
 | Packing preview has a shortage | Check the source location, saved formula, QC approval, expiry and other active reservations. Replenish or revise the plan. |
 | Finished lot unavailable for transfer/delivery | Check positive available stock at the selected source, active product/location, Approved and unexpired lot, and packing-order provenance. |
 | Customer or sales order missing | Customer must be active for new sales; deliveries require a Confirmed or Partially Delivered order with unallocated demand. |
 | Count below reservations | Recheck the count and resolve the protected commitments through their owning workflow before applying a correction. |
 | Save/receipt response is uncertain | Reopen the document and review its saved state, movements and outstanding quantities before submitting again, especially for incremental transfer receipts. |
 
-Company configuration, BOM approvals, count-session approvals, QC evidence history and dedicated scrap/disposal are not additional UI steps to complete today. Their current limits are documented in the [audit](documentation-compliance-audit.md). The customer path also has no invoice, payment, return or dispatched-delivery reversal workflow in the current scope.
+Company configuration and formula release are supported setup steps above.
+Scrap & Disposal remains available for exceptions with independent review.
+Count Sessions, QC Decisions and Stock Dispositions are retired, not missing
+steps in the happy path. Their old records are retained through authenticated
+history APIs; old pages redirect to Inventory Stock. Previously held-location
+balances remain visible, but this simplified flow adds no replacement operation
+to release goods from those locations. The customer path has no invoice,
+payment, return or dispatched-delivery reversal workflow in the current scope.
 
 ## Reference documents
 
@@ -441,6 +568,26 @@ Company configuration, BOM approvals, count-session approvals, QC evidence histo
 - [Internal transfers](stock-transfers-module.md)
 - [Sales and delivery orders](sales-delivery-modules.md)
 - [Inventory stocks and count corrections](inventory-stocks-module.md)
+- [Inventory Reports](inventory-reports-module.md)
 - [Prepared sample data and test accounts](test-data.md)
 
 This is an operator guide checked against repository source, not a record of a live browser acceptance test. Follow the checkpoints in your configured environment.
+
+
+## Reviewed controls and operational reports
+
+Use the [complete controls happy paths](inventory-controls-and-reports.md) for
+Company Settings, pack ratios/barcodes, reorder levels, reason codes, scrap approval and formula
+release/retirement. Set master data before creating operational records.
+
+Use Formula Revisions to prepare and independently release a formula, then
+create a future packing order using that published definition. Use Stock
+Adjustments for verified count differences. Historical Count/QC/Disposition
+samples are retained for history and cannot be resumed; they are not steps to
+perform in a new operator run.
+
+Use Reports → Packing/Purchasing/Transfers to inspect variance, exposure and
+outstanding transit. Use Lot Genealogy to trace the purchased garlic lot into
+finished lots and their movements. Apply filters, select records and export CSV.
+Inventory Low Stock uses saved reorder levels unless a threshold override is
+entered. Dashboard quantities remain separate by primary UOM.

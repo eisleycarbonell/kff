@@ -94,3 +94,30 @@ uploads/
 storage/
 */uploads/
 */storage/
+
+# ==========================================
+# AI Documentation, Agents & Markdown
+# ==========================================
+*.md
+docs/
+*/docs/
+.agents/
+*/.agents/
+.aider*
+*/.aider*
+.claude*
+*/.claude*
+.cursor*
+*/.cursor*
+.gemini*
+*/.gemini*
+.codex*
+*/.codex*
+.windsurf*
+*/.windsurf*
+.copilot*
+*/.copilot*
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+

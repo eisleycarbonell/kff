@@ -174,7 +174,7 @@ export function validateSupplierItem(
                 existing.itemId === values.itemId,
         )
     )
-        errors.itemId = "This supplier already has this item. Edit its existing offer."
+        errors.itemId = "This supplier already has this item. Use its existing item link."
     if (
         values.defaultUomId !== null &&
         !options.uoms.some(

@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { memo, useMemo } from "react"
 import { useTable } from "@tanstack/react-table"
 import {
     ArrowDown,
@@ -43,7 +43,7 @@ type UserTableProps = {
     onDelete: (users: User[]) => void
 }
 
-export function UserTable({ users, roles, onAdd, onEdit, onDelete }: UserTableProps) {
+export const UserTable = memo(function UserTable({ users, roles, onAdd, onEdit, onDelete }: UserTableProps) {
     const columns = useMemo(
         () => createUserColumns({ onEdit, onDelete, roles }),
         [onEdit, onDelete, roles],
@@ -254,4 +254,4 @@ export function UserTable({ users, roles, onAdd, onEdit, onDelete }: UserTablePr
             </div>
         </div>
     )
-}
+})

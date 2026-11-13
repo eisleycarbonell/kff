@@ -85,7 +85,7 @@ function ReceivingFormContent({
     const order = options.orders.find((candidate) => candidate.poId === values.poId)
     const activeLocations = options.locations.filter(
         (location) =>
-            location.isActive && ["Warehouse", "Quarantine"].includes(location.locationType),
+            location.isActive && location.locationType === "Warehouse",
     )
     const orderItems = options.orders.map((candidate) => ({
         value: candidate.poId,
@@ -94,7 +94,7 @@ function ReceivingFormContent({
     if (values.poId !== null && !order)
         orderItems.push({ value: values.poId, label: "Purchase order no longer available" })
     const locationItems = options.locations
-        .filter((location) => ["Warehouse", "Quarantine"].includes(location.locationType))
+        .filter((location) => location.locationType === "Warehouse")
         .map((location) => ({
             value: location.locationId,
             label: `${location.code} - ${location.name}${location.isActive ? "" : " (inactive)"}`,
@@ -622,7 +622,7 @@ function ReceivingFormContent({
                                         <p>
                                             Quality status on receipt:{" "}
                                             <span className="font-medium text-foreground">
-                                                {source.requiresQc ? "Quarantine" : "Approved"}
+                                                Approved
                                             </span>
                                         </p>
                                     </div>

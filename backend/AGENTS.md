@@ -261,3 +261,11 @@ hard deletion and must have no stock, outstanding reservations, or open work.
 Inventory writers use `requireActiveLocation(transaction, id)` from the locations
 service before writes and hold that transaction through ledger/balance commit.
 Lock multiple locations in ascending ID order. Metadata APIs never edit stock.
+
+## Reviewed inventory controls and reports
+
+Use [the controls contract](../docs/inventory-controls-and-reports.md) for company
+settings, packaging/reorder/reason maintenance, scrap approvals, formula releases,
+operational reports and retained read history for retired Count/QC/Disposition
+requests. New requests/actions for those retired kinds are disabled. Keep authoritative review and stock
+rules in backend transactions and reflect the same permissions and states in UI.

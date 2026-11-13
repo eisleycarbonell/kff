@@ -168,13 +168,12 @@ test('split lot receipts use one starting snapshot per purchase line and enforce
     );
     assert.throws(() => planReceiptQuantities(lines, []), { status: 400 });
 });
-test('receiving only accepts sent or partially received orders and warehouse/quarantine destinations', () => {
+test('receiving only accepts sent or partially received orders and warehouse destinations only', () => {
     for (const status of ['Sent', 'Partially Received'])
         assert.doesNotThrow(() => assertReceivableStatus(status));
     for (const status of ['Draft', 'Completed', 'Cancelled'])
         assert.throws(() => assertReceivableStatus(status), { status: 409 });
-    for (const type of ['Warehouse', 'Quarantine'])
-        assert.doesNotThrow(() => assertReceivingLocation(type));
-    for (const type of ['Store', 'Branch', 'Scrap', 'In Transit', 'Packing'])
+    for (const type of ['Warehouse']) assert.doesNotThrow(() => assertReceivingLocation(type));
+    for (const type of ['Quarantine', 'Store', 'Branch', 'Scrap', 'In Transit', 'Packing'])
         assert.throws(() => assertReceivingLocation(type), { status: 400 });
 });

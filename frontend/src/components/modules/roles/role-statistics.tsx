@@ -1,8 +1,9 @@
+import { memo } from "react"
 import { ShieldCheck, UsersRound, UserCog } from "lucide-react"
 import type { Role } from "@/components/modules/roles/role.schema"
 import { Card, CardContent } from "@/components/ui/card"
 
-export function RoleStatistics({ roles }: { roles: Role[] }) {
+export const RoleStatistics = memo(function RoleStatistics({ roles }: { roles: Role[] }) {
     const metrics = [
         {
             label: "Total roles",
@@ -42,4 +43,4 @@ export function RoleStatistics({ roles }: { roles: Role[] }) {
             ))}
         </div>
     )
-}
+})

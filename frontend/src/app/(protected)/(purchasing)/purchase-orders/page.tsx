@@ -2,10 +2,8 @@
 
 import dynamic from "next/dynamic"
 import Link from "next/link"
-import { useCallback, useState } from "react"
 import { Plus, Send, XCircle } from "lucide-react"
 
-import type { PurchaseOrder } from "@/components/modules/purchase-orders/purchase-order.schema"
 import { PurchaseOrderStatistics } from "@/components/modules/purchase-orders/purchase-order-statistics"
 import { PurchaseOrderTable } from "@/components/modules/purchase-orders/purchase-order-table"
 import { PageHeader } from "@/components/shared/page-header"
@@ -47,8 +45,14 @@ export default function PurchaseOrdersPage() {
         setFormOpen,
         formRequested,
         editingOrder,
+        defaultPoNumber,
+        isPreparingNumber,
         openAdd,
         openEdit,
+        viewingOrder,
+        detailOpen,
+        setDetailOpen,
+        openDetail,
         options,
         optionsReady,
         optionsError,
@@ -65,20 +69,7 @@ export default function PurchaseOrdersPage() {
         isTransitioning,
         transitionError,
     } = usePurchaseOrders()
-    const [viewingOrder, setViewingOrder] = useState<PurchaseOrder | null>(null)
-    const [detailOpen, setDetailOpen] = useState(false)
-    const isBusy = isSaving || isTransitioning
-    const openDetail = useCallback((order: PurchaseOrder) => {
-        setViewingOrder(order)
-        setDetailOpen(true)
-    }, [])
-    const editOrder = useCallback(
-        (order: PurchaseOrder) => {
-            setDetailOpen(false)
-            openEdit(order)
-        },
-        [openEdit],
-    )
+    const isBusy = isSaving || isTransitioning || isPreparingNumber
     const isSending = transitionTarget?.action === "send"
     const transitionNumber = transitionTarget?.order.poNumber ?? "purchase order"
 
@@ -96,7 +87,7 @@ export default function PurchaseOrdersPage() {
                     canManage && (
                         <Button className="h-10 gap-2 px-4" onClick={openAdd} disabled={isBusy}>
                             <Plus />
-                            Create purchase order
+                            {isPreparingNumber ? "Preparing PO..." : "Create purchase order"}
                         </Button>
                     )
                 }
@@ -155,7 +146,7 @@ export default function PurchaseOrdersPage() {
                         isBusy={isBusy}
                         onAdd={openAdd}
                         onView={openDetail}
-                        onEdit={editOrder}
+                        onEdit={openEdit}
                         onSend={openSend}
                         onCancel={openCancel}
                     />
@@ -166,6 +157,7 @@ export default function PurchaseOrdersPage() {
                     open={formOpen && canManage}
                     onOpenChange={setFormOpen}
                     order={editingOrder}
+                    defaultPoNumber={defaultPoNumber}
                     orders={orders}
                     options={options}
                     optionsReady={optionsReady}
@@ -185,7 +177,7 @@ export default function PurchaseOrdersPage() {
                     order={viewingOrder}
                     canManage={canManage}
                     isBusy={isBusy}
-                    onEdit={editOrder}
+                    onEdit={openEdit}
                     onSend={openSend}
                     onCancel={openCancel}
                 />
@@ -223,8 +215,8 @@ export default function PurchaseOrdersPage() {
                             {isTransitioning
                                 ? "Updating..."
                                 : isSending
-                                  ? "Mark as sent"
-                                  : "Cancel order"}
+                                    ? "Mark as sent"
+                                    : "Cancel order"}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
