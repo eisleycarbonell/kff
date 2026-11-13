@@ -1,8 +1,8 @@
 import { readFile } from 'node:fs/promises';
 import { config } from 'dotenv';
-import { createPostgresClient } from './connection.ts';
+import { createPostgresClient, resolveDirectDatabaseUrl } from './connection.ts';
 config({ path: '.env', quiet: true });
-const migrationUrl = process.env.DIRECT_URL || process.env.DATABASE_URL;
+const migrationUrl = resolveDirectDatabaseUrl();
 if (!migrationUrl) throw new Error('Configure DIRECT_URL or DATABASE_URL first.');
 const client = createPostgresClient(migrationUrl, { max: 1, onnotice: () => {} });
 try {

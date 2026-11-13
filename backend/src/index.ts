@@ -37,7 +37,6 @@ const app = createApp({
     reorderPolicyService: ReorderPolicyService,
     controlService: ControlService,
     operationalReportService: OperationalReportService,
-
     userService: UserService,
     roleService: RoleService,
     itemService: ItemService,
@@ -67,8 +66,15 @@ if (process.env.KFF_SAMPLE_DATA_ON_START === 'true' && !process.env.VERCEL) {
         const { seedSampleData } = await import('./db/sample-data.ts');
         const result = await seedSampleData();
         logger.info({ sampleData: result.status }, 'Test sample data initialization finished');
-    } catch {
+    } catch (error) {
         logger.error(
+            {
+                reason: error instanceof Error ? error.message : String(error),
+                code:
+                    error && typeof error === 'object' && 'code' in error
+                        ? (error as { code?: unknown }).code
+                        : undefined,
+            },
             'Test sample initialization failed. Enable KFF_ALLOW_TEST_DATA=true and initialize the empty test database schema before starting.',
         );
         process.exit(1);
