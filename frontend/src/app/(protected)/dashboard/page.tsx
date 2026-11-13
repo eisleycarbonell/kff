@@ -53,7 +53,9 @@ export default function DashboardPage() {
                         onClick={() => void refetch()}
                         disabled={isFetching}
                     >
-                        <RefreshCw className={`size-3.5 ${isFetching ? "animate-spin text-primary" : ""}`} />
+                        <RefreshCw
+                            className={`size-3.5 ${isFetching ? "animate-spin text-primary" : ""}`}
+                        />
                         {isFetching ? "Refreshing..." : "Refresh"}
                     </Button>
                 }
@@ -113,10 +115,12 @@ export default function DashboardPage() {
                     {/* Mid Section: Stock Distribution & Active Orders */}
                     <div className="grid gap-6 lg:grid-cols-2">
                         <DashboardStockDistribution
+                            currencyCode={summary?.currencyCode ?? "PHP"}
                             stockByType={stockByType}
                             stockByLocation={stockByLocation}
                         />
                         <DashboardActiveOrders
+                            currencyCode={summary?.currencyCode ?? "PHP"}
                             packingOrders={activePackingOrders}
                             purchaseOrders={pendingPurchaseOrders}
                         />

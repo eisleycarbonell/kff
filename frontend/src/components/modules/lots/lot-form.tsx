@@ -177,7 +177,9 @@ function LotFormContent({
                     ))}
                 </div>
                 <Field data-invalid={Boolean(errors.qcStatus)}>
-                    <FieldLabel htmlFor={`${id}-qcStatus`}>Quality status</FieldLabel>
+                    <FieldLabel htmlFor={`${id}-qcStatus`}>
+                        Quality status
+                    </FieldLabel>
                     <Select
                         items={qualityItems}
                         value={values.qcStatus}
@@ -203,7 +205,8 @@ function LotFormContent({
                         </SelectContent>
                     </Select>
                     <FieldDescription>
-                        Changes apply to this lot across all inventory locations.
+                        New lots start Approved. Change the quality status here when needed;
+                        changes apply across all locations and are blocked while stock is reserved.
                     </FieldDescription>
                     <FieldError id={`${id}-qcStatus-error`}>{errors.qcStatus}</FieldError>
                 </Field>

@@ -77,6 +77,7 @@ The other modules' placeholder pages are not complete implementation examples.
 | --- | --- |
 | Page composition, header action, loading, and dialogs | [users/page.tsx](src/app/(protected)/(users-access)/users/page.tsx) |
 | Requests, query cache, mutations, notifications, and feature state | [use-users.ts](src/hooks/modules/users/use-users.ts) |
+| Shared dialog store and load status | [create-dialog-store.ts](src/lib/create-dialog-store.ts), [load-status.ts](src/lib/load-status.ts) |
 | Public DTOs, writable inputs, form values, and validation | [user.schema.ts](src/components/modules/users/user.schema.ts) |
 | Statistics calculated from page data | [user-statistics.tsx](src/components/modules/users/user-statistics.tsx) |
 | Table state, rendering, empty states, and pagination | [user-table.tsx](src/components/modules/users/user-table.tsx) |
@@ -88,6 +89,7 @@ The other modules' placeholder pages are not complete implementation examples.
 
 - **Framework**: Next.js App Router with TypeScript and React 19.
 - **Server data**: TanStack Query through the existing `QueryProvider` in the root layout.
+- **Client UI state**: Zustand (v5) for page dialog/selection state through `lib/create-dialog-store.ts`. Server data never goes into a Zustand store.
 - **Tables**: the installed TanStack Table v9 API: `useTable`, `tableFeatures`, `createColumnHelper`, and `table.FlexRender`, following the users table. Check installed APIs before using examples from another version.
 - **Styling**: Tailwind CSS v4.
 - **UI**: shadcn/ui (`base-nova`, Base UI). Follow the existing `render` prop and controlled-value APIs. Use existing shadcn primitives first; add missing components with `npx shadcn@latest add <component> --yes`.
@@ -120,7 +122,10 @@ frontend/
     hooks/
       modules/
         users/
-          use-users.ts               # Endpoints, requests, TanStack Query and feature state
+          use-users.ts               # Endpoints, requests, TanStack Query and Zustand dialog store
+    lib/
+      create-dialog-store.ts         # Shared Zustand factory for page dialog state
+      load-status.ts                 # Shared session/query load-state helper
     providers/
       query-provider.tsx             # Shared query client; reuse across modules
   tests/
@@ -152,6 +157,17 @@ substantial; do not create empty files to match this tree.
    sessions (HTTP 401) are handled once in `QueryProvider`; hooks must not repeat
    that. Do not introduce separate `*.api.ts`, service, or repository files by
    default.
+
+   Keep form, edit, confirmation-target, and detail-view state in a Zustand
+   dialog store created with `createDialogStore<Record, Target>()` from
+   `lib/create-dialog-store.ts` at the top of the feature hook file (see
+   `use-users.ts`). Call the returned hook once, in the page's feature hook; each
+   owner gets its own store instance, so there is no global singleton to reset.
+   Its actions are stable, so wrappers such as
+   `openAdd` only need `useCallback` when they also reset a mutation. Derive the
+   page `loadStatus` with `getLoadStatus` from `lib/load-status.ts` instead of
+   repeating session/query ternaries. Keep hook return values plain so pages and
+   components stay unaware of the store.
 
 3. **The schema owns types and validation.** Define public response DTOs, separate
    create/update inputs, form values, and pure validation/helpers in

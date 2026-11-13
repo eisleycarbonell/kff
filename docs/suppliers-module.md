@@ -9,78 +9,98 @@ Suppliers follows the [shared system flow](system-flow.md). The page is
 Supplier records contain a required name (up to 100 characters), an optional
 email (up to 100 characters), and active status. Names are trimmed; emails are
 trimmed and lowercased, and clearing an email sends null. Database uniqueness
-protects supplier names. No phone, address, or other unimplemented database
-fields are presented as writable fields.
+protects supplier names.
 
-The list includes active and inactive suppliers, actual item-offer counts, and
-whether a supplier has open purchase orders. Users can search, filter, sort,
-select rows, control columns, export filtered or selected CSV rows, and paginate.
-Statistics are derived from the loaded supplier records.
+The table shows contacts, status, **Linked items** and open purchasing work.
+Search, status filters, sorting, selection, column controls, CSV and pagination
+use the loaded records. The table and CSV use `activeItemCount`, calculated by
+the backend from current `supplier_items.isActive` links. The summary sums that
+same count across suppliers, counting supplier-item pairs rather than distinct
+catalog items. Each row counts only relationships belonging to that supplier;
+for example, two current links show 2 even if other suppliers have 22 links.
+The open-order flag is also specific to that supplier. Old unlinked records
+do not inflate the displayed count.
+`itemCount` (all historical relationships) and `preferredItemCount` remain in
+the API for compatibility but are not shown as separate counters.
 
-There is no permanent-delete operation. Deactivation preserves purchasing and
-item relationships. Suppliers with Draft, Sent, or Partially Received purchase
-orders cannot be deactivated. A successful deactivation also disables their item
-offers and clears their preferred flags in the same database transaction.
-Reactivating a supplier does not automatically reactivate its offers.
+Deactivation preserves history. Suppliers with Draft, Sent or Partially
+Received orders cannot be deactivated. Successful deactivation unlinks their
+items and clears legacy preferred flags in one transaction. Reactivating a
+supplier does not relink its items automatically.
 
-## Supplier item offers
+## Shared item links
 
-An item can have multiple suppliers, with one offer per supplier/item pair. An
-offer stores the supplier's item code, default purchase UOM, default price,
-non-negative lead time in days, preferred flag, and active status.
+Choose **Link items** from a supplier's row menu. The dialog initially lists only
+currently linked items; search by name/SKU or use **Unlink**. Choose **Link another
+item** to see eligible unlinked materials and use **Link item**. **Back to linked
+items** returns to the supplier's current links. The dialog shows
+a current linked count independent of search, item name, SKU, primary UOM and
+link status. There is no offer editor, price form, preferred selector or
+separate active-offer switch.
 
-- Prices remain exact decimal strings matching `numeric(14,4)`: up to 10 whole
-  digits and 4 decimal places. A null price is unspecified; zero is a real price.
-  No currency is assumed.
-- A null default UOM means the item's primary UOM. An explicit default UOM must
-  belong to the same UOM class as the item's primary unit. Price is per that unit.
-- New offers require an active supplier and an active raw material,
-  packaging material, or label. Finished goods are produced through packing.
-- The linked item cannot change after creating an offer. Edit its quote details
-  or deactivate it instead. Existing inactive offers remain visible.
-- Only one active preferred supplier is allowed per item. A conflicting change
-  returns 409; it does not silently replace another supplier's preference.
-- Deactivating an offer clears its preferred flag. An inactive offer cannot be
-  explicitly made preferred. Reactivating an offer revalidates the supplier,
-  item, and UOM relationships.
+Items / Products offers the same link/unlink action from its Suppliers column.
+Both screens write the same `supplier_items` record. One item may have several
+suppliers, with one record per pair. New links require an active supplier and
+active raw material, packaging item or label. Finished goods are packed internally.
+Unlinking sets `isActive: false` and preserves history; relinking uses PATCH on
+the same record. A retained link to an inactive item is visible but cannot
+permit a new PO line. Only active links between active suppliers and active
+materials permit purchasing.
 
-Writes lock the supplier and relevant item, validate UOMs under held locks, and
-commit related changes together. Existing unique indexes protect supplier/item
-pairs and active preferred suppliers under concurrent requests. Quote changes
-do not modify inventory quantities, historical purchase prices, or the ledger.
-[Purchase Orders](purchase-orders-module.md) validates active suppliers under a
-held supplier row lock when creating, editing, or marking an order as sent.
-This coordinates purchasing work with supplier deactivation. Purchase-order
-workflows use their own module.
+Creating a link sends only `{ itemId, isActive: true }`; changing an existing
+link sends only `{ isActive }`. Purchase units and prices are entered on the PO.
+A new link has no price default and uses the item's primary UOM. Existing
+optional supplier codes, purchase-unit/price defaults, lead times and preferred
+flags remain stored for compatibility, and existing defaults can still prefill
+PO lines. Link toggles do not overwrite those terms; unlinking clears a legacy
+preferred flag. The supplier UI no longer edits these optional terms.
+
+After saving, the dialog updates its cached relationship and awaits refresh of
+supplier counts, Items tags, supplier choices and PO options before enabling the
+next action. Failed writes keep the dialog open with a readable error. Writes
+are permission-gated, duplicate clicks and dismissal are blocked while saving,
+and query failures provide retry without inventing placeholder counts.
+
+## Backend compatibility and integrity
+
+The existing optional term fields remain supported by the API. Prices use exact
+`numeric(14,4)` decimal strings; null means unspecified and zero is a real price.
+A null purchase UOM means the primary UOM; an explicit one must be compatible.
+Only one active preferred supplier can exist per item. Unlinking clears that
+flag; relinking revalidates supplier, item and unit compatibility. Clients cannot
+change the item identity on an existing link.
+
+Writes lock the supplier and item and validate units under held locks. Unique
+indexes protect duplicate pairs and legacy preferred relationships. Supplier
+changes create no inventory or ledger entries and do not alter historical PO
+prices. [Purchase Orders](purchase-orders-module.md) revalidates active links
+under a supplier lock when creating, editing or sending drafts.
 
 ## Access and API
 
-All reads require an authenticated session. Creating, editing, activating, and
-deactivating suppliers or offers require `canManagePurchasing` on the backend.
-The frontend reflects the same permission. Audit identities come from the
-authenticated user; clients cannot submit IDs or audit fields as writable data.
+Reads require authentication. Supplier and item-link writes require
+`canManagePurchasing`, including when opened from Items. Inventory-only users
+can view relationships but cannot change them. Audit fields use the session.
 
 | Method | Endpoint | Behavior |
 | --- | --- | --- |
-| GET | `/api/suppliers` | Complete supplier collection and operational counts |
+| GET | `/api/suppliers` | Supplier collection and database-derived counts |
 | POST | `/api/suppliers` | Create supplier; returns 201 |
-| GET | `/api/suppliers/options` | Actual item and compatible-unit lookup data |
+| GET | `/api/suppliers/options` | Actual catalog items and compatible units |
 | GET | `/api/suppliers/:id` | Supplier or 404 |
 | PATCH | `/api/suppliers/:id` | Partial profile/status update |
-| GET | `/api/suppliers/:id/items` | All offers, including inactive records |
-| POST | `/api/suppliers/:id/items` | Create offer; returns 201 |
-| PATCH | `/api/suppliers/:id/items/:supplierItemId` | Partial quote/status update |
+| GET | `/api/suppliers/:id/items` | Current and historical item links |
+| POST | `/api/suppliers/:id/items` | Create item link; returns 201 |
+| PATCH | `/api/suppliers/:id/items/:supplierItemId` | Link/unlink or legacy optional-term update |
 
-Requests use strict Zod schemas and shared success/error envelopes. PATCH
-preserves omitted, null, false, and zero values and rejects empty updates.
-Validation returns 400, authentication/authorization 401/403, missing resources
-404, and conflicts 409. Driver details and private query data are not exposed.
+Strict Zod requests and shared response envelopes remain in use. PATCH retains
+omitted values and rejects empty updates. Errors use 400 for validation,
+401/403 for access, 404 for missing records and 409 for conflicts.
 
 ## Verification
 
-Run backend TypeScript, tests, and affected-file formatting checks. Frontend
-checks include request tests, affected-file lint, TypeScript, and a production
-build. HTTP tests use fake services and request tests use mocked fetch; they do
-not modify the configured database. Verify real persistence and concurrency
-separately when a database test environment is available, and inspect desktop
-and narrow layouts, form errors, permissions, export, and status transitions.
+Run backend TypeScript/tests and affected-file formatting checks when backend
+code changes. Frontend verification covers request payloads, link/unlink/relink,
+error responses, lint, TypeScript and production build. Mocked request tests
+create no real records. Verify persistence/concurrency and desktop/narrow browser
+interaction separately when a database test environment and browser are available.

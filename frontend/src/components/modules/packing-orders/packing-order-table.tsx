@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { memo, useMemo } from "react"
 import { useTable, type ReactTable } from "@tanstack/react-table"
 import {
     ArrowDown,
@@ -350,7 +350,7 @@ function PackingGrid<T extends PackingOrder | Reservation>({
         </div>
     )
 }
-export function PackingOrderTable({
+export const PackingOrderTable = memo(function PackingOrderTable({
     orders,
     onAdd,
     ...actions
@@ -408,8 +408,8 @@ export function PackingOrderTable({
             }
         />
     )
-}
-export function ReservationTable({
+})
+export const ReservationTable = memo(function ReservationTable({
     reservations,
     onView,
 }: {
@@ -465,4 +465,4 @@ export function ReservationTable({
             }
         />
     )
-}
+})

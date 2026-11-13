@@ -1,142 +1,69 @@
 "use client"
-import dynamic from "next/dynamic"
 import Link from "next/link"
-import { Plus } from "lucide-react"
 import { usePackingFormulas } from "@/hooks/modules/packing-formulas/use-packing-formulas"
-import { PackingFormulaTable } from "@/components/modules/packing-formulas/packing-formula-table"
 import { PackingFormulaStatistics } from "@/components/modules/packing-formulas/packing-formula-statistics"
 import { PageHeader } from "@/components/shared/page-header"
+import { RecordTable } from "@/components/shared/record-table"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
-import {
-    AlertDialog,
-    AlertDialogContent,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogCancel,
-    AlertDialogAction,
-} from "@/components/ui/alert-dialog"
-const PackingFormulaForm = dynamic(() =>
-    import("@/components/modules/packing-formulas/packing-formula-form").then(
-        (module) => module.PackingFormulaForm,
-    ),
-)
-export default function PackingFormulasPage() {
-    const feature = usePackingFormulas()
+export default function Page() {
+    const f = usePackingFormulas()
+    const rows = f.formulas.flatMap((product) =>
+        product.components.map((c) => ({ product, component: c })),
+    )
     return (
         <>
             <title>Packing Formulas</title>
-            <meta
-                name="description"
-                content="Manage finished-product packing formulas and material requirements."
-            />
             <PageHeader
                 title="Packing Formulas"
-                description="Define the materials needed for one finished product unit."
+                description="Current published material requirements per finished-product primary unit."
                 actions={
-                    feature.canManage && (
-                        <Button
-                            className="h-10"
-                            disabled={feature.isSaving || feature.isRemoving}
-                            onClick={feature.openAdd}
-                        >
-                            <Plus />
-                            Create formula
-                        </Button>
-                    )
+                    <Button render={<Link href="/formula-revisions" />} nativeButton={false}>
+                        Formula revisions
+                    </Button>
                 }
             />
-            {feature.loading && <Skeleton className="h-96" aria-label="Loading packing formulas" />}
-            {feature.signedOut && (
-                <Alert>
-                    <AlertTitle>Sign in to view packing formulas</AlertTitle>
-                    <AlertDescription>
-                        <Link href="/">Sign in</Link>
-                    </AlertDescription>
-                </Alert>
+            <p className="text-sm text-muted-foreground">
+                Prepare and release changes through Formula Revisions. Existing definitions are a
+                legacy published baseline until replaced; historical packing orders keep their own
+                material snapshot.
+            </p>
+            {f.loading && <Skeleton className="h-64" />}
+            {f.error && (
+                <p role="alert">
+                    {f.error.message}
+                    <Button onClick={f.retry}>Retry</Button>
+                </p>
             )}
-            {feature.error && (
-                <Alert variant="destructive">
-                    <AlertTitle>Unable to load packing formulas</AlertTitle>
-                    <AlertDescription>
-                        {feature.error.message}
-                        <Button variant="outline" onClick={feature.retry}>
-                            Retry
-                        </Button>
-                    </AlertDescription>
-                </Alert>
-            )}
-            {!feature.loading && !feature.signedOut && (
-                <>
-                    {!feature.canManage && (
-                        <Alert>
-                            <AlertTitle>View-only access</AlertTitle>
-                            <AlertDescription>
-                                You can inspect and export formulas. Packing managers can create or
-                                edit them.
-                            </AlertDescription>
-                        </Alert>
-                    )}
-                    <PackingFormulaStatistics formulas={feature.formulas} />
-                    <PackingFormulaTable
-                        formulas={feature.formulas}
-                        canManage={feature.canManage}
-                        busy={feature.isSaving || feature.isRemoving}
-                        onAdd={feature.openAdd}
-                        onEdit={feature.openEdit}
-                        onRemove={feature.setRemoving}
-                    />
-                </>
-            )}
-            {feature.formRequested && (
-                <PackingFormulaForm
-                    open={feature.formOpen && feature.canManage}
-                    onOpenChange={feature.setFormOpen}
-                    formula={feature.editing}
-                    options={feature.options}
-                    optionsError={feature.optionsError}
-                    optionsLoading={feature.optionsLoading}
-                    retryOptions={feature.retryOptions}
-                    isSaving={feature.isSaving}
-                    error={feature.saveError}
-                    onSave={feature.handleSave}
-                />
-            )}
-            <AlertDialog
-                open={Boolean(feature.removing) && feature.canManage}
-                onOpenChange={(open) => {
-                    if (!open && !feature.isRemoving) feature.setRemoving(null)
-                }}
-            >
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Remove packing formula?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            {feature.removing?.itemName} will need a new formula before new packing
-                            orders can be created. Existing packing orders keep their saved
-                            requirements and reservations.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    {feature.removeError && (
-                        <p role="alert" className="text-destructive">
-                            {feature.removeError}
-                        </p>
-                    )}
-                    <AlertDialogFooter>
-                        <AlertDialogCancel disabled={feature.isRemoving}>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                            variant="destructive"
-                            disabled={feature.isRemoving}
-                            onClick={feature.handleRemove}
-                        >
-                            {feature.isRemoving ? "Removing..." : "Remove formula"}
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+            <PackingFormulaStatistics formulas={f.formulas} />
+            <RecordTable
+                name="published-formulas"
+                rows={rows}
+                id={(r) => r.product.itemId + ":" + r.component.componentItemId}
+                columns={[
+                    {
+                        key: "revision",
+                        label: "Released revision request",
+                        value: (r) =>
+                            r.product.revisionId ? String(r.product.revisionId) : "Legacy baseline",
+                    },
+                    {
+                        key: "product",
+                        label: "Finished product",
+                        value: (r) => r.product.itemSku + " ? " + r.product.itemName,
+                    },
+                    {
+                        key: "component",
+                        label: "Component",
+                        value: (r) => r.component.componentSku + " ? " + r.component.componentName,
+                    },
+                    {
+                        key: "quantity",
+                        label: "Quantity per product unit",
+                        value: (r) => r.component.quantity + " " + r.component.uomName,
+                    },
+                ]}
+            />
         </>
     )
 }

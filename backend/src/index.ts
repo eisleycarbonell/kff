@@ -1,3 +1,9 @@
+import * as SettingsService from './modules/company-settings/company-setting.service.ts';
+import * as ReasonCodeService from './modules/reason-codes/reason-code.service.ts';
+import * as ItemPackageService from './modules/item-packaging/item-package.service.ts';
+import * as ReorderPolicyService from './modules/reorder-policies/reorder-policy.service.ts';
+import * as ControlService from './modules/inventory-controls/inventory-control.service.ts';
+import * as OperationalReportService from './modules/operational-reports/operational-report.service.ts';
 import * as UomService from './modules/uoms/uom.service.ts';
 import * as LocationService from './modules/locations/location.service.ts';
 import 'dotenv/config';
@@ -22,8 +28,16 @@ import * as SalesOrderService from './modules/sales-orders/sales-order.service.t
 import * as DeliveryOrderService from './modules/delivery-orders/delivery-order.service.ts';
 import * as BrandService from './modules/brands/brand.service.ts';
 import * as FormulaService from './modules/packing-formulas/packing-formula.service.ts';
+import * as InventoryReportService from './modules/inventory-reports/inventory-report.service.ts';
 
 const app = createApp({
+    settingsService: SettingsService,
+    reasonCodeService: ReasonCodeService,
+    itemPackageService: ItemPackageService,
+    reorderPolicyService: ReorderPolicyService,
+    controlService: ControlService,
+    operationalReportService: OperationalReportService,
+
     userService: UserService,
     roleService: RoleService,
     itemService: ItemService,
@@ -44,6 +58,7 @@ const app = createApp({
     deliveryOrderService: DeliveryOrderService,
     brandService: BrandService,
     formulaService: FormulaService,
+    inventoryReportService: InventoryReportService,
 });
 const port = process.env.PORT ? Number(process.env.PORT) : 3001;
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { memo, useMemo } from "react"
 import { useTable } from "@tanstack/react-table"
 import {
     ArrowDown,
@@ -48,7 +48,7 @@ type CustomerTableProps = {
     onActivate: (customer: Customer) => Promise<boolean>
 }
 
-export function CustomerTable({
+export const CustomerTable = memo(function CustomerTable({
     customers,
     onAdd,
     onEdit,
@@ -279,4 +279,4 @@ export function CustomerTable({
             </div>
         </div>
     )
-}
+})

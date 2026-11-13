@@ -1,9 +1,11 @@
 "use client"
 
-import { useCallback, useState } from "react"
+import { useCallback, useEffect, useRef } from "react"
 import { z } from "zod"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Toast } from "@base-ui/react/toast"
+import { createDialogStore } from "@/lib/create-dialog-store"
+import { getLoadStatus } from "@/lib/load-status"
 import { apiRequest, ApiError } from "@/lib/api-request"
 import { SESSION_QUERY_KEY, useSession } from "@/hooks/use-session"
 import {
@@ -58,6 +60,8 @@ export async function runDeliveryOrderAction(
 }
 const EMPTY_ORDERS: DeliveryOrder[] = []
 
+type ActionTarget = { order: DeliveryOrder; action: DeliveryOrderAction }
+const useDialogs = createDialogStore<DeliveryOrder, ActionTarget, { isOpeningEdit: boolean }>({ isOpeningEdit: false })
 export function useDeliveryOrders() {
     const session = useSession()
     const client = useQueryClient()
@@ -69,15 +73,18 @@ export function useDeliveryOrders() {
         queryFn: ({ signal }) => getDeliveryOrders(signal),
         enabled: Boolean(session.data),
     })
-    const [formOpen, setFormOpen] = useState(false)
-    const [formRequested, setFormRequested] = useState(false)
-    const [editingOrder, setEditingOrder] = useState<DeliveryOrder | null>(null)
-    const [detailId, setDetailId] = useState<number | null>(null)
-    const [actionSelection, setActionSelection] = useState<{
-        order: DeliveryOrder
-        action: DeliveryOrderAction
-    } | null>(null)
-    const [isOpeningEdit, setIsOpeningEdit] = useState(false)
+    const { formOpen, formRequested, editing: editingOrder, detailId, target: actionSelection,
+        isOpeningEdit, openForm, setFormOpen, setDetailId, setTarget: setActionSelection, patch } = useDialogs()
+    const setIsOpeningEdit = useCallback((isOpeningEdit: boolean) => patch({ isOpeningEdit }), [patch])
+    const editRequest = useRef(0)
+    const writePending = useRef(false)
+    useEffect(() => {
+        const requests = editRequest
+        requests.current++
+        return () => {
+            requests.current++
+        }
+    }, [userId])
     const options = useQuery({
         queryKey: ["delivery-order-options", userId],
         queryFn: ({ signal }) => getDeliveryOrderOptions(signal),
@@ -96,8 +103,8 @@ export function useDeliveryOrders() {
                 (current = []) =>
                     current.some((row) => row.deliveryOrderId === saved.deliveryOrderId)
                         ? current.map((row) =>
-                              row.deliveryOrderId === saved.deliveryOrderId ? saved : row,
-                          )
+                            row.deliveryOrderId === saved.deliveryOrderId ? saved : row,
+                        )
                         : [saved, ...current],
             )
             client.setQueryData(["delivery-order-detail", saved.deliveryOrderId, userId], saved)
@@ -111,8 +118,12 @@ export function useDeliveryOrders() {
                 "inventory-stocks",
                 "inventory-stock-options",
                 "inventory-movements",
+                "inventory-reports",
+                "operational-report-options",
+                "operational-reports",
+                "inventory-control-options",
                 "transfer-options",
-                "packing-order-options",
+                "packing-options",
                 "packing-preview",
                 "dashboard",
                 "lots",
@@ -184,13 +195,15 @@ export function useDeliveryOrders() {
     const { reset: resetSave, mutateAsync: saveAsync, isPending: isSaving } = save
     const { reset: resetAction, mutateAsync: actionAsync, isPending: isActing } = action
     const openAdd = useCallback(() => {
+        if (!canManage || writePending.current) return
+        editRequest.current++
         resetSave()
-        setEditingOrder(null)
-        setFormRequested(true)
-        setFormOpen(true)
-    }, [resetSave])
+        patch({ editing: null, formOpen: true, formRequested: true, isOpeningEdit: false })
+    }, [canManage, resetSave, patch])
     const openEdit = useCallback(
         async (order: DeliveryOrder) => {
+            if (!canManage || writePending.current) return
+            const request = ++editRequest.current
             resetSave()
             setIsOpeningEdit(true)
             try {
@@ -199,63 +212,62 @@ export function useDeliveryOrders() {
                     queryFn: ({ signal }) => getDeliveryOrder(order.deliveryOrderId, signal),
                     staleTime: 0,
                 })
+                if (request !== editRequest.current) return
                 if (loaded.status !== "Draft")
                     throw new Error("Only draft delivery orders can be edited. Refresh the orders.")
-                setEditingOrder(loaded)
-                setFormRequested(true)
-                setFormOpen(true)
+                openForm(loaded)
             } catch (error) {
+                if (request !== editRequest.current) return
                 onError(
                     error instanceof Error ? error : new Error("Unable to load delivery order."),
                 )
             } finally {
-                setIsOpeningEdit(false)
+                if (request === editRequest.current) setIsOpeningEdit(false)
             }
         },
-        [client, userId, resetSave, onError],
+        [canManage, client, userId, resetSave, onError, openForm, setIsOpeningEdit],
     )
     const openAction = useCallback(
         (order: DeliveryOrder, next: DeliveryOrderAction) => {
+            if (!canManage || writePending.current) return
+            editRequest.current++
+            setIsOpeningEdit(false)
             resetAction()
             setActionSelection({ order, action: next })
         },
-        [resetAction],
+        [canManage, resetAction, setActionSelection, setIsOpeningEdit],
     )
     const handleSave = useCallback(
         async (input: CreateDeliveryOrderInput) => {
-            if (isSaving) return false
+            if (writePending.current) return false
+            writePending.current = true
             try {
                 await saveAsync(input)
                 return true
             } catch {
                 return false
+            } finally {
+                writePending.current = false
             }
         },
-        [isSaving, saveAsync],
+        [saveAsync],
     )
     const handleAction = useCallback(
         async (input: { transitLocationId: number } | Record<string, never> = {}) => {
-            if (isActing) return false
+            if (writePending.current) return false
+            writePending.current = true
             try {
                 await actionAsync(input)
                 return true
             } catch {
                 return false
+            } finally {
+                writePending.current = false
             }
         },
-        [isActing, actionAsync],
+        [actionAsync],
     )
-    const loadStatus = session.isPending
-        ? "loading"
-        : session.data === undefined
-          ? "error"
-          : !session.data
-            ? "signed-out"
-            : query.data !== undefined
-              ? "ready"
-              : query.isError
-                ? "error"
-                : "loading"
+    const loadStatus = getLoadStatus(session, [query])
     return {
         orders: query.data ?? EMPTY_ORDERS,
         canManage,

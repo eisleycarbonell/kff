@@ -6,6 +6,7 @@ import {
     uoms,
     uomClasses,
     supplierItems,
+    suppliers,
     billOfMaterials,
     itemPackaging,
     purchaseOrderLines,
@@ -17,12 +18,18 @@ import {
     inventoryTransactions,
     stockTransferLines,
     salesOrderLines,
+    reorderPolicies,
+    formulaRevisions,
+    formulaRevisionMaterials,
 } from '../../db/schema.ts';
 import { AppError } from '../../errors/app-error.ts';
 import type { CreateItemInput, UpdateItemInput } from './item.schema.ts';
 
 // Indexed existence checks protect stored quantities and material relationships.
 const isInUse = sql<boolean>`(
+    exists (select 1 from ${reorderPolicies} where ${reorderPolicies.itemId} = ${items.itemId}) or
+    exists (select 1 from ${formulaRevisions} where ${formulaRevisions.itemId} = ${items.itemId}) or
+    exists (select 1 from ${formulaRevisionMaterials} where ${formulaRevisionMaterials.componentItemId} = ${items.itemId}) or
     exists (select 1 from ${supplierItems} where ${supplierItems.itemId} = ${items.itemId}) or
     exists (select 1 from ${billOfMaterials} where ${billOfMaterials.parentItemId} = ${items.itemId} or ${billOfMaterials.componentItemId} = ${items.itemId}) or
     exists (select 1 from ${itemPackaging} where ${itemPackaging.itemId} = ${items.itemId}) or
@@ -58,6 +65,15 @@ const itemFields = {
     updatedBy: items.updatedBy,
     updatedAt: items.updatedAt,
     isInUse,
+    supplierLinks: sql<
+        {
+            supplierItemId: number;
+            supplierId: number;
+            name: string;
+            isActive: boolean;
+            supplierIsActive: boolean;
+        }[]
+    >`coalesce((select jsonb_agg(jsonb_build_object('supplierItemId', ${supplierItems.supplierItemId}, 'supplierId', ${suppliers.supplierId}, 'name', ${suppliers.name}, 'isActive', ${supplierItems.isActive}, 'supplierIsActive', ${suppliers.isActive}) order by ${suppliers.name}) from ${supplierItems} join ${suppliers} on ${suppliers.supplierId} = ${supplierItems.supplierId} where ${supplierItems.itemId} = ${items.itemId}), '[]'::jsonb)`,
 };
 type Reader = Pick<typeof db, 'select'>;
 const itemQuery = (database: Reader = db) =>

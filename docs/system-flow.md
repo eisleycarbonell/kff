@@ -1,10 +1,16 @@
 # Spice Trading & Packing System Flow
 
-Repository documentation reviewed on 2026-11-07. This document retains the
+Repository documentation reviewed on 2026-11-12. This document retains the
 original 26 sections and defines the shared business flow, including the
 implemented customer sales and delivery extension in section 17. Section 2
 distinguishes implemented workflows from planned modules; a documented route
 alone does not establish that its page and API are implemented.
+
+Read section 2 for each module's purpose and connections, sections 7 and 13
+for the stock columns, and section 22 for the successful operator flow. The
+[UI setup and happy-path guide](ui-setup-and-happy-path.md) expands that flow
+into field-by-field instructions and numerical checkpoints. This document
+remains the single source of business rules.
 
 ## 1. System Purpose
 
@@ -90,7 +96,7 @@ Routes:
 
 ## Current Implementation Coverage
 
-The following status reflects the repository source on 2026-11-07.
+The following status reflects the repository source on 2026-11-12.
 Implemented means that the page and operational API are present; database
 deployment and live verification are separate. The business examples below
 remain illustrative rather than fixed master data or promised feature coverage.
@@ -99,30 +105,75 @@ remain illustrative rather than fixed master data or promised feature coverage.
 | --- | --- | --- |
 | Dashboard | Operational inventory, purchasing, packing and transfer summaries | Dashboard page and API |
 | Items / Products | Catalog management and reference protection | [Items](items-module.md) |
-| Suppliers | Supplier and item-offer management | [Suppliers](suppliers-module.md) |
+| Suppliers | Supplier contacts and shared item links | [Suppliers](suppliers-module.md) |
 | Customers | Contact master data linked to sales orders | [Customers](customers-module.md) |
 | Units and Locations | Master-data management and usage protection | [UOM and Locations](uom-locations-modules.md) |
 | Purchase Orders | Draft, send, partial receipt, completion and cancellation | [Purchase Orders](purchase-orders-module.md) |
 | Receiving and Lots | Purchase receiving, lot provenance and QC metadata | [Receiving and Lots](receiving-lots-modules.md) |
-| Inventory, Movements, Adjustments and Counts | Balances and ledger views; individual lot/location counted corrections | [Inventory Stocks](inventory-stocks-module.md) |
+| Inventory, Movements and Adjustments | Balances, append-only ledger and direct physical-count corrections | [Inventory Stocks](inventory-stocks-module.md) |
 | Packing Orders and Material Reservations | BOM snapshots, planning, reservations, start and completion | [Packing Orders](packing-orders-module.md) |
 | Stock Transfers and Branch/Store Stock | Dispatch through In Transit, partial receiving and shared location inventory | [Stock Transfers](stock-transfers-module.md) |
 | Sales Orders and Delivery Orders | Customer demand allocation, lot dispatch and completed delivery fulfillment | [Sales and Delivery](sales-delivery-modules.md) |
 | Users, Roles and Authentication | Accounts, sessions and the five supported permission settings | [Users and Roles](roles-users-module.md) |
-| Packing Formula / BOM maintenance | Current formula editor/API with compatible units and protected historical order snapshots | [Brands and Packing Formulas](brands-packing-formulas-modules.md) |
+| Packing Formula / BOM maintenance | Published BOM inspection; numbered, dated revision releases with independent review | [Brands and Packing Formulas](brands-packing-formulas-modules.md) |
 | Brands | Brand management, active status and optional item assignments | [Brands and Packing Formulas](brands-packing-formulas-modules.md) |
-| Reports | Placeholder report tabs; dedicated reporting APIs are planned | Section 18 |
-| Company Settings | Placeholder page; company settings storage and API are planned | Section 21 navigation |
+| Inventory Reports | Stock by Location, Stock by Lot, Low Stock, Near Expiry and Inventory Movement with filters, exact unit totals and CSV export | [Inventory Reports](inventory-reports-module.md) |
+| Company Settings | Company/contact details, fixed currency after pricing history, alert defaults and optimistic version checks | [Controls and Reports](inventory-controls-and-reports.md) |
+| Packaging, Reorder Levels and Reason Codes | Item-specific conversions/barcodes, saved thresholds and active reasons | [Controls and Reports](inventory-controls-and-reports.md) |
+| Scrap & Disposal | Independently reviewed permanent stock removal | [Controls and Reports](inventory-controls-and-reports.md) |
+| Former Count Sessions, QC Decisions and Stock Dispositions | Removed from the active workflow; retained records remain historical and cannot be advanced | [Controls and Reports](inventory-controls-and-reports.md) |
+| Formula Revisions | Numbered replacement/retirement and effective-date release approval | [Controls and Reports](inventory-controls-and-reports.md) |
+| Operational Reports | Packing variance/consumption, purchasing exposure, transfer transit and lot genealogy | [Controls and Reports](inventory-controls-and-reports.md) |
 
-Item-specific packaging/UOM conversions and scrap reason codes have schema and
-sample records but no maintenance API. A dedicated scrap/disposal operation is
-not yet exposed; sample Scrap entries do not establish a live scrap workflow.
-Stock Counts currently records changed counts through adjustments, without
-count-session documents or saved unchanged observations.
+[Inventory Controls and Reports](inventory-controls-and-reports.md) defines the
+modules, APIs, access and review lifecycle. Stock Adjustments remains the direct
+physical-count correction workflow. Historical BOMs remain a legacy published
+baseline; migration does not fabricate prior approvals. [Sample-data setup](test-data.md)
+describes six role/account assignments and empty-database import behavior.
 
-[Sample-data setup](test-data.md) describes the implemented examples, six sample
-role/account assignments, and empty-database import behavior. Sample records
-do not implement the planned modules above.
+## Module purposes and connections
+
+Use master data to define the business records first. Use operational modules
+to buy, receive, pack and move goods. Use Inventory to inspect the resulting
+stock, and Reports to compare and export the recorded activity.
+
+| Module / menu | Purpose and when to use it | Connected records and next step |
+| --- | --- | --- |
+| Dashboard | Review current stock, shortages and open work before operating | Reads purchasing, inventory, packing and transfers; open the relevant operational module to act |
+| Items / Products | Define each material or finished product, its type and primary stock UOM; inspect supplier tags | Used by supplier links, PO lines, BOMs, lots and every stock operation; creating an item creates no stock |
+| Suppliers | Maintain supplier contacts and the materials linked to each supplier | Shares supplier-item links with Items; these links determine the PO material dropdown |
+| Brands | Group finished products commercially | Optional item assignment; does not create a separate stock balance |
+| Units of Measure | Define compatible units and conversions | Items select a primary UOM; purchasing and BOM inputs convert into that unit |
+| Item Packaging | Define an item's units per box/case and optional barcode/weight | Overrides generic compatible UOM conversion for that item in receiving and packing requirements |
+| Locations | Define warehouses, packing areas, branches, stores and In Transit | Receiving, packing, transfers and deliveries write stock against these locations |
+| Customers | Maintain customer contact and delivery-address details | Sales Orders select a customer; customers are not company inventory locations |
+| Packing Formulas | Inspect the published materials required per finished unit | Formula Revisions publishes the BOM; a new Packing Order copies it |
+| Formula Revisions | Prepare and independently release a replacement or retirement of a formula | Changes future packing requirements; historical orders keep their saved snapshot |
+| Reorder Levels | Set item-specific low-stock thresholds | Used by Dashboard and Low Stock reports; does not automatically purchase anything |
+| Reason Codes | Maintain active explanations for adjustments and disposal | Required by Stock Adjustments or Scrap & Disposal, as appropriate |
+| Purchase Orders | Record the selected supplier, material quantities, purchase units and agreed prices | Uses active supplier-item links; a Sent PO becomes available in Receiving |
+| Receiving | Record goods that physically arrived against an outstanding PO line | Creates a purchased lot, Receive movement and location balance; updates PO receipt progress |
+| Inventory Stock | Answer how much of each item/lot is at each location and how much is available | Reads receipts, packing, transfers, deliveries, adjustments and scrap; open Lots or Movements for explanation |
+| Lots / Batches | Trace a batch's origin, dates, status and stock across locations | Purchased lots link to PO lines; finished lots link to Packing Orders and consumed material lots |
+| Stock Movements | Explain every increase, decrease and relocation of stock | Read-only ledger linked to the receipt, packing order, transfer, delivery, adjustment or scrap request |
+| Stock Adjustments | Correct a verified physical-count difference for one item/lot/location | Uses the expected balance, counted quantity and reason; posts an Adjustment movement |
+| Scrap & Disposal | Permanently remove confirmed damaged, expired or unusable goods | Independent review posts a negative Scrap movement; use outside the normal happy path |
+| Packing Orders | Plan and execute conversion of materials into finished products | Copies a BOM, reserves material lots, then consumes inputs and produces a traceable finished lot |
+| Material Reservations | Inspect which packing order has committed which material lots | Created by packing planning; consumed/released on completion or released on cancellation |
+| Stock Transfers | Move company-owned finished goods between a warehouse and another warehouse, branch or store | Dispatch moves source stock into In Transit; receipt moves it into the destination |
+| Sales Orders | Record and confirm customer demand and track fulfillment | Uses Customers and finished Items; Delivery Orders allocate and fulfill its remaining demand |
+| Delivery Orders | Ship selected finished-product lots and confirm customer receipt | Source stock moves to protected In Transit; completion posts Sale movements and updates the Sales Order |
+| Inventory Reports | Inspect/export stock by location/lot, low stock, near expiry and movements | Reads current stock, active reservations, master-data thresholds and ledger records |
+| Packing Report | Compare target/output and requirements/consumption | Reads packing snapshots and Consume/Produce movements |
+| Purchasing Report | Review ordered, received and outstanding quantities and value | Reads PO headers/lines; receipt progress comes from Receiving |
+| Transfer Report | Review dispatched, received and outstanding transit quantities | Reads Stock Transfers and their receipt progress |
+| Lot Genealogy | Follow purchased materials into packed lots and later movements | Joins PO/supplier origins, packing consumption/output and transfer/delivery references |
+| Users / Roles & Permissions | Give operators access to their responsibilities | Backend permissions govern every protected write; roles also determine visible actions |
+| Company Settings | Maintain company details, currency and default alert thresholds | Used by app labels, monetary displays, low-stock and expiry warnings |
+
+Count Sessions, QC Decisions and Stock Dispositions are no longer operator
+modules. Their removal does not remove Stock Adjustments, lot traceability,
+reservations, Scrap & Disposal or historical ledger entries.
 
 ---
 
@@ -218,6 +269,40 @@ isPreferred
 isActive
 ```
 
+### Supplier tags shared with Items and purchasing
+
+A supplier tag is a shared item-to-supplier link. Suppliers and Items use the
+same relationship. Open Link items on a supplier to see only its current links
+and use Unlink as needed. Link another item opens eligible unlinked materials;
+Back to linked items returns to the current links. The Items supplier dialog
+changes the same record. There is no separate offer
+form or offer activation step. Enter purchase units and agreed prices on the PO.
+
+The supplier table, summary card and CSV show current linked items, using the
+backend count of active supplier-item relationships for that supplier only.
+A supplier with two current links shows 2 regardless of other suppliers' links.
+Unlinking reduces the count;
+relinking restores it without creating a duplicate record. The summary counts
+supplier-item pairs: one item linked to two suppliers contributes two links.
+Inactive catalog items can retain a link but remain unavailable on new POs.
+Old unlinked records are retained for history and are excluded from this count.
+Link changes refresh Suppliers, Items and PO options before the action completes.
+
+The relationship fields and preferred-supplier example above remain historical
+schema examples. Previously saved unit/price defaults remain compatible with
+PO prefilling, but offer terms and preferred flags are no longer edited in the
+supplier UI. New links require only the item; they do not set price defaults.
+
+One material can have several suppliers, as in the Garlic Powder example above.
+Do not create duplicate catalog items just because two suppliers sell the same
+material. Each purchased lot still identifies the actual supplier through its
+PO line. Finished goods made by packing do not need a supplier tag.
+
+Before purchasing a raw material, packaging item or label, link it to the
+intended active supplier. An unlinked material can exist
+in the catalog while being set up, but cannot be selected on that supplier's
+PO. Unlinking an item does not rewrite existing orders or lots.
+
 ## Customers
 
 Customers are contact master data used by sales orders. They contain a name,
@@ -307,18 +392,28 @@ Route:
 /uom
 ```
 
+
+### Operational master-data extension
+
+`/item-packaging` maintains item-specific primary units per pack, barcode and
+gross weight. Referenced conversions are immutable. `/reason-codes` maintains
+active adjustment/disposal reasons; `/reorder-policies` saves item thresholds.
+`/settings` maintains company details, currency and stock-alert defaults. See
+[Controls and Reports](inventory-controls-and-reports.md).
+
 ---
 
 # 4. Packing Formula / BOM
 
 A BOM defines the materials required to produce one finished product.
 
-The current `/bom` editor creates one formula per active Finished Good. Packing
-managers add 1-100 distinct active raw materials, packaging or labels, with
-positive exact per-unit quantities and compatible UOMs. They can edit or remove
-the current formula. Changes are atomic and apply to new orders; existing orders
-retain their own material snapshot and reservations. Formula revision numbers,
-effective dates and approval workflows remain planned. See
+The current `/bom` page inspects published requirements. Packing managers prepare
+numbered Replace/Retire requests at `/formula-revisions`. A different reviewer
+with packing and user-management permissions releases a revision on or after its
+effective date. Releases atomically publish/remove the current BOM; new orders
+copy it and record its revision ID. Existing orders retain their own material
+snapshot and reservations. Item-specific pack ratios override global compatible
+UOM factors. See [Controls and Reports](inventory-controls-and-reports.md) and
 [Brands and Packing Formulas](brands-packing-formulas-modules.md).
 
 Example:
@@ -396,6 +491,49 @@ MIN(
 ## Purchase Order
 
 A Purchase Order belongs to one supplier.
+
+### PO numbering and supplier-first entry
+
+1. Click Create purchase order. The system gets the next generated number
+   before opening the form and fills PO number with that actual value. Keep it
+   or replace it with your own unique reference before saving. A saved PO
+   number cannot be changed.
+2. Select an active supplier before adding material lines. The material dropdown
+   shows only active raw materials, packaging and labels with an active
+   supplied-item link to that supplier.
+3. Select a material, enter its purchase unit and agreed price, and
+   enter the ordered quantity. The agreed PO unit and price are saved on the
+   line; later changes to a supplier link do not change that historical agreement.
+4. If a material is missing, maintain its supplier link in Suppliers or Items,
+   then refresh the PO options. Do not select a different supplier's material
+   just to continue.
+5. Changing the supplier requires reselecting its materials; incompatible old
+   lines cannot be carried into the new supplier's PO. The backend validates
+   supplier links when creating, editing and sending a draft.
+6. Save and record the assigned number, review the draft, then mark it Sent.
+   This makes its outstanding lines eligible for Receiving. No stock changes
+   until a receipt is posted.
+
+Automatically generated numbers use `PO-YYYY-<padded identity>`; `PO-2026-0001` below is an illustrative
+format, not a number the operator must enter. Allocating the displayed number
+advances the shared database counter without creating an order or inventory.
+The counter does not restart each year, and abandoned forms can leave gaps.
+The year is the UTC generation year, independent of an entered order date.
+Numbers remain fixed after saving. Existing historical
+numbers remain unchanged. Marking Sent records the state; it does not send an
+email to the supplier.
+
+A custom number is optional only during creation. The system trims surrounding
+spaces, converts it to uppercase and accepts at most 30 characters. The create
+API retains automatic generation for a blank or omitted number. Every number must be unique across
+all orders, including cancelled orders and legacy records, without regard to
+letter case. For example, `sup-2026-042` is saved as `SUP-2026-042`; another
+spelling that differs only by case cannot be reused. A duplicate custom number
+returns a conflict without saving the order. The prefilled reference is not a
+reservation: another user can manually save that same reference before this
+order is submitted. Saving rechecks uniqueness for both prefilled and custom
+values; if either is already used, choose a different reference and retry.
+Both custom and generated numbers remain fixed after the first save.
 
 The PO header contains:
 
@@ -555,6 +693,53 @@ Routes:
 ```
 
 Lot dates are optional because some materials such as labels and pouches may not have meaningful expiration dates.
+
+## Why Lots has a Reserved column
+
+A lot can physically exist while some of its quantity is already committed to
+another order. **Reserved** makes that commitment visible and prevents the
+same stock from being promised twice. It is a quantity within on-hand stock,
+not extra stock and not stock that has already been consumed.
+
+| Column | Meaning |
+| --- | --- |
+| On hand | Physical quantity currently recorded for that lot |
+| Reserved | Outstanding quantity on active packing or dispatched-delivery reservations |
+| Available | On hand minus active outstanding reservations |
+
+For the section 11 example, a garlic lot/location with 150 kg on hand and 30 kg
+reserved has 120 kg available. Planning another order must use the 120 kg,
+even though all 150 kg is still physically present. Reserving alone posts no
+stock movement. Starting packing also leaves those quantities unchanged.
+
+When packing consumes all 30 kg, on hand becomes 120 kg and that reservation
+has no outstanding balance. Available stays 120 kg: subtracting the consumed
+quantity from both on hand and its reservation avoids deducting it twice.
+Cancellation releases the reservation without consuming stock. A completion
+below target consumes the required portion and releases the unused portion.
+
+The Lots list aggregates the lot across locations. Its detail and Inventory
+Stock separate each location, which is essential before choosing where to
+pack or dispatch. A lot total does not mean all its quantity is at one source.
+Use Material Reservations for packing commitments. A customer delivery's
+reservation belongs to its shipment in In Transit and is managed in Delivery
+Orders. A confirmed Sales Order or Draft Delivery does not reserve warehouse
+stock.
+
+Availability is a balance calculation. An Approved, unexpired lot at an active
+eligible source is also required for packing/dispatch; a positive available
+number alone does not make held, expired or In Transit goods usable supply.
+Quantities always use the item's primary UOM.
+
+## Lot status without a separate QC module
+
+New receipts into active Warehouses and packing outputs enter as Approved so the normal flow does not
+depend on a QC Decision request. This does not perform or certify a laboratory
+test. An inventory manager can correct a lot's status in Lots when necessary;
+reservation protections and date validation still apply. Setting Approved does
+not override operational expiry restrictions. Existing Quarantine or
+Rejected statuses are retained rather than automatically approving old stock.
+Separate QC evidence/reviewer approvals are outside the simplified workflow.
 
 ---
 
@@ -800,6 +985,50 @@ The entire completion process must run in one database transaction.
 
 # 13. Inventory
 
+Inventory is the shared record of company-owned goods, from receipt to packing,
+internal distribution and customer delivery. It is not another place to create
+items or purchase quantities. Master Data defines the item and location;
+operational actions create the balances and movements shown here.
+
+## Which inventory screen to use
+
+| Screen | Question it answers | Typical next action |
+| --- | --- | --- |
+| Inventory Stock (`/inventory`) | What is physically at this item/lot/location, what is committed, and what remains available? | Filter by source location before planning packing or dispatch; inspect the associated lot |
+| Lots / Batches (`/inventory/lots`) | Which batch is this, where did it come from, and where is it now? | Inspect PO/packing origin, dates, status, location balances and movement history |
+| Stock Movements (`/inventory/transactions`) | Why did the stock change? | Follow the source document; correct a mistake with a new authorized operation |
+| Stock Adjustments (`/inventory/adjustments`) | How do I correct a verified physical-count difference? | Count a specific item/lot/location and submit the actual count with its reason |
+| Scrap & Disposal (`/inventory/scrap`) | How do I record permanent disposal? | Prepare the disposal and have a different authorized reviewer approve it |
+
+Inventory Stock and Lots show the same stock from different viewpoints. Stock
+Movements explains how it got there. They are not three independent stocks.
+The Material Reservations page explains packing commitments and Delivery
+Orders explains protected customer shipments.
+
+## How operational modules update Inventory
+
+| Action | Effect on on-hand stock | Effect on reservations |
+| --- | --- | --- |
+| Create/send a PO | None | None |
+| Receive a PO line | Increase the received lot at the selected storage location | None |
+| Plan packing | None | Reserve eligible material lots at the source |
+| Start packing | None | Keep material allocations active |
+| Complete packing | Decrease material lots; increase the new finished lot | Record consumption and release unused allocations |
+| Cancel an uncompleted packing order | None | Release its outstanding material reservations |
+| Dispatch an internal transfer | Decrease source and increase In Transit for the same lot | Does not create a customer-shipment reservation |
+| Receive an internal transfer | Decrease In Transit and increase destination for the same lot | No new packing reservation |
+| Confirm sales / save a Draft Delivery | None | Allocate sales demand only; no physical stock reservation |
+| Dispatch a customer delivery | Decrease source and increase In Transit | Protect the shipped lots in In Transit for that delivery |
+| Complete customer receipt | Decrease In Transit with Sale entries | Consume/release the shipment's reservations |
+| Apply a stock adjustment | Post the signed count difference at one item/lot/location | Reject a count below outstanding reservations |
+| Approve scrap | Remove the approved quantity with Scrap entries | Cannot take quantity committed to another workflow |
+
+Moving stock between company locations preserves total company ownership.
+Receiving and production add stock; material consumption, completed customer
+sales and scrap remove the corresponding stock. Keep kilogram and piece totals
+separate. A paired transfer has a negative row at one location and a positive
+row at the other; neither row should be deleted to "fix" a balance.
+
 ## Inventory Stock
 
 `inventory_stock` stores the current stock balance.
@@ -906,6 +1135,29 @@ Route:
 Adjustments must create inventory transactions.
 
 Never directly modify historical ledger transactions.
+
+
+### Direct corrections and permanent disposal
+
+Use Stock Adjustments for a physical-count correction, not a Count Session.
+Select the existing item/lot/location and an active Inventory Adjustment reason,
+review the expected on-hand and reserved balances, enter the actual physical
+count, and save. The backend rejects stale balances and counts below active
+reservations. A changed count posts only the difference as an Adjustment entry
+and updates stock atomically. An unchanged count is not a saved count-session
+observation. For actual permanent disposal use Scrap & Disposal so the ledger
+records Scrap and the independent review remains visible.
+
+Count Sessions, QC Decisions and Stock Dispositions have been removed from the
+active menu and workflow. Existing request records/evidence remain historical;
+new requests and transitions for these kinds are disabled. Old page addresses
+redirect to Inventory. The former Stock Counts address redirects to Stock
+Adjustments, which retains direct physical-count corrections.
+Removing these modules does not delete any balances, reservations or ledger
+history. Previously held location balances remain visible; the simplified flow
+does not add a replacement held-location release operation. In Transit stock
+continues through its owning transfer/delivery workflow.
+See [Controls and Reports](inventory-controls-and-reports.md).
 
 ---
 
@@ -1171,11 +1423,30 @@ Branch Transfers
 In Transit Inventory
 ```
 
-The routes and report types above describe intended reporting coverage. Current
-`/reports/inventory` contains five planned tabs and no reporting API. Packing,
-purchasing and transfer report workflows are also planned; dashboard metrics
-and operational stock/movement screens provide data but do not implement these
-reporting workflows. See the current implementation coverage in section 2.
+The current `/reports/inventory` implements Stock by Location (item/location
+totals), Stock by Lot (lot/location balances), Low Stock (active items at or
+below a configurable availability threshold, including unstocked items), Near
+Expiry (positive dated balances within a configurable UTC window, optionally
+including expired lots), and Inventory Movement (append-only ledger records,
+with inclusive UTC date filters and source references). Reports are read-only
+for authenticated users, use a consistent database snapshot, include outstanding
+packing and delivery reservations, and keep summary quantities separate by
+primary UOM. Low Stock uses saved item reorder levels or the company default (initially 10),
+unless an explicit report threshold is entered. Its availability excludes held,
+In Transit, unapproved and expired supply. The company expiry horizon defaults
+to 30 days. Stock is current;
+movement date filters do not reconstruct historical balances. Search, operational
+filters, row selection, sorting, pagination and CSV export are implemented.
+See [Inventory Reports](inventory-reports-module.md) for complete calculations,
+permissions, UI steps and examples.
+
+Packing, purchasing, transfer and lot-genealogy reports are implemented at
+`/reports/packing`, `/reports/purchasing`, `/reports/transfers` and
+`/reports/genealogy`. Dashboard quantities are grouped by primary UOM; open lists
+filter status before limits and shortage alerts include never-stocked items.
+Historical stock reconstruction, scheduled reports, multicurrency conversion
+and accounting remain outside this implementation. See
+[Controls and Reports](inventory-controls-and-reports.md).
 
 ---
 
@@ -1235,6 +1506,17 @@ The frontend must hide or disable functionality based on permissions, but backen
 
 Never rely only on frontend permission checks.
 
+
+### Independent operational review
+
+Preparing Scrap & Disposal requires `canManageInventory`; preparing
+Formula Revisions requires `canManagePacking`. Approval/rejection additionally
+requires `canManageUsers` and a different user from the creator/submitter.
+Company settings writes require `canManageUsers`. Stock Adjustments and direct
+lot-status corrections require Inventory permission without a separate review
+request. Retired Count/QC/Disposition requests cannot advance through review.
+The backend enforces these rules; UI visibility mirrors them.
+
 ---
 
 # 20. Audit Fields
@@ -1271,7 +1553,7 @@ Inventory
 ├── Lots / Batches
 ├── Stock Movements
 ├── Stock Adjustments
-└── Stock Counts
+└── Scrap & Disposal
 
 Purchasing
 ├── Purchase Orders
@@ -1292,13 +1574,21 @@ Master Data
 ├── Items / Products
 ├── Brands
 ├── Packing Formulas
+├── Formula Revisions
+├── Item Packaging
+├── Reorder Levels
+├── Reason Codes
 ├── Suppliers
 ├── Customers
 ├── Locations
 └── Units of Measure
 
 Reports
-└── Inventory Reports
+├── Inventory Reports
+├── Packing Report
+├── Purchasing Report
+├── Transfer Report
+└── Lot Genealogy
 
 Users & Access
 ├── Users
@@ -1314,9 +1604,82 @@ and lot filters belong in Inventory Stock. Sidebar and breadcrumb labels stay
 consistent. Navigation destinations may be planned until their workflows and
 backend contracts are implemented.
 
+
+### Implemented navigation additions
+
+The tree above reflects the active sidebar. Count Sessions, QC Decisions and
+Stock Dispositions are removed. Their former page routes redirect to Inventory
+Stock; `/inventory/counts` redirects to Stock Adjustments. Their stored history
+remains readable through authenticated history APIs, without new or continuing
+requests. Company Settings is an implemented settings page.
+
 ---
 
 # 22. Complete Operational Flow
+
+## Happy path: what the operator does
+
+The happy path is one successful journey with valid master data, enough eligible
+stock and no exceptions. It does not require an adjustment, count session, QC
+decision, disposition or scrap request. Complete setup once, then repeat the
+buy-to-deliver steps as real operations require. Section 19 defines which role
+performs each action; preparing and releasing a formula uses different people.
+
+| Step | Where and who | Operator action | Result / connection to the next step |
+| --- | --- | --- | --- |
+| 1 | Company Settings; administrator | Save company identity, currency and stock-alert defaults | Consistent company/currency labels and alert thresholds |
+| 2 | Units of Measure and Locations; Inventory | Set compatible kg/pc units and separate raw warehouse, finished warehouse, branch and In Transit locations | Valid units and stock destinations exist; setup creates no stock |
+| 3 | Items / Products and Brands; Inventory | Create raw spice, pouch, label, seal and finished-product records; set primary UOMs | One catalog record per material/product, ready for supplier links and formulas |
+| 4 | Suppliers and Items supplier links; Purchasing | Create suppliers in Suppliers; use Link items in Suppliers or the supplier dialog in Items to link materials | Only the selected supplier's active linked materials appear on its PO; both screens manage the same links; units and prices are entered on the PO |
+| 5 | Item Packaging / Reason Codes / Reorder Levels; Inventory | Set any needed item pack ratios, correction/disposal reasons and reorder overrides | Optional business configuration is ready before referenced operations |
+| 6 | Formula Revisions; Packing then independent reviewer | Prepare the finished product's per-unit formula, submit and release it | Packing Formulas shows the published BOM; future orders can snapshot it |
+| 7 | Purchase Orders; Purchasing | Keep the prefilled generated PO number or replace it with a unique reference; select supplier, choose its linked materials, enter quantities/units/prices and save | Draft has a unique PO number fixed after saving; allocating a number alone creates no order or stock |
+| 8 | Purchase Orders; Purchasing | Review and mark the draft Sent | Outstanding PO lines become available in Receiving |
+| 9 | Receiving; Inventory | After arrival select PO/line, destination, received quantity and unique lot reference; save | Purchased lot links to its PO line; Receive increases warehouse stock and PO received quantity |
+| 10 | Inventory Stock and Lots; any authenticated operator | Check material item/lot/location, primary UOM, on hand, reserved and available | Confirm eligible source stock before planning; inspect Movements if a balance is unexpected |
+| 11 | Packing Orders; Packing | Select finished product, target, source and destination; inspect availability and create Draft | Order saves its own material snapshot; preview shows the limiting component |
+| 12 | Packing Orders; Packing | Plan and reserve the draft | Planned status; specific source lots become reserved, with no consumption yet |
+| 13 | Packing Orders; Packing | Start the order when packing begins | In Progress; the same material reservations remain active |
+| 14 | Packing Orders; Packing | Record actual output and finished lot, then complete | Consume material stock, release unused reservations, create finished lot and Produce into finished storage atomically |
+| 15 | Stock Transfers; Transfers | When branch distribution is needed, create a transfer selecting finished lot and distinct source/destination, then dispatch | Source decreases; In Transit increases; total company stock is unchanged |
+| 16 | Stock Transfers; Transfers | Confirm the branch's actual receipt | Transit decreases and branch increases; partial receiving leaves a transit balance until complete |
+| 17 | Customers and Sales Orders; Inventory | Create an active customer, create a sales draft and confirm it | Customer demand is recorded; confirmation does not reserve stock |
+| 18 | Delivery Orders; Transfers | Select the confirmed sale, source, finished lots and shipment quantity; save Draft | Sales demand is allocated; source stock is still on hand and not physically reserved |
+| 19 | Delivery Orders; Transfers | Dispatch after the goods leave | Source decreases; original In Transit location increases and is reserved for this delivery |
+| 20 | Delivery Orders; Transfers | Confirm customer receipt of the full shipment | Sale removes transit stock, shipment reservation closes and sales fulfillment updates atomically |
+| 21 | Inventory, Dashboard and Reports; authenticated operators | Check final stock, movement references, packing results, purchases and transit; export as needed | An auditable completed purchase-to-customer journey |
+
+Internal branch distribution is optional: a customer delivery can ship directly
+from an eligible warehouse, branch or store. Internal transfers keep goods owned
+by the company; completed customer delivery removes them. A Sales Order may be
+partly fulfilled using several separate deliveries, each completed as a whole.
+
+### Worked checkpoint for one complete run
+
+Use the [UI guide](ui-setup-and-happy-path.md) for the exact example setup.
+Receive 100 kg of garlic and 1,000 pc each of pouch, label and seal. The
+published formula requires 0.100 kg garlic and one of each packaging component
+per finished piece. Pack 500 pc, transfer 200 pc to a branch, then deliver
+150 pc from that branch to a customer.
+
+| Checkpoint | Raw warehouse | Finished warehouse | Branch | In Transit | Reservation / ownership check |
+| --- | --- | --- | --- | --- | --- |
+| After receiving | 100 kg garlic; 1,000 pc of each packaging item | 0 finished pc | 0 pc | 0 pc | No reservations |
+| After planning 500 pc | Same physical balances | 0 pc | 0 pc | 0 pc | Reserve 50 kg garlic and 500 pc of each packaging item; remaining available is 50 kg and 500 pc each |
+| After starting | Same physical balances | 0 pc | 0 pc | 0 pc | Planning reservations remain; no Consume entries yet |
+| After completion | 50 kg garlic; 500 pc of each packaging item | 500 pc | 0 pc | 0 pc | Inputs consumed, reservations closed; new finished lot traces to this order |
+| After dispatch to branch | Same remaining material balances | 300 pc | 0 pc | 200 pc | Company finished stock remains 500 pc |
+| After branch receipt | Same | 300 pc | 200 pc | 0 pc | Company finished stock remains 500 pc |
+| After sales confirmation / Draft Delivery | Same | 300 pc | 200 pc | 0 pc | Allocate 150 pc sales demand; no warehouse/branch reservation |
+| After customer dispatch | Same | 300 pc | 50 pc | 150 pc | All 150 transit pc reserved for the delivery; company still owns 500 pc |
+| After customer receipt | Same | 300 pc | 50 pc | 0 pc | Sale of 150 pc; company finished stock is 350 pc; shipment reservation closed |
+
+For this isolated run, the ledger contains four Receive, four Consume, one
+Produce, four internal-transfer, two customer-dispatch Transfer and one Sale
+entries: 16 rows. There is no inventory ledger entry for PO creation, sales
+confirmation, drafting a delivery, reserving materials or starting packing.
+
+## Operational sequence and system actions
 
 The complete system flow is:
 

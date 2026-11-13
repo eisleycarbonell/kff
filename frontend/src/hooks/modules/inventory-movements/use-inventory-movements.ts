@@ -2,6 +2,7 @@
 
 import { useCallback } from "react"
 import { useQuery } from "@tanstack/react-query"
+import { getLoadStatus } from "@/lib/load-status"
 import { apiRequest } from "@/lib/api-request"
 import { useSession } from "@/hooks/use-session"
 import {
@@ -43,17 +44,7 @@ export function useInventoryMovements(transactionType?: MovementType) {
         void refetchSession()
         if (signedIn) void refetch()
     }, [refetch, refetchSession, signedIn])
-    const loadStatus = session.isPending
-        ? "loading"
-        : session.data === undefined
-          ? "error"
-          : !session.data
-            ? "signed-out"
-            : query.data !== undefined
-              ? "ready"
-              : query.isError
-                ? "error"
-                : "loading"
+    const loadStatus = getLoadStatus(session, [query])
 
     return {
         movements: query.data ?? EMPTY_MOVEMENTS,

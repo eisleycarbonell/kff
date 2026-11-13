@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { memo, useMemo, useState } from "react"
 import {
     createColumnHelper,
     createPaginatedRowModel,
@@ -143,7 +143,7 @@ function exportMovements(rows: InventoryMovement[]) {
     setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
-export function InventoryMovementTable({
+export const InventoryMovementTable = memo(function InventoryMovementTable({
     movements,
     adjustmentsOnly = false,
 }: {
@@ -400,4 +400,4 @@ export function InventoryMovementTable({
             </div>
         </div>
     )
-}
+})

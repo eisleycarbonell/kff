@@ -1,9 +1,10 @@
+import { memo } from "react"
 import { Mail, ShieldCheck, UsersRound } from "lucide-react"
 
 import type { User, UserRole } from "@/components/modules/users/user.schema"
 import { Card, CardContent } from "@/components/ui/card"
 
-export function UserStatistics({ users, roles }: { users: User[]; roles: UserRole[] }) {
+export const UserStatistics = memo(function UserStatistics({ users, roles }: { users: User[]; roles: UserRole[] }) {
     const statistics = [
         {
             label: "Total users",
@@ -45,4 +46,4 @@ export function UserStatistics({ users, roles }: { users: User[]; roles: UserRol
             ))}
         </div>
     )
-}
+})

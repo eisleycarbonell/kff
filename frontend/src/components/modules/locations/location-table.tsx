@@ -8,7 +8,7 @@ import {
     EmptyContent,
 } from "@/components/ui/empty"
 
-import { useMemo } from "react"
+import { memo, useMemo } from "react"
 import { useTable } from "@tanstack/react-table"
 import {
     ArrowDown,
@@ -55,7 +55,7 @@ type LocationTableProps = {
     onDeactivate: (locations: Location[]) => void
 }
 
-export function LocationTable({
+export const LocationTable = memo(function LocationTable({
     locations,
     canManage,
     onAdd,
@@ -284,4 +284,4 @@ export function LocationTable({
             </div>
         </div>
     )
-}
+})

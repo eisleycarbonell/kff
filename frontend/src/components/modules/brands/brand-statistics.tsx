@@ -1,9 +1,10 @@
+import { memo } from "react"
 import { BadgeCheck, Tag, Tags } from "lucide-react"
 
 import type { Brand } from "@/components/modules/brands/brand.schema"
 import { Card, CardContent } from "@/components/ui/card"
 
-export function BrandStatistics({ brands }: { brands: Brand[] }) {
+export const BrandStatistics = memo(function BrandStatistics({ brands }: { brands: Brand[] }) {
     const activeCount = brands.filter((brand) => brand.isActive).length
     const statistics = [
         {
@@ -44,4 +45,4 @@ export function BrandStatistics({ brands }: { brands: Brand[] }) {
             ))}
         </div>
     )
-}
+})

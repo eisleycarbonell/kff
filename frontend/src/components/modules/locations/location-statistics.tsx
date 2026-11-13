@@ -1,7 +1,8 @@
+import { memo } from "react"
 import { MapPin, MapPinCheck, Warehouse } from "lucide-react"
 import type { Location } from "@/components/modules/locations/location.schema"
 import { Card, CardContent } from "@/components/ui/card"
-export function LocationStatistics({ locations }: { locations: Location[] }) {
+export const LocationStatistics = memo(function LocationStatistics({ locations }: { locations: Location[] }) {
     const statistics = [
         {
             label: "Total locations",
@@ -40,4 +41,4 @@ export function LocationStatistics({ locations }: { locations: Location[] }) {
             ))}
         </div>
     )
-}
+})

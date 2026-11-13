@@ -1,6 +1,8 @@
 "use client"
+import { createDialogStore } from "@/lib/create-dialog-store"
+import { getLoadStatus } from "@/lib/load-status"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Toast } from "@base-ui/react/toast"
 import { apiRequest, ApiError } from "@/lib/api-request"
@@ -46,14 +48,14 @@ export async function recordStockAdjustment(input: StockAdjustmentInput) {
 }
 export const STOCKS_QUERY_KEY = ["inventory-stocks"] as const
 const EMPTY_STOCKS: Stock[] = []
+const useModuleDialogs = createDialogStore<Stock>()
 export function useInventoryStocks() {
     const session = useSession()
     const client = useQueryClient()
     const { add: showToast } = Toast.useToastManager()
     const canManage = session.data?.permissions.canManageInventory === true
-    const [formOpen, setFormOpen] = useState(false)
-    const [formRequested, setFormRequested] = useState(false)
-    const [selectedStock, setSelectedStock] = useState<Stock | null>(null)
+    const { formOpen, formRequested, editing: selectedStock, openForm, setFormOpen, } = useModuleDialogs()
+    const writePending = useRef(false)
     const queryKey = [...STOCKS_QUERY_KEY, session.data?.userId]
     const stocksQuery = useQuery({
         queryKey,
@@ -92,6 +94,7 @@ export function useInventoryStocks() {
             })
             void client.invalidateQueries({ queryKey: STOCKS_QUERY_KEY })
             void client.invalidateQueries({ queryKey: ["inventory-movements"] })
+            void client.invalidateQueries({ queryKey: ["inventory-reports"] })
             void client.invalidateQueries({ queryKey: ["dashboard"] })
             void client.invalidateQueries({ queryKey: ["lots"] })
             void client.invalidateQueries({ queryKey: ["lot-detail"] })
@@ -117,23 +120,12 @@ export function useInventoryStocks() {
     const openAdjustment = useCallback(
         (stock: Stock | null = null) => {
             reset()
-            setSelectedStock(stock)
-            setFormRequested(true)
-            setFormOpen(true)
+            openForm(stock)
         },
-        [reset],
+        [reset, openForm],
     )
-    const loadStatus = session.isPending
-        ? "loading"
-        : session.data === undefined
-          ? "error"
-          : !session.data
-            ? "signed-out"
-            : stocksQuery.data !== undefined
-              ? "ready"
-              : stocksQuery.isError
-                ? "error"
-                : "loading"
+    const openRecord = useCallback(() => openAdjustment(null), [openAdjustment])
+    const loadStatus = getLoadStatus(session, [stocksQuery])
     const options = optionsQuery.data
     return {
         stocks: stocksQuery.data ?? EMPTY_STOCKS,
@@ -150,6 +142,7 @@ export function useInventoryStocks() {
         formRequested,
         selectedStock,
         openAdjustment,
+        openRecord,
         isSaving: save.isPending,
         saveError: save.error,
         isFetching: session.isFetching || stocksQuery.isFetching,
@@ -159,12 +152,15 @@ export function useInventoryStocks() {
             if (formRequested && canManage) void optionsQuery.refetch()
         },
         handleSave: async (values: AdjustmentFormValues) => {
-            if (save.isPending) return false
+            if (writePending.current) return false
+            writePending.current = true
             try {
                 await save.mutateAsync(values)
                 return true
             } catch {
                 return false
+            } finally {
+                writePending.current = false
             }
         },
     }

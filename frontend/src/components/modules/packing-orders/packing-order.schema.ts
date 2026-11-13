@@ -13,6 +13,7 @@ const quantity = z.string().regex(/^\d+\.\d{4}$/)
 const signedQuantity = z.string().regex(/^-?\d+\.\d{4}$/)
 export const packingOrderSchema = z.object({
     packingOrderId: id,
+    formulaRevisionId: id.nullable().optional(),
     packingOrderNumber: z.string(),
     itemId: id,
     itemSku: z.string(),

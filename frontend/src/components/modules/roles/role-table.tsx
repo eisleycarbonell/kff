@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { memo, useMemo } from "react"
 import { useTable } from "@tanstack/react-table"
 import {
     ArrowDown,
@@ -39,7 +39,7 @@ import {
 } from "@/components/ui/empty"
 
 const sizes = [10, 20, 50].map((value) => ({ value: String(value), label: String(value) }))
-export function RoleTable({
+export const RoleTable = memo(function RoleTable({
     roles,
     onAdd,
     onEdit,
@@ -217,4 +217,4 @@ export function RoleTable({
             </div>
         </div>
     )
-}
+})

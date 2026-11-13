@@ -176,6 +176,16 @@ test('sample import creates every sales/delivery state and assigns the six testi
     const seeded = fixture();
     assert.deepEqual(await seedSampleData(seeded.options), { status: 'seeded' });
     const { state } = seeded;
+    const unstocked = state.items!.find((row) => row.sku === 'SAMPLE-RM-REPORT-ZERO');
+    assert.ok(unstocked?.isActive);
+    assert.equal(
+        state.inventory_stock!.some((row) => row.itemId === unstocked.itemId),
+        false,
+    );
+    assert.equal(
+        state.inventory_transactions!.some((row) => row.itemId === unstocked.itemId),
+        false,
+    );
     assert.equal(state.brands!.length, 3);
     assert.equal(state.brands!.filter((row) => row.isActive).length, 2);
     const finishedProducts = state.items!.filter((row) => row.itemType === 'Finished Good');

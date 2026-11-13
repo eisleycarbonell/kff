@@ -1,9 +1,11 @@
 "use client"
 
-import { useCallback, useState } from "react"
+import { useCallback, useEffect, useRef } from "react"
 import { z } from "zod"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Toast } from "@base-ui/react/toast"
+import { createDialogStore } from "@/lib/create-dialog-store"
+import { getLoadStatus } from "@/lib/load-status"
 import { apiRequest, ApiError } from "@/lib/api-request"
 import { SESSION_QUERY_KEY, useSession } from "@/hooks/use-session"
 import {
@@ -52,6 +54,8 @@ export const runTransferAction = (
     request(transferDetailSchema, `/${id}/${action}`, "updated transfer", send("POST", input ?? {}))
 const EMPTY_TRANSFERS: Transfer[] = []
 
+type ActionTarget = { transfer: Transfer; action: TransferAction }
+const useDialogs = createDialogStore<TransferDetail, ActionTarget, { isOpeningEdit: boolean }>({ isOpeningEdit: false })
 export function useTransfers() {
     const session = useSession()
     const client = useQueryClient()
@@ -63,15 +67,18 @@ export function useTransfers() {
         queryFn: ({ signal }) => getTransfers(signal),
         enabled: Boolean(session.data),
     })
-    const [formOpen, setFormOpen] = useState(false)
-    const [formRequested, setFormRequested] = useState(false)
-    const [editingTransfer, setEditingTransfer] = useState<TransferDetail | null>(null)
-    const [isOpeningEdit, setIsOpeningEdit] = useState(false)
-    const [detailId, setDetailId] = useState<number | null>(null)
-    const [actionSelection, setActionSelection] = useState<{
-        transfer: Transfer
-        action: TransferAction
-    } | null>(null)
+    const { formOpen, formRequested, editing: editingTransfer, detailId, target: actionSelection,
+        isOpeningEdit, getState, openForm, setFormOpen, setDetailId, setTarget: setActionSelection, patch } = useDialogs()
+    const setIsOpeningEdit = useCallback((isOpeningEdit: boolean) => patch({ isOpeningEdit }), [patch])
+    const editRequest = useRef(0)
+    const writePending = useRef(false)
+    useEffect(() => {
+        const requests = editRequest
+        requests.current++
+        return () => {
+            requests.current++
+        }
+    }, [userId])
     const options = useQuery({
         queryKey: ["transfer-options", userId],
         queryFn: ({ signal }) => getTransferOptions(signal),
@@ -103,6 +110,10 @@ export function useTransfers() {
                 "transfer-detail",
                 "transfer-options",
                 "inventory-stocks",
+                "inventory-reports",
+                "operational-report-options",
+                "operational-reports",
+                "inventory-control-options",
                 "inventory-stock-options",
                 "lots",
                 "lot-detail",
@@ -177,13 +188,15 @@ export function useTransfers() {
     const { reset: resetSave, mutateAsync: saveAsync, isPending: isSaving } = save
     const { reset: resetAction, mutateAsync: actionAsync, isPending: isActing } = action
     const openAdd = useCallback(() => {
+        if (!canManage || writePending.current) return
+        editRequest.current++
         resetSave()
-        setEditingTransfer(null)
-        setFormRequested(true)
-        setFormOpen(true)
-    }, [resetSave])
+        patch({ editing: null, formOpen: true, formRequested: true, isOpeningEdit: false })
+    }, [canManage, resetSave, patch])
     const openEdit = useCallback(
         async (transfer: Transfer) => {
+            if (!canManage || writePending.current) return
+            const request = ++editRequest.current
             resetSave()
             setIsOpeningEdit(true)
             try {
@@ -192,61 +205,60 @@ export function useTransfers() {
                     queryFn: ({ signal }) => getTransfer(transfer.transferId, signal),
                     staleTime: 0,
                 })
+                if (request !== editRequest.current) return
                 if (loaded.status !== "Draft")
                     throw new Error("Only draft transfers can be edited. Reload the transfer.")
-                setEditingTransfer(loaded)
-                setFormRequested(true)
-                setFormOpen(true)
+                openForm(loaded)
             } catch (error) {
+                if (request !== editRequest.current) return
                 onError(error instanceof Error ? error : new Error("Unable to load transfer."))
             } finally {
-                setIsOpeningEdit(false)
+                if (request === editRequest.current) setIsOpeningEdit(false)
             }
         },
-        [client, userId, resetSave, onError],
+        [canManage, client, userId, resetSave, onError, openForm, setIsOpeningEdit],
     )
     const openAction = useCallback(
         (transfer: Transfer, next: TransferAction) => {
+            if (!canManage || writePending.current) return
+            editRequest.current++
+            setIsOpeningEdit(false)
             resetAction()
             setActionSelection({ transfer, action: next })
         },
-        [resetAction],
+        [canManage, resetAction, setActionSelection, setIsOpeningEdit],
     )
     const handleSave = useCallback(
         async (input: CreateTransferInput | UpdateTransferInput) => {
-            if (isSaving) return false
+            if (writePending.current) return false
+            writePending.current = true
             try {
                 await saveAsync(input)
                 return true
             } catch {
                 return false
+            } finally {
+                writePending.current = false
             }
         },
-        [isSaving, saveAsync],
+        [saveAsync],
     )
     const handleAction = useCallback(
         async (input?: DispatchTransferInput | ReceiveTransferInput) => {
-            if (isActing || !actionSelection) return false
+            if (writePending.current || !getState().target) return false
+            writePending.current = true
             try {
                 await actionAsync(input)
                 return true
             } catch {
                 return false
+            } finally {
+                writePending.current = false
             }
         },
-        [isActing, actionSelection, actionAsync],
+        [getState, actionAsync],
     )
-    const loadStatus = session.isPending
-        ? "loading"
-        : session.data === undefined
-          ? "error"
-          : !session.data
-            ? "signed-out"
-            : query.data !== undefined
-              ? "ready"
-              : query.isError
-                ? "error"
-                : "loading"
+    const loadStatus = getLoadStatus(session, [query])
     return {
         transfers: query.data ?? EMPTY_TRANSFERS,
         canManage,

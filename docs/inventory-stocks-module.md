@@ -67,12 +67,11 @@ There is no direct balance PATCH/DELETE or ledger editing endpoint.
 - Stock Adjustments at `/inventory/adjustments` shows only `Adjustment` ledger
   entries and opens the existing counted correction form. A successful correction
   refreshes both stock balances and ledger history.
-- Stock Counts at `/inventory/counts` displays current lot/location balances and
-  lets an inventory manager enter a physical count. When it differs from the
-  expected balance, the existing adjustment transaction records the difference.
-  Unchanged counts are rejected by the current contract and do not create a
-  ledger entry. The system does not yet store count sessions or unchanged count
-  observations.
+- The legacy `/inventory/counts` route redirects to Stock Adjustments.
+  Count Sessions, QC Decisions and Stock Dispositions are removed from active
+  navigation and writes. Saved requests and observations remain read-only through
+  the authenticated controls API; see
+  [retired controls](inventory-controls-and-reports.md).
 
 Movement history is read-only for authenticated users. Recording a correction
 still requires `canManageInventory`; the backend enforces that permission.
@@ -135,6 +134,14 @@ workflow uses the existing inventory tables. The current shared schema also
 includes the delivery references and `Sale` type added by the
 [Sales and Delivery migration](../backend/supabase/migrations/20261105000000_sales_delivery_orders/migration.sql).
 Apply the current schema before using the updated application.
+
+## Inventory reporting
+
+The read-only [Inventory Reports module](inventory-reports-module.md) provides
+stock by location, stock by lot, low stock, near expiry and ledger movement
+reports. It uses current balances and every outstanding unreleased reservation,
+including customer deliveries in transit. Report totals remain separated by
+primary UOM. Reporting never edits inventory or reservation records.
 
 ## Verification
 

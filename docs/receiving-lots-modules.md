@@ -16,7 +16,7 @@ may split one purchase-order line across several lots.
 
 Each entry records a positive purchase-UOM quantity, the line's previously
 observed received quantity, a unique internal lot number, an optional supplier
-lot number, an active Warehouse or Quarantine destination, and optional
+lot number, an active Warehouse destination, and optional
 manufacture and expiration dates. Internal lot numbers are trimmed, uppercased,
 and globally unique. When both dates are supplied, expiration must be later than
 manufacture. Dates remain optional for raw materials, packaging, and labels.
@@ -34,7 +34,10 @@ decimal places, converts to zero, or exceeds `numeric(14,4)` is rejected rather
 than rounded. The lot cost per primary UOM is derived from the saved PO unit
 price and conversion factors, rounded half-up to four decimal places.
 
-Items requiring QC create Quarantine lots; other items create Approved lots.
+New receipts create Approved lots. The retired QC Decisions module is no longer
+part of receiving; the legacy item `requiresQc` flag does not quarantine new lots.
+Existing lot statuses are preserved. Inventory managers can change quality status
+in Lots / Batches when stock has no outstanding reservation.
 The service creates every lot, its stock balance, and a positive `Receive`
 inventory transaction linked to the PO line. It then advances the PO-line
 received quantities and sets the order to `Partially Received` or `Completed`.
@@ -46,8 +49,8 @@ updated or deleted as corrections.
 
 - `GET /api/receiving` lists receipt-ledger history with PO, supplier, item,
   UOM, location, lot, cost, QC, actor, and timestamp details.
-- `GET /api/receiving/options` lists outstanding sent orders and Warehouse or
-  Quarantine locations for the receiving form.
+- `GET /api/receiving/options` lists outstanding sent orders and active Warehouse
+  locations for the receiving form.
 - `POST /api/receiving` atomically posts a receipt batch.
 
 ### Receiving screen
@@ -91,8 +94,9 @@ immutable. There is no manual lot-create, delete, stock-edit, or ledger-edit
 endpoint.
 
 Users with the Inventory Management permission may correct the supplier lot
-reference and update optional manufacture date, optional expiration date, or QC
-status (`Quarantine`, `Approved`, `Rejected`, or `Expired`). The backend merges
+reference, optional manufacture/expiration dates and quality status directly in
+Lots / Batches. There is no separate QC Decision or independent QC approval step.
+The backend merges
 partial updates before validating the date relationship. While a lot has an
 active outstanding reservation, date and QC changes are blocked so planning
 assumptions cannot change underneath a packing order or a protected customer
@@ -119,3 +123,7 @@ against an isolated PostgreSQL test database by setting `TEST_DATABASE_URL`.
 Tests must never fall back to an operational `DATABASE_URL`. Browser interaction
 checks require a connected browser session and a database reachable by the local
 backend.
+
+Item-specific pack ratios, when configured, override global compatible UOM factors
+in both receiving previews and committed receipts. Referenced ratios are protected;
+see [Item Packaging](inventory-controls-and-reports.md).

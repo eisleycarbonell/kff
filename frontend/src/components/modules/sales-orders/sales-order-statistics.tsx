@@ -1,7 +1,8 @@
+import { memo } from "react"
 import { CircleCheck, ClipboardList, PackageCheck } from "lucide-react"
 import type { SalesOrder } from "@/components/modules/sales-orders/sales-order.schema"
 import { Card, CardContent } from "@/components/ui/card"
-export function SalesOrderStatistics({ orders }: { orders: SalesOrder[] }) {
+export const SalesOrderStatistics = memo(function SalesOrderStatistics({ orders }: { orders: SalesOrder[] }) {
     const cards = [
         {
             label: "Draft orders",
@@ -42,4 +43,4 @@ export function SalesOrderStatistics({ orders }: { orders: SalesOrder[] }) {
             ))}
         </div>
     )
-}
+})

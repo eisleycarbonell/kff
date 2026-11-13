@@ -13,18 +13,24 @@ const id = z.int().positive().max(2_147_483_647)
 const timestamp = z.iso.datetime({ offset: true })
 const decimal = z.string().trim()
 
+const unitTotalsSchema = z.array(
+    z.object({
+        primaryUomId: id,
+        primaryUomName: z.string(),
+        onHand: decimal,
+        reserved: decimal,
+        available: decimal,
+    }),
+)
 export const dashboardSummarySchema = z.object({
     totalInventoryValue: decimal,
     rawMaterialValue: decimal,
     packagingValue: decimal,
     finishedGoodsValue: decimal,
     totalItemsCount: z.number().int().nonnegative(),
-    rawMaterialsOnHand: decimal,
-    rawMaterialsReserved: decimal,
-    rawMaterialsAvailable: decimal,
-    finishedGoodsOnHand: decimal,
-    finishedGoodsReserved: decimal,
-    finishedGoodsAvailable: decimal,
+    currencyCode: z.string(),
+    rawMaterialQuantities: unitTotalsSchema,
+    finishedGoodsQuantities: unitTotalsSchema,
     activePackingOrdersCount: z.number().int().nonnegative(),
     pendingPurchaseOrdersCount: z.number().int().nonnegative(),
     activeTransfersCount: z.number().int().nonnegative(),
@@ -34,9 +40,7 @@ export const dashboardSummarySchema = z.object({
 
 export const dashboardStockByTypeSchema = z.object({
     itemType: z.enum(ITEM_TYPES),
-    totalOnHand: decimal,
-    totalReserved: decimal,
-    totalAvailable: decimal,
+    quantities: unitTotalsSchema,
     totalValue: decimal,
     itemCount: z.number().int().nonnegative(),
 })
@@ -46,9 +50,7 @@ export const dashboardStockByLocationSchema = z.object({
     locationCode: z.string(),
     locationName: z.string(),
     locationType: z.string(),
-    totalOnHand: decimal,
-    totalReserved: decimal,
-    totalAvailable: decimal,
+    quantities: unitTotalsSchema,
     itemCount: z.number().int().nonnegative(),
 })
 
@@ -155,13 +157,16 @@ export type DashboardRecentActivity = z.output<typeof dashboardRecentActivitySch
 export type DashboardData = z.output<typeof dashboardDataSchema>
 
 /** Format currency amounts with thousands separators and 2 decimal places (PHP ₱) */
-export function formatCurrency(value: string | number | null | undefined): string {
+export function formatCurrency(
+    value: string | number | null | undefined,
+    currencyCode = "PHP",
+): string {
     if (value === null || value === undefined || value === "") return "₱0.00"
     const num = typeof value === "number" ? value : parseFloat(value)
     if (isNaN(num)) return "₱0.00"
     return new Intl.NumberFormat("en-PH", {
         style: "currency",
-        currency: "PHP",
+        currency: currencyCode,
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
     }).format(num)
@@ -191,4 +196,13 @@ export function formatDate(value: string | null | undefined): string {
     } catch {
         return value
     }
+}
+
+export function formatUnitTotals(
+    rows: z.output<typeof unitTotalsSchema>,
+    key: "onHand" | "reserved" | "available",
+) {
+    return rows.length
+        ? rows.map((r) => formatQuantity(r[key]) + " " + r.primaryUomName).join(" � ")
+        : "0"
 }

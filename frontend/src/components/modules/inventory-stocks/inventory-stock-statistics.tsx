@@ -1,4 +1,4 @@
-import { useMemo } from "react"
+import { memo, useMemo } from "react"
 import { Boxes, LockKeyhole, PackageCheck } from "lucide-react"
 import {
     stockTotalsByUom,
@@ -34,7 +34,7 @@ const metrics = [
         icon: PackageCheck,
     },
 ] as const
-export function StockStatistics({ stocks }: { stocks: Stock[] }) {
+export const StockStatistics = memo(function StockStatistics({ stocks }: { stocks: Stock[] }) {
     const totals = useMemo(() => stockTotalsByUom(stocks), [stocks])
     return (
         <div className="grid gap-4 sm:grid-cols-3">
@@ -79,4 +79,4 @@ export function StockStatistics({ stocks }: { stocks: Stock[] }) {
             ))}
         </div>
     )
-}
+})

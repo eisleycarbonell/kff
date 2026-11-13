@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { getLoadStatus } from "@/lib/load-status"
 import { apiRequest, ApiError } from "@/lib/api-request"
 import { useSession, SESSION_QUERY_KEY } from "@/hooks/use-session"
 import {
@@ -45,18 +46,7 @@ export function useDashboard() {
         if (dashboardQuery.isError) void dashboardQuery.refetch()
     }, [dashboardQuery, session])
 
-    const loadStatus =
-        session.isPending
-            ? "loading"
-            : session.data === undefined
-              ? "error"
-              : !session.data
-                ? "signed-out"
-                : dashboardQuery.data !== undefined
-                  ? "ready"
-                  : dashboardQuery.isError
-                    ? "error"
-                    : "loading"
+    const loadStatus = getLoadStatus(session, [dashboardQuery])
 
     return {
         data: dashboardQuery.data ?? null,

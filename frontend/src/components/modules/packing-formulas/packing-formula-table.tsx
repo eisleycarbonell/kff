@@ -1,5 +1,5 @@
 "use client"
-import { useMemo } from "react"
+import { memo, useMemo } from "react"
 import {
     useTable,
     createColumnHelper,
@@ -79,7 +79,7 @@ const labels: Record<string, string> = {
     materials: "Materials",
     updatedAt: "Updated",
 }
-export function PackingFormulaTable({ formulas, canManage, busy, onAdd, onEdit, onRemove }: Props) {
+export const PackingFormulaTable = memo(function PackingFormulaTable({ formulas, canManage, busy, onAdd, onEdit, onRemove }: Props) {
     const columns = useMemo(
         () =>
             helper.columns([
@@ -400,4 +400,4 @@ export function PackingFormulaTable({ formulas, canManage, busy, onAdd, onEdit, 
             </div>
         </div>
     )
-}
+})

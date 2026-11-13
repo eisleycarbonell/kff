@@ -20,6 +20,13 @@ type BreadcrumbConfig = {
 
 // Route labels aligned with the sidebar.
 const routeConfig: Record<string, BreadcrumbConfig> = {
+    "/inventory/scrap": { label: "Scrap & Disposal", group: "Inventory" },
+    "/formula-revisions": { label: "Formula Revisions", group: "Master Data" },
+    "/item-packaging": { label: "Item Packaging", group: "Master Data" },
+    "/reorder-policies": { label: "Reorder Levels", group: "Master Data" },
+    "/reason-codes": { label: "Reason Codes", group: "Master Data" },
+    "/reports/genealogy": { label: "Lot Genealogy", group: "Reports" },
+
     // Dashboard
     "/dashboard": { label: "Dashboard" },
 
@@ -54,10 +61,6 @@ const routeConfig: Record<string, BreadcrumbConfig> = {
     },
     "/inventory/adjustments": {
         label: "Stock Adjustments",
-        group: "Inventory",
-    },
-    "/inventory/counts": {
-        label: "Stock Counts",
         group: "Inventory",
     },
     "/transfers": {

@@ -1,9 +1,11 @@
 "use client"
 
-import { useCallback, useState } from "react"
+import { useCallback, useRef } from "react"
 import { z } from "zod"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Toast } from "@base-ui/react/toast"
+import { createDialogStore } from "@/lib/create-dialog-store"
+import { getLoadStatus } from "@/lib/load-status"
 import { apiRequest, ApiError } from "@/lib/api-request"
 import { useSession, SESSION_QUERY_KEY } from "@/hooks/use-session"
 import {
@@ -65,6 +67,8 @@ export async function cancelSalesOrder(id: number): Promise<SalesOrder> {
 export const SALES_ORDERS_QUERY_KEY = ["sales-orders"] as const
 const EMPTY_ORDERS: SalesOrder[] = []
 const EMPTY_OPTIONS: SalesOrderOptions = { customers: [], items: [] }
+type ActionTarget = { order: SalesOrder; action: "confirm" | "cancel" }
+const useDialogs = createDialogStore<SalesOrder, ActionTarget>()
 export function useSalesOrders() {
     const client = useQueryClient()
     const session = useSession()
@@ -76,19 +80,15 @@ export function useSalesOrders() {
         enabled: Boolean(session.data),
         queryFn: ({ signal }) => getSalesOrders(signal),
     })
+    const { formOpen, formRequested, editing: editingOrder, detailId: viewingOrderId,
+        target: actionSelection, openForm, setFormOpen, setDetailId: setViewingOrderId,
+        setTarget: setActionSelection } = useDialogs()
+    const writePending = useRef(false)
     const optionsQuery = useQuery({
         queryKey: ["sales-order-options", session.data?.userId],
-        enabled: Boolean(session.data) && canManage,
+        enabled: Boolean(session.data) && canManage && formOpen,
         queryFn: ({ signal }) => getSalesOrderOptions(signal),
     })
-    const [formOpen, setFormOpen] = useState(false)
-    const [formRequested, setFormRequested] = useState(false)
-    const [editingOrder, setEditingOrder] = useState<SalesOrder | null>(null)
-    const [viewingOrderId, setViewingOrderId] = useState<number | null>(null)
-    const [actionSelection, setActionSelection] = useState<{
-        order: SalesOrder
-        action: "confirm" | "cancel"
-    } | null>(null)
     const sync = (saved: SalesOrder) => {
         client.setQueryData<SalesOrder[]>(queryKey, (current = []) =>
             current.some((order) => order.salesOrderId === saved.salesOrderId)
@@ -146,54 +146,46 @@ export function useSalesOrders() {
         onError: (error) => reportError(error, "Unable to change sales order"),
     })
     const { reset: resetSave, mutateAsync: saveOrder, isPending: isSaving } = save
-    const { reset: resetAction, mutate: runAction, isPending: isActionPending } = action
+    const { reset: resetAction, mutateAsync: runAction, isPending: isActionPending } = action
     const openAdd = useCallback(() => {
+        if (!canManage || writePending.current) return
         resetSave()
-        setEditingOrder(null)
-        setFormRequested(true)
-        setFormOpen(true)
-    }, [resetSave])
+        openForm()
+    }, [canManage, resetSave, openForm])
     const openEdit = useCallback(
         (order: SalesOrder) => {
-            resetSave()
-            setEditingOrder(order)
-            setFormRequested(true)
-            setFormOpen(true)
+            if (!canManage || writePending.current) return
+        resetSave()
+            openForm(order)
         },
-        [resetSave],
+        [canManage, resetSave, openForm],
     )
-    const openView = useCallback((order: SalesOrder) => setViewingOrderId(order.salesOrderId), [])
+    const openView = useCallback((order: SalesOrder) => setViewingOrderId(order.salesOrderId), [setViewingOrderId])
     const openAction = useCallback(
         (order: SalesOrder, action: "confirm" | "cancel") => {
+            if (!canManage || writePending.current) return
             resetAction()
             setActionSelection({ order, action })
         },
-        [resetAction],
+        [canManage, resetAction, setActionSelection],
     )
     const handleSave = useCallback(
         async (values: SalesOrderFormValues, order: SalesOrder | null) => {
-            if (isSaving) return false
+            if (writePending.current) return false
+            writePending.current = true
             try {
                 await saveOrder({ values, order })
                 return true
             } catch {
                 return false
+            } finally {
+                writePending.current = false
             }
         },
-        [isSaving, saveOrder],
+        [saveOrder],
     )
     const loadError = ordersQuery.error ?? session.error
-    const loadStatus = session.isPending
-        ? "loading"
-        : session.data === undefined
-          ? "error"
-          : !session.data
-            ? "signed-out"
-            : ordersQuery.data !== undefined
-              ? "ready"
-              : ordersQuery.isError
-                ? "error"
-                : "loading"
+    const loadStatus = getLoadStatus(session, [ordersQuery])
     return {
         orders: ordersQuery.data ?? EMPTY_ORDERS,
         options: optionsQuery.data ?? EMPTY_OPTIONS,
@@ -219,8 +211,12 @@ export function useSalesOrders() {
         openView,
         openAction,
         handleSave,
-        handleAction: () => {
-            if (actionSelection && !isActionPending) runAction(actionSelection)
+        handleAction: async () => {
+            if (writePending.current || !actionSelection) return
+            writePending.current = true
+            try { await runAction(actionSelection) }
+            catch { /* Keep failed workflow confirmation open. */ }
+            finally { writePending.current = false }
         },
         retry: () => {
             void session.refetch()

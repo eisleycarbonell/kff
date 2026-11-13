@@ -1,9 +1,11 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Toast } from "@base-ui/react/toast"
 import { apiRequest, ApiError } from "@/lib/api-request"
+import { createDialogStore } from "@/lib/create-dialog-store"
+import { getLoadStatus } from "@/lib/load-status"
 import { useSession, SESSION_QUERY_KEY } from "@/hooks/use-session"
 import {
     roleSchema,
@@ -38,6 +40,8 @@ export async function updateRole(id: number, input: RoleUpdateInput) {
 export async function deleteRole(id: number) {
     await apiRequest(`/roles/${id}`, { method: "DELETE" }, true)
 }
+const useDialogs = createDialogStore<Role>()
+
 export function useRoles() {
     const session = useSession()
     const client = useQueryClient()
@@ -49,10 +53,8 @@ export function useRoles() {
         queryFn: ({ signal }) => getRoles(signal),
         enabled: canManage,
     })
-    const [formOpen, setFormOpen] = useState(false)
-    const [formRequested, setFormRequested] = useState(false)
-    const [editingRole, setEditingRole] = useState<Role | null>(null)
-    const [deletingRole, setDeletingRole] = useState<Role | null>(null)
+    const { formOpen, setFormOpen, formRequested, editing: editingRole, target: deletingRole,
+        setTarget: setDeletingRole, openForm } = useDialogs()
     const loadError = query.error ?? session.error
     useEffect(() => {
         if (loadError instanceof ApiError && loadError.status === 403)
@@ -79,8 +81,8 @@ export function useRoles() {
                 current?.some((row) => row.roleId === role.roleId)
                     ? current.map((row) => (row.roleId === role.roleId ? role : row))
                     : current
-                      ? [...current, role]
-                      : current,
+                        ? [...current, role]
+                        : current,
             )
             refreshAccess()
             showToast({ type: "success", title: "Role saved." })
@@ -107,39 +109,23 @@ export function useRoles() {
     const { reset: resetDelete } = remove
     const openAdd = useCallback(() => {
         resetSave()
-        setEditingRole(null)
-        setFormRequested(true)
-        setFormOpen(true)
-    }, [resetSave])
+        openForm()
+    }, [resetSave, openForm])
     const openEdit = useCallback(
         (role: Role) => {
             resetSave()
-            setEditingRole(role)
-            setFormRequested(true)
-            setFormOpen(true)
+            openForm(role)
         },
-        [resetSave],
+        [resetSave, openForm],
     )
     const openDelete = useCallback(
         (role: Role) => {
             resetDelete()
             setDeletingRole(role)
         },
-        [resetDelete],
+        [resetDelete, setDeletingRole],
     )
-    const loadStatus = session.isPending
-        ? "loading"
-        : session.data === undefined
-          ? "error"
-          : !session.data
-            ? "signed-out"
-            : !canManage
-              ? "forbidden"
-              : query.data !== undefined
-                ? "ready"
-                : query.isError
-                  ? "error"
-                  : "loading"
+    const loadStatus = getLoadStatus(session, [query], canManage)
     return {
         roles: query.data ?? EMPTY_ROLES,
         canManage,

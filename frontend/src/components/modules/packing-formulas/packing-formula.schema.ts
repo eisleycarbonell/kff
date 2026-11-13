@@ -28,6 +28,7 @@ export const formulaInputSchema = z
         }
     })
 export const formulaSchema = z.object({
+    revisionId: id.nullable().optional(),
     itemId: id,
     itemSku: z.string(),
     itemName: z.string(),

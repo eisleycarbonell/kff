@@ -117,7 +117,12 @@ export async function listStockOptions() {
                 description: scrapReasonCodes.description,
             })
             .from(scrapReasonCodes)
-            .where(eq(scrapReasonCodes.category, 'Inventory Adjustment'))
+            .where(
+                and(
+                    eq(scrapReasonCodes.category, 'Inventory Adjustment'),
+                    eq(scrapReasonCodes.isActive, true),
+                ),
+            )
             .orderBy(asc(scrapReasonCodes.codeName)),
     ]);
     return { lots: lotOptions, locations: locationOptions, reasons };
@@ -144,8 +149,10 @@ export async function recordStockAdjustment(input: StockAdjustmentInput, actorId
                 and(
                     eq(scrapReasonCodes.reasonId, input.reasonId),
                     eq(scrapReasonCodes.category, 'Inventory Adjustment'),
+                    eq(scrapReasonCodes.isActive, true),
                 ),
             )
+            .for('share')
             .limit(1);
         if (!reason) throw new AppError(400, 'Select an inventory adjustment reason.');
         // A count can establish a new balance for an existing lot/location.

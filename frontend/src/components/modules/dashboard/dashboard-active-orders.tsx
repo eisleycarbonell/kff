@@ -17,7 +17,9 @@ import {
 export function DashboardActiveOrders({
     packingOrders,
     purchaseOrders,
+    currencyCode,
 }: {
+    currencyCode: string
     packingOrders: DashboardActivePackingOrder[]
     purchaseOrders: DashboardPendingPurchaseOrder[]
 }) {
@@ -59,8 +61,12 @@ export function DashboardActiveOrders({
                     packingOrders.length === 0 ? (
                         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-8 text-center">
                             <Factory className="size-8 text-muted-foreground/60" />
-                            <p className="mt-2 text-sm font-medium text-foreground">No active packing orders</p>
-                            <p className="text-xs text-muted-foreground">All scheduled packing orders are complete or cancelled.</p>
+                            <p className="mt-2 text-sm font-medium text-foreground">
+                                No active packing orders
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                                All scheduled packing orders are complete or cancelled.
+                            </p>
                             <Button
                                 size="sm"
                                 variant="outline"
@@ -76,7 +82,10 @@ export function DashboardActiveOrders({
                             {packingOrders.map((order) => {
                                 const target = parseFloat(order.targetQty) || 0
                                 const actual = parseFloat(order.actualQty) || 0
-                                const progress = target > 0 ? Math.min(100, Math.round((actual / target) * 100)) : 0
+                                const progress =
+                                    target > 0
+                                        ? Math.min(100, Math.round((actual / target) * 100))
+                                        : 0
 
                                 return (
                                     <div
@@ -89,7 +98,11 @@ export function DashboardActiveOrders({
                                                     {order.packingOrderNumber}
                                                 </span>
                                                 <Badge
-                                                    variant={order.status === "In Progress" ? "default" : "secondary"}
+                                                    variant={
+                                                        order.status === "In Progress"
+                                                            ? "default"
+                                                            : "secondary"
+                                                    }
                                                     className="text-[10px]"
                                                 >
                                                     {order.status}
@@ -97,10 +110,15 @@ export function DashboardActiveOrders({
                                             </div>
                                             <p className="text-xs font-medium text-foreground">
                                                 {order.itemName}{" "}
-                                                <span className="text-[10px] text-muted-foreground">({order.itemSku})</span>
+                                                <span className="text-[10px] text-muted-foreground">
+                                                    ({order.itemSku})
+                                                </span>
                                             </p>
                                             <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                                                <span>{order.sourceLocationName} → {order.destinationLocationName}</span>
+                                                <span>
+                                                    {order.sourceLocationName} →{" "}
+                                                    {order.destinationLocationName}
+                                                </span>
                                                 {order.scheduledDate && (
                                                     <>
                                                         <span>•</span>
@@ -116,7 +134,9 @@ export function DashboardActiveOrders({
                                         <div className="flex items-center justify-between gap-4 sm:flex-col sm:items-end sm:justify-center">
                                             <div className="text-right">
                                                 <p className="text-xs font-medium tabular-nums">
-                                                    {formatQuantity(order.actualQty)} / {formatQuantity(order.targetQty)} {order.primaryUomName}
+                                                    {formatQuantity(order.actualQty)} /{" "}
+                                                    {formatQuantity(order.targetQty)}{" "}
+                                                    {order.primaryUomName}
                                                 </p>
                                                 <p className="text-[10px] text-muted-foreground tabular-nums">
                                                     {progress}% packed
@@ -149,8 +169,12 @@ export function DashboardActiveOrders({
                 ) : purchaseOrders.length === 0 ? (
                     <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-8 text-center">
                         <ShoppingCart className="size-8 text-muted-foreground/60" />
-                        <p className="mt-2 text-sm font-medium text-foreground">No pending purchase orders</p>
-                        <p className="text-xs text-muted-foreground">All supplier purchase orders are received or complete.</p>
+                        <p className="mt-2 text-sm font-medium text-foreground">
+                            No pending purchase orders
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                            All supplier purchase orders are received or complete.
+                        </p>
                         <Button
                             size="sm"
                             variant="outline"
@@ -186,9 +210,13 @@ export function DashboardActiveOrders({
                                             {po.status}
                                         </Badge>
                                     </div>
-                                    <p className="text-xs font-medium text-foreground">{po.supplierName}</p>
+                                    <p className="text-xs font-medium text-foreground">
+                                        {po.supplierName}
+                                    </p>
                                     <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                                        <span>{po.lineCount} item line{po.lineCount !== 1 ? "s" : ""}</span>
+                                        <span>
+                                            {po.lineCount} item line{po.lineCount !== 1 ? "s" : ""}
+                                        </span>
                                         <span>•</span>
                                         <span>Ordered {formatDate(po.orderDate)}</span>
                                         {po.expectedDeliveryDate && (
@@ -204,10 +232,11 @@ export function DashboardActiveOrders({
 
                                 <div className="text-right">
                                     <p className="text-xs font-bold tracking-tight tabular-nums text-foreground">
-                                        {formatCurrency(po.totalAmount)}
+                                        {formatCurrency(po.totalAmount, currencyCode)}
                                     </p>
                                     <p className="text-[10px] text-muted-foreground tabular-nums">
-                                        Remaining: {formatCurrency(po.outstandingAmount)}
+                                        Remaining:{" "}
+                                        {formatCurrency(po.outstandingAmount, currencyCode)}
                                     </p>
                                 </div>
                             </div>

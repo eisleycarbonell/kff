@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { memo, useMemo } from "react"
 import { useTable } from "@tanstack/react-table"
 import {
     ArrowDown,
@@ -45,7 +45,7 @@ type ReceivingTableProps = {
     isBusy: boolean
 }
 
-export function ReceivingTable({ receipts, onAdd, canReceive, isBusy }: ReceivingTableProps) {
+export const ReceivingTable = memo(function ReceivingTable({ receipts, onAdd, canReceive, isBusy }: ReceivingTableProps) {
     const columns = useMemo(() => createReceivingColumns(), [])
     const table = useTable({
         features: receivingTableFeatures,
@@ -264,4 +264,4 @@ export function ReceivingTable({ receipts, onAdd, canReceive, isBusy }: Receivin
             </div>
         </div>
     )
-}
+})

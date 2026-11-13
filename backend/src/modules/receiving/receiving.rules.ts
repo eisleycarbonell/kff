@@ -73,11 +73,8 @@ export function assertReceivableStatus(status: string) {
         );
 }
 export function assertReceivingLocation(locationType: string) {
-    if (locationType !== 'Warehouse' && locationType !== 'Quarantine')
-        throw new AppError(
-            400,
-            'Receive purchased materials into an active warehouse or quarantine location.',
-        );
+    if (locationType !== 'Warehouse')
+        throw new AppError(400, 'Receive purchased materials into an active warehouse location.');
 }
 export function planReceiptQuantities(
     current: readonly { poLineId: number; qtyOrdered: string; qtyReceived: string }[],

@@ -1,5 +1,7 @@
 "use client"
-import { useCallback, useState } from "react"
+import { createDialogStore } from "@/lib/create-dialog-store"
+import { getLoadStatus } from "@/lib/load-status"
+import { useCallback, useRef } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Toast } from "@base-ui/react/toast"
 import { apiRequest, ApiError } from "@/lib/api-request"
@@ -60,6 +62,7 @@ export async function deleteUomClass(id: number): Promise<void> {
 }
 const EMPTY_UNITS: Uom[] = []
 const EMPTY_CLASSES: UomClass[] = []
+const useModuleDialogs = createDialogStore<Uom, Uom, { classesOpen: boolean; deletingClass: UomClass | null }>(() => ({ classesOpen: false, deletingClass: null }))
 export function useUoms() {
     const session = useSession()
     const client = useQueryClient()
@@ -76,12 +79,12 @@ export function useUoms() {
         queryFn: ({ signal }) => getUomClasses(signal),
         enabled: Boolean(session.data),
     })
-    const [formOpen, setFormOpen] = useState(false)
-    const [formRequested, setFormRequested] = useState(false)
-    const [editingUnit, setEditingUnit] = useState<Uom | null>(null)
-    const [deletingUnit, setDeletingUnit] = useState<Uom | null>(null)
-    const [classesOpen, setClassesOpen] = useState(false)
-    const [deletingClass, setDeletingClass] = useState<UomClass | null>(null)
+    const { formOpen, formRequested, editing: editingUnit, openForm, setFormOpen, target, setTarget: setDeletingUnit, classesOpen, deletingClass, patch, } = useModuleDialogs()
+    const writePending = useRef(false)
+    const deletingUnit = target
+    const setClassesOpen = useCallback((classesOpen: boolean) => patch({ classesOpen }), [patch])
+    const openClasses = useCallback(() => patch({ classesOpen: true }), [patch])
+    const setDeletingClass = useCallback((deletingClass: UomClass | null) => patch({ deletingClass }), [patch])
     const canManage = session.data?.permissions.canManageInventory === true
     const loadError = query.error ?? classesQuery.error ?? session.error
     function refresh() {
@@ -89,6 +92,12 @@ export function useUoms() {
             "uoms",
             "uom-classes",
             "item-uoms",
+            "inventory-reports",
+            "inventory-control-options",
+            "inventory-controls",
+            "item-packaging-options",
+            "reorder-policies-options",
+            "operational-reports",
             "packing-formula-options",
             "packing-formulas",
             "items",
@@ -175,30 +184,19 @@ export function useUoms() {
         },
         onError: mutationError,
     })
+    const { reset: resetSave } = save
     const openAdd = useCallback(() => {
-        setEditingUnit(null)
-        setFormRequested(true)
-        setFormOpen(true)
-    }, [])
+        resetSave()
+        openForm()
+    }, [openForm, resetSave])
     const openEdit = useCallback((unit: Uom) => {
-        setEditingUnit(unit)
-        setFormRequested(true)
-        setFormOpen(true)
-    }, [])
+        resetSave()
+        openForm(unit)
+    }, [openForm, resetSave])
     const openDelete = useCallback((unit: Uom) => {
         if (!unit.isInUse && !unit.isClassAnchor) setDeletingUnit(unit)
-    }, [])
-    const loadStatus = session.isPending
-        ? "loading"
-        : session.data === undefined
-          ? "error"
-          : !session.data
-            ? "signed-out"
-            : query.data !== undefined && classesQuery.data !== undefined
-              ? "ready"
-              : query.isError || classesQuery.isError
-                ? "error"
-                : "loading"
+    }, [setDeletingUnit])
+    const loadStatus = getLoadStatus(session, [query, classesQuery])
     return {
         units: query.data ?? EMPTY_UNITS,
         classes: classesQuery.data ?? EMPTY_CLASSES,
@@ -213,6 +211,7 @@ export function useUoms() {
         setDeletingUnit,
         classesOpen,
         setClassesOpen,
+        openClasses,
         deletingClass,
         setDeletingClass,
         openAdd,
@@ -231,24 +230,30 @@ export function useUoms() {
             }
         },
         handleSave: async (values: UomFormValues, unit: Uom | null) => {
-            if (save.isPending) return false
+            if (writePending.current) return false
+            writePending.current = true
             try {
                 await save.mutateAsync({ values, unit })
                 return true
             } catch {
                 return false
+            } finally {
+                writePending.current = false
             }
         },
         handleDelete: () => {
             if (deletingUnit && !remove.isPending) remove.mutate(deletingUnit)
         },
         handleSaveClass: async (name: string, group: UomClass | null) => {
-            if (saveClass.isPending) return false
+            if (writePending.current) return false
+            writePending.current = true
             try {
                 await saveClass.mutateAsync({ name, group })
                 return true
             } catch {
                 return false
+            } finally {
+                writePending.current = false
             }
         },
         handleDeleteClass: () => {

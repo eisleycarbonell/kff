@@ -163,7 +163,7 @@ or delivery permission flags.
 For an existing database, apply the [brands migration](../backend/supabase/migrations/20261107000000_brands/migration.sql)
 once before starting the updated backend. It adds a brand table and nullable
 item references without deleting or reseeding operational data. Packing formula
-maintenance uses the existing BOM table and requires no additional table.
+publication now uses the controls/revision migration described below.
 See [the module contract](brands-packing-formulas-modules.md) for permissions and
 UI setup. Brand writes require Inventory; formula writes require Packing.
 An existing populated dataset is still preserved by the normal sample loader:
@@ -203,9 +203,10 @@ For unattended test resets, use `npm run db:rebuild -- --yes` with
 from automation. `--help` on either database command performs no database work.
 
 The [Inventory Reports page](../frontend/src/app/(protected)/reports/inventory/page.tsx)
-currently contains planned report placeholders. Samples populate the implemented
-inventory, lot, movement, purchasing, packing, transfer, sales, delivery and
-dashboard APIs; they do not implement those planned report screens.
+implements five inventory reports with filters, exact per-UOM totals and CSV.
+Samples include approved, held, expired, near-expiry and In Transit stock, both
+packing and delivery reservations, and the never-stocked `SAMPLE-RM-REPORT-ZERO`
+item for Low Stock. See [the inventory-report contract](inventory-reports-module.md).
 
 ## Verification
 
@@ -225,3 +226,46 @@ when `TEST_DATABASE_URL` names a dedicated test database. That test uses a rando
 isolated schema and verifies import/rebuild behavior, concurrent loaders and
 database invariants; it skips without that configuration and never uses
 `DATABASE_URL` as a fallback.
+
+
+## Inventory controls and report extension (2026-11-08)
+
+Existing initialized databases can run `npm run db:migrate:controls` from
+`backend/` to add the new tables and references without resetting records.
+Restart the backend afterward. Fresh rebuilds already use the current schema.
+Sample loading still skips any populated application database; it does not
+overwrite existing operations or manufacture historic approvals.
+
+Fresh samples additionally contain:
+
+| Record | Current use |
+| --- | --- |
+| Company settings, PHP, default level 10, expiry 30 days | Settings → Company Settings |
+| Eight finished-product box barcodes and gross weights | Master Data → Item Packaging |
+| Garlic raw threshold 25 kg and finished threshold 100 pc | Master Data → Reorder Levels |
+| `SAMPLE-COUNT-SESSION-DRAFT` | Retained read-only count request and observations; inspect through the authenticated controls API |
+| `SAMPLE-COUNT-SESSION-APPROVED` | Retained read-only unchanged count and independent reviewer history; no stock transaction |
+| `SAMPLE-QC-REVIEW` | Retained read-only QC evidence and request history; current lot status is edited in Lots / Batches |
+| `SAMPLE-SCRAP-REVIEW` | Administrator reviews 0.2500 kg of expired chili disposal |
+| `SAMPLE-DISPOSITION-DRAFT` | Retained read-only held-stock movement request; cannot be submitted or applied |
+| `SAMPLE-FORMULA-REVIEW` | Administrator releases garlic revision one for future orders |
+
+All these prepared records belong to `warehouse@spice.local`; the approved
+unchanged count is reviewed by `demo@spice.local`. Both use `KffDemo123!` in
+the dedicated sample dataset. Independent review still applies to active Scrap and Formula requests;
+reviewers cannot approve their own preparation. Count Sessions, QC Decisions
+and Stock Dispositions have been removed from active workflows. Their samples
+remain unchanged and read-only through authenticated controls GET APIs; they
+cannot be submitted, observed, reviewed, reopened, cancelled or applied. Their
+old pages redirect to Inventory Stock.
+
+The retained disposition and submitted scrap share an original source snapshot.
+The retired disposition cannot apply a movement or stale the scrap request. If
+another active stock operation changes that snapshot, reject and reopen the
+Scrap request to refresh it. These draft and submitted samples add no ledger entries; initial sample stock remains derived
+from the same operational ledger. Existing formulas remain a legacy baseline
+until the submitted revision is actually approved.
+
+Existing purchase, packing, transfer and sales records populate the four new
+operational reports. See the [step-by-step controls guide](inventory-controls-and-reports.md)
+and [UI happy path](ui-setup-and-happy-path.md).

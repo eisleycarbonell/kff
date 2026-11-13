@@ -1,8 +1,9 @@
+import { memo } from "react"
 import { Boxes, PackageCheck, Package } from "lucide-react"
 import type { Item } from "@/components/modules/items/item.schema"
 import { Card, CardContent } from "@/components/ui/card"
 
-export function ItemStatistics({ items }: { items: Item[] }) {
+export const ItemStatistics = memo(function ItemStatistics({ items }: { items: Item[] }) {
     const statistics = [
         {
             label: "Total items",
@@ -41,4 +42,4 @@ export function ItemStatistics({ items }: { items: Item[] }) {
             ))}
         </div>
     )
-}
+})

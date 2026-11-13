@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic"
 import Link from "next/link"
-import { useCallback, useState } from "react"
+import { useCallback } from "react"
 import { Plus } from "lucide-react"
 
 import type { Supplier } from "@/components/modules/suppliers/supplier.schema"
@@ -36,6 +36,10 @@ const SupplierItemsDialog = dynamic(() =>
 export default function SuppliersPage() {
     const {
         suppliers,
+        currentSupplier,
+        itemsOpen,
+        setItemsOpen,
+        openItems,
         canManage,
         loadStatus,
         loadError,
@@ -59,15 +63,6 @@ export default function SuppliersPage() {
         saveError,
         deactivateError,
     } = useSuppliers()
-    const [viewingSupplier, setViewingSupplier] = useState<Supplier | null>(null)
-    const [itemsOpen, setItemsOpen] = useState(false)
-    const currentSupplier =
-        suppliers.find((supplier) => supplier.supplierId === viewingSupplier?.supplierId) ??
-        viewingSupplier
-    const openItems = useCallback((supplier: Supplier) => {
-        setViewingSupplier(supplier)
-        setItemsOpen(true)
-    }, [])
     const activate = useCallback(
         (supplier: Supplier) => {
             void handleActivate(supplier)
@@ -83,7 +78,7 @@ export default function SuppliersPage() {
             <title>Suppliers</title>
             <meta
                 name="description"
-                content="Manage suppliers, item prices, purchasing units, and delivery lead times."
+                content="Manage suppliers and link the materials they supply."
             />
             <PageHeader
                 title="Suppliers"
@@ -139,7 +134,7 @@ export default function SuppliersPage() {
                         <Alert>
                             <AlertTitle>Read-only access</AlertTitle>
                             <AlertDescription>
-                                You can view suppliers and their item offers. Purchasing managers
+                                You can view suppliers and their linked items. Purchasing managers
                                 can add or change supplier records.
                             </AlertDescription>
                         </Alert>
@@ -186,10 +181,9 @@ export default function SuppliersPage() {
                     <AlertDialogHeader>
                         <AlertDialogTitle>Deactivate supplier?</AlertDialogTitle>
                         <AlertDialogDescription className="break-words">
-                            {deactivatingSupplier?.name} and its item offers will be disabled, and
-                            preferred item settings cleared. Purchase history remains available.
-                            Reactivating the supplier leaves its item offers disabled until you
-                            enable them individually.
+                            {deactivatingSupplier?.name} will be disabled and its items unlinked.
+                            Purchase history remains available. After reactivating the supplier,
+                            link its items again before purchasing.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     {deactivateError && (

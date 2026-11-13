@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { memo, useMemo } from "react"
 import { useTable } from "@tanstack/react-table"
 import {
     ArrowDown,
@@ -49,7 +49,7 @@ type SupplierTableProps = {
     onActivate: (supplier: Supplier) => void
 }
 
-export function SupplierTable({
+export const SupplierTable = memo(function SupplierTable({
     suppliers,
     onAdd,
     onEdit,
@@ -79,7 +79,7 @@ export function SupplierTable({
         globalFilterFn: "includesString",
         initialState: {
             pagination: { pageIndex: 0, pageSize: 10 },
-            columnVisibility: { createdAt: false, preferredItemCount: false },
+            columnVisibility: { createdAt: false },
             sorting: [{ id: "name", desc: false }],
         },
     })
@@ -281,4 +281,4 @@ export function SupplierTable({
             </div>
         </div>
     )
-}
+})

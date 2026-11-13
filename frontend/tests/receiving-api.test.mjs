@@ -310,12 +310,11 @@ test("receipt validation requires valid open lines, safe destinations and option
                 .lineErrors[0].locationId,
         )
     }
-    assert.deepEqual(
+    assert.ok(
         schema.validateReceipt(values, {
             ...options,
             locations: [{ ...location, locationType: "Quarantine" }],
-        }),
-        {},
+        }).lineErrors[0].locationId,
     )
     for (const expirationDate of ["2026-10-28", "2026-10-27", "2026-02-30"]) {
         assert.ok(

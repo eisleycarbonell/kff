@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { memo, useMemo } from "react"
 import { useTable } from "@tanstack/react-table"
 import {
     ArrowDown,
@@ -83,7 +83,7 @@ function exportDeliveries(orders: DeliveryOrder[]) {
     link.remove()
     setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
-export function DeliveryOrderTable({
+export const DeliveryOrderTable = memo(function DeliveryOrderTable({
     orders,
     onAdd,
     ...actions
@@ -376,4 +376,4 @@ export function DeliveryOrderTable({
             </div>
         </div>
     )
-}
+})
