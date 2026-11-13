@@ -1,3 +1,4 @@
+import { resolveDatabaseUrl } from './connection.ts';
 import { db } from './index.ts';
 import { seedSampleData, SAMPLE_ADMIN_EMAIL, SAMPLE_PASSWORD } from './sample-data.ts';
 import { sampleAccounts } from './sample-accounts.ts';
@@ -11,7 +12,7 @@ try {
         );
     } else {
         requireTestDataOptIn();
-        console.log(`Sample data target: ${databaseTarget(process.env.DATABASE_URL)}`);
+        console.log(`Sample data target: ${databaseTarget(resolveDatabaseUrl())}`);
         const result = await seedSampleData();
         if (result.status === 'seeded') {
             console.log(

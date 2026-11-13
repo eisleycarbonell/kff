@@ -8,12 +8,23 @@ import { sendSuccessResponse, sendSuccessNoDataResponse } from '../../utils/resp
 import { auditLoginFailure, auditLoginSuccess, auditLogout } from '../../utils/auditLogger.ts';
 
 export type AuthService = Pick<typeof authService, 'login' | 'getSessionUser'>;
-const cookieOptions = () => ({
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict' as const,
-    path: '/',
-});
+function parseSameSite(raw = process.env.COOKIE_SAME_SITE): 'strict' | 'lax' | 'none' {
+    const normalized = raw?.trim().toLowerCase();
+    if (normalized === 'none' || normalized === 'lax' || normalized === 'strict') {
+        return normalized;
+    }
+    return 'strict';
+}
+
+const cookieOptions = () => {
+    const sameSite = parseSameSite();
+    return {
+        httpOnly: true,
+        secure: sameSite === 'none' || process.env.NODE_ENV === 'production',
+        sameSite,
+        path: '/',
+    };
+};
 
 export function createAuthController(service: AuthService) {
     return {

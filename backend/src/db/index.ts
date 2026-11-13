@@ -1,8 +1,14 @@
 import { config } from 'dotenv';
 import { drizzle } from 'drizzle-orm/postgres-js';
-import postgres from 'postgres';
+import type { Sql } from 'postgres';
+import { createPostgresClient } from './connection.ts';
 
-config({ path: '.env' });
+config({ path: '.env', quiet: true });
 
-const client = postgres(process.env.DATABASE_URL!);
+const globalForDb = globalThis as typeof globalThis & { __kffPgClient?: Sql };
+const client = globalForDb.__kffPgClient ?? createPostgresClient();
+if (!globalForDb.__kffPgClient) {
+    globalForDb.__kffPgClient = client;
+}
+
 export const db = drizzle({ client });
