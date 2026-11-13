@@ -1,6 +1,8 @@
 import { AppError } from './app-error.ts';
 import HttpStatusCode from '../utils/statusCodeHandler.ts';
 
+const unavailableSqlStates = new Set(['53300', '53400', '57P01', '57P02', '57P03']);
+
 const connectionErrorCodes = new Set([
     'CONNECT_TIMEOUT',
     'CONNECTION_CLOSED',
@@ -79,7 +81,9 @@ export function mapDatabaseError(error: unknown): AppError | undefined {
         default:
             if (
                 code &&
-                (code.startsWith('08') || code === '53300' || connectionErrorCodes.has(code))
+                (code.startsWith('08') ||
+                    unavailableSqlStates.has(code) ||
+                    connectionErrorCodes.has(code))
             ) {
                 return new AppError(
                     HttpStatusCode.SERVICE_UNAVAILABLE,

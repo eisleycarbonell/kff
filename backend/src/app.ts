@@ -62,6 +62,14 @@ import type { DeliveryOrderService } from './modules/delivery-orders/delivery-or
 import { createInventoryReportRouter } from './modules/inventory-reports/inventory-report.routes.ts';
 import type { InventoryReportService } from './modules/inventory-reports/inventory-report.controller.ts';
 
+function parseCorsOrigins(rawOrigin = process.env.CORS_ORIGIN) {
+    const origins = (rawOrigin ?? 'http://localhost:3000')
+        .split(',')
+        .map((origin) => origin.trim().replace(/\/+$/, ''))
+        .filter(Boolean);
+    return origins.length ? origins : ['http://localhost:3000'];
+}
+
 /** Build the HTTP app without opening a port or importing a live database client. */
 export function createApp(modules: {
     userService: UserService;
@@ -94,10 +102,11 @@ export function createApp(modules: {
 }) {
     const app = express();
 
+    app.set('trust proxy', 1);
     app.use(httpLogger);
     app.use(
         cors({
-            origin: [process.env.CORS_ORIGIN || 'http://localhost:3000'],
+            origin: parseCorsOrigins(),
             credentials: true,
             methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
             allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],

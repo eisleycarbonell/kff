@@ -1,9 +1,10 @@
 import { readFile } from 'node:fs/promises';
 import { config } from 'dotenv';
-import postgres from 'postgres';
+import { createPostgresClient } from './connection.ts';
 config({ path: '.env', quiet: true });
-if (!process.env.DATABASE_URL) throw new Error('Configure DATABASE_URL first.');
-const client = postgres(process.env.DATABASE_URL, { max: 1, onnotice: () => {} });
+const migrationUrl = process.env.DIRECT_URL || process.env.DATABASE_URL;
+if (!migrationUrl) throw new Error('Configure DIRECT_URL or DATABASE_URL first.');
+const client = createPostgresClient(migrationUrl, { max: 1, onnotice: () => {} });
 try {
     const result = await client.begin(async (tx) => {
         await tx`select pg_advisory_xact_lock(1262896723, 20261108)`;
