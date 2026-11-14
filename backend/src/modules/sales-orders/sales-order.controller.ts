@@ -5,6 +5,7 @@ import { sendSuccessResponse } from '../../utils/responseHandler.ts';
 import type * as serviceModule from './sales-order.service.ts';
 import type {
     salesOrderIdRequestSchema,
+    salesOrderMaterialPlanRequestSchema,
     createSalesOrderRequestSchema,
     updateSalesOrderRequestSchema,
     salesOrderActionRequestSchema,
@@ -14,6 +15,7 @@ export type SalesOrderService = Pick<
     typeof serviceModule,
     | 'listSalesOrders'
     | 'getSalesOrder'
+    | 'getSalesOrderMaterialPlan'
     | 'getSalesOrderOptions'
     | 'createSalesOrder'
     | 'updateSalesOrder'
@@ -44,6 +46,16 @@ export function createSalesOrderController(service: SalesOrderService) {
             return sendSuccessResponse(
                 response,
                 found(await service.getSalesOrder(response.locals.validated.params.id)),
+            );
+        },
+        async materialPlan(
+            _request: Request,
+            response: ValidatedResponse<typeof salesOrderMaterialPlanRequestSchema>,
+        ) {
+            const { params, query } = response.locals.validated;
+            return sendSuccessResponse(
+                response,
+                found(await service.getSalesOrderMaterialPlan(params.id, query.sourceLocationId)),
             );
         },
         async create(

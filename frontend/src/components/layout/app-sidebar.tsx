@@ -112,7 +112,6 @@ const data = {
                     title: "Items / Products",
                     url: "/items",
                 },
-                { title: "Brands", url: "/brands" },
                 { title: "Packing Formulas", url: "/bom" },
                 { title: "Formula Revisions", url: "/formula-revisions" },
                 { title: "Item Packaging", url: "/item-packaging" },
@@ -174,7 +173,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const company = useCompanySettings()
     const items = data.navMain.filter(
         (item) =>
-            item.title !== "Users & Access" || session.data?.permissions.canManageUsers === true,
+            item.title !== "Users & Access" ||
+            session.data?.permissions.canManageUsers === true,
     )
     return (
         <Sidebar variant="inset" {...props}>
@@ -187,9 +187,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                             </div>
                             <div className="grid flex-1 text-left text-sm leading-tight">
                                 <span className="truncate font-medium">
-                                    {company.settings?.companyName ?? "Kusina Filipino Food"}
+                                    {company.settings?.companyName ??
+                                        "Kusina Filipino Food"}
                                 </span>
-                                <span className="truncate text-xs">Team workspace</span>
+                                <span className="truncate text-xs">
+                                    Team workspace
+                                </span>
                             </div>
                         </SidebarMenuButton>
                     </SidebarMenuItem>

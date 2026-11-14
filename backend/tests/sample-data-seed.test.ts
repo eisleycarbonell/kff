@@ -176,7 +176,7 @@ test('sample import creates every sales/delivery state and assigns the six testi
     const seeded = fixture();
     assert.deepEqual(await seedSampleData(seeded.options), { status: 'seeded' });
     const { state } = seeded;
-    const unstocked = state.items!.find((row) => row.sku === 'SAMPLE-RM-REPORT-ZERO');
+    const unstocked = state.items!.find((row) => row.sku === 'RM-ONION');
     assert.ok(unstocked?.isActive);
     assert.equal(
         state.inventory_stock!.some((row) => row.itemId === unstocked.itemId),
@@ -186,20 +186,34 @@ test('sample import creates every sales/delivery state and assigns the six testi
         state.inventory_transactions!.some((row) => row.itemId === unstocked.itemId),
         false,
     );
-    assert.equal(state.brands!.length, 3);
-    assert.equal(state.brands!.filter((row) => row.isActive).length, 2);
+    assert.equal(state.brands!.length, 0, 'retired brands are not recreated by demo loading');
     const finishedProducts = state.items!.filter((row) => row.itemType === 'Finished Good');
     assert.equal(finishedProducts.length, 8);
     for (const product of finishedProducts) {
         assert.ok(
-            state.brands!.some((brand) => brand.brandId === product.brandId && brand.isActive),
+            state.items!.some(
+                (label) =>
+                    label.itemId === product.labelItemId &&
+                    label.itemType === 'Packaging - Label' &&
+                    label.isActive,
+            ),
         );
         assert.equal(
             state.bill_of_materials!.filter((row) => row.parentItemId === product.itemId).length,
             4,
         );
+        assert.ok(
+            state.bill_of_materials!.some(
+                (component) =>
+                    component.parentItemId === product.itemId &&
+                    component.componentItemId === product.labelItemId,
+            ),
+            'the assigned printed label must also be present in the demo packing formula',
+        );
     }
     assert.equal(state.sales_orders!.length, 5);
+    assert.ok(state.sales_orders!.every((order) => typeof order.customerPoNumber === 'string'));
+    assert.ok(state.items!.every((item) => !String(item.sku).startsWith('SAMPLE-')));
     assert.equal(state.delivery_orders!.length, 6);
     assert.deepEqual(
         new Set(state.sales_orders!.map((row) => row.status)),
@@ -219,7 +233,7 @@ test('sample import creates every sales/delivery state and assigns the six testi
     assert.deepEqual(roleFor('sales@spice.local').settings, { canManageInventory: true });
     assert.deepEqual(roleFor('delivery@spice.local').settings, { canManageTransfers: true });
     assert.deepEqual(roleFor('viewer@spice.local').settings, {});
-    assert.equal(roleFor(SAMPLE_ADMIN_EMAIL).name, 'Sample Administrator');
+    assert.equal(roleFor(SAMPLE_ADMIN_EMAIL).name, 'Administrator');
     for (const account of state.users!)
         assert.ok(state.roles!.some((role) => role.roleId === account.roleId));
 

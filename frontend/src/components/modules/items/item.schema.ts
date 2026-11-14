@@ -20,7 +20,7 @@ export const itemInputSchema = z.strictObject({
   name: z.string().trim().min(1, "Enter an item name.").max(120),
   itemType: z.enum(ITEM_TYPES),
   primaryUomId: id,
-  brandId: id.nullable().optional(),
+  labelItemId: id.nullable().optional(),
   netWeightG: decimal(8).nullable(),
   shelfLifeDays: id.nullable(),
   requiresQc: z.boolean(),
@@ -52,8 +52,8 @@ export const itemSchema = z.object({
   itemId: id,
   primaryUomName: z.string(),
   uomClassName: z.string(),
-  brandCode: z.string().nullable().optional(),
-  brandName: z.string().nullable().optional(),
+  labelItemSku: z.string().nullable().optional(),
+  labelItemName: z.string().nullable().optional(),
   isInUse: z.boolean(),
   supplierLinks: itemSupplierLinkSchema.array().optional(),
   createdBy: id.nullable(),
@@ -69,13 +69,6 @@ export const itemUomSchema = z.object({
 });
 export type Item = z.output<typeof itemSchema>;
 export type ItemUom = z.output<typeof itemUomSchema>;
-export const itemBrandSchema = z.object({
-  brandId: id,
-  code: z.string(),
-  name: z.string(),
-  isActive: z.boolean(),
-});
-export type ItemBrand = z.output<typeof itemBrandSchema>;
 export type CreateItemInput = z.output<typeof itemInputSchema>;
 export type UpdateItemInput = Partial<CreateItemInput>;
 export type ItemFormValues = Omit<
@@ -118,6 +111,20 @@ export function validateItem(
     }
   if (!uoms.some((unit) => unit.uomId === values.primaryUomId))
     errors.primaryUomId = "Select a primary unit of measure.";
+  if (values.labelItemId != null) {
+    const label = items.find(
+      (candidate) => candidate.itemId === values.labelItemId,
+    );
+    if (values.itemType !== "Finished Good")
+      errors.labelItemId =
+        "Only finished products can have a label assignment.";
+    else if (
+      !label ||
+      label.itemType !== "Packaging - Label" ||
+      (!label.isActive && label.itemId !== item?.labelItemId)
+    )
+      errors.labelItemId = "Select an active Packaging - Label item.";
+  }
   if (
     items.some(
       (existing) =>

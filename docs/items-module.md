@@ -31,9 +31,14 @@ The users module remains the architecture reference.
 - The old `requiresQc` field remains for historical compatibility. The item form
   no longer offers a QC workflow; new receipt and packed lots are approved
   automatically under the simplified inventory flow.
-- Items can optionally select an active brand from [Brands](brands-packing-formulas-modules.md).
-  Clearing sends `brandId: null`; omitted PATCH values retain the assignment.
-  An inactive current brand is preserved until explicitly changed or cleared.
+- Finished Goods optionally select an active `Packaging - Label` material in
+  **Labels**. The writable field is nullable `labelItemId`; clearing sends null
+  and omitted PATCH values retain the association. Other item types cannot
+  carry this association. A current inactive label can remain during unrelated
+  edits. Label material type/UOM changes are reference-protected.
+- This assignment identifies the printed label. The released BOM remains the
+  authority for label requirements and consumption; assigning a label does not
+  edit a formula or move stock. Brands are retired from the active application.
 - Saved catalog changes refresh sales/delivery order options and collections so
   product labels and active selections reflect current master data.
 
@@ -72,7 +77,7 @@ This prevents public account creation from bypassing catalog permissions.
 ## Fields and validation
 
 Writable fields are `sku`, `name`, `itemType`, `primaryUomId`, `unitCost`,
-`netWeightG`, `shelfLifeDays`, `requiresQc`, `isActive`, and optional nullable `brandId`.
+`netWeightG`, `shelfLifeDays`, `requiresQc`, `isActive`, and optional nullable `labelItemId`.
 
 - SKU: trimmed, uppercase, required, maximum 50 characters; database uniqueness
   remains authoritative. Name is trimmed, required, and limited to 120 characters.
@@ -101,6 +106,7 @@ From `backend/`: `npm run typecheck` and `npm test`.
 From `frontend/`: `npm run test:api`, affected-file lint, TypeScript, and
 `npm run build`. Tests use fake services/fetch and do not modify live databases.
 Check persistence and visual interactions separately against the configured
-local environment. Brand assignments require the additive migration documented
-in [Brands and Packing Formulas](brands-packing-formulas-modules.md). Item DTOs
-also include nullable `brandCode` and `brandName`.
+local environment. Label assignments require the additive customer-planning/labels migration
+in [Labels and Packing Formulas](brands-packing-formulas-modules.md). Item DTOs
+include nullable `labelItemId`, `labelItemSku` and `labelItemName`. Legacy
+brand columns remain persisted solely for history and are not writable catalog fields.

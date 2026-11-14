@@ -47,10 +47,15 @@ function FilterSelect({
             <Select
                 items={all}
                 value={value || "all"}
-                onValueChange={(value) => onChange(value === "all" ? "" : (value ?? ""))}
+                onValueChange={(value) =>
+                    onChange(value === "all" ? "" : (value ?? ""))
+                }
                 disabled={disabled}
             >
-                <SelectTrigger id={id} className="w-full data-[size=default]:h-10">
+                <SelectTrigger
+                    id={id}
+                    className="w-full data-[size=default]:h-10"
+                >
                     <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -96,7 +101,9 @@ export function InventoryReportFilters({
             draft.threshold &&
             !/^\d{1,10}(?:\.\d{1,4})?$/.test(draft.threshold ?? "10")
         ) {
-            setError("Use a nonnegative threshold with up to four decimal places.")
+            setError(
+                "Use a nonnegative threshold with up to four decimal places.",
+            )
             return
         }
         if (
@@ -119,18 +126,25 @@ export function InventoryReportFilters({
             {optionsError && (
                 <div role="alert" className="text-sm text-destructive">
                     {optionsError}
-                    <Button type="button" variant="outline" onClick={retryOptions} className="ml-3">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={retryOptions}
+                        className="ml-3"
+                    >
                         Retry options
                     </Button>
                 </div>
             )}
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <Field>
-                    <FieldLabel htmlFor={`${id}-search`}>Search report</FieldLabel>
+                    <FieldLabel htmlFor={`${id}-search`}>
+                        Search report
+                    </FieldLabel>
                     <Input
                         id={`${id}-search`}
                         className="h-10"
-                        placeholder="Item, brand, lot or document..."
+                        placeholder="Item, label, lot or document..."
                         maxLength={200}
                         value={draft.q ?? ""}
                         onChange={(e) => update({ q: e.target.value })}
@@ -144,7 +158,9 @@ export function InventoryReportFilters({
                         label: `${row.sku} - ${row.name}`,
                     }))}
                     disabled={!options}
-                    onChange={(value) => update({ itemId: value ? Number(value) : undefined })}
+                    onChange={(value) =>
+                        update({ itemId: value ? Number(value) : undefined })
+                    }
                 />
                 <FilterSelect
                     label="Location"
@@ -154,25 +170,38 @@ export function InventoryReportFilters({
                         label: `${row.code} - ${row.name}`,
                     }))}
                     disabled={!options}
-                    onChange={(value) => update({ locationId: value ? Number(value) : undefined })}
+                    onChange={(value) =>
+                        update({
+                            locationId: value ? Number(value) : undefined,
+                        })
+                    }
                 />
                 <FilterSelect
-                    label="Brand"
-                    value={String(draft.brandId ?? "")}
-                    choices={(options?.brands ?? []).map((row) => ({
-                        value: String(row.brandId),
+                    label="Labels"
+                    value={String(draft.labelItemId ?? "")}
+                    choices={(options?.labels ?? []).map((row) => ({
+                        value: String(row.labelItemId),
                         label: row.name,
                     }))}
                     disabled={!options}
-                    onChange={(value) => update({ brandId: value ? Number(value) : undefined })}
+                    onChange={(value) =>
+                        update({
+                            labelItemId: value ? Number(value) : undefined,
+                        })
+                    }
                 />
                 <FilterSelect
                     label="Item type"
                     value={draft.itemType ?? ""}
-                    choices={ITEM_TYPES.map((value) => ({ value, label: value }))}
+                    choices={ITEM_TYPES.map((value) => ({
+                        value,
+                        label: value,
+                    }))}
                     onChange={(value) =>
                         update({
-                            itemType: value ? (value as ReportFilters["itemType"]) : undefined,
+                            itemType: value
+                                ? (value as ReportFilters["itemType"])
+                                : undefined,
                         })
                     }
                 />
@@ -180,10 +209,15 @@ export function InventoryReportFilters({
                     <FilterSelect
                         label="Lot QC status"
                         value={draft.qcStatus ?? ""}
-                        choices={QC_STATUSES.map((value) => ({ value, label: value }))}
+                        choices={QC_STATUSES.map((value) => ({
+                            value,
+                            label: value,
+                        }))}
                         onChange={(value) =>
                             update({
-                                qcStatus: value ? (value as ReportFilters["qcStatus"]) : undefined,
+                                qcStatus: value
+                                    ? (value as ReportFilters["qcStatus"])
+                                    : undefined,
                             })
                         }
                     />
@@ -198,11 +232,13 @@ export function InventoryReportFilters({
                             inputMode="decimal"
                             value={draft.threshold ?? ""}
                             placeholder="Company / item default"
-                            onChange={(e) => update({ threshold: e.target.value })}
+                            onChange={(e) =>
+                                update({ threshold: e.target.value })
+                            }
                         />
                         <p className="text-xs text-muted-foreground">
-                            Threshold in each item&apos;s primary unit; active items include those
-                            with no stock.
+                            Threshold in each item&apos;s primary unit; active
+                            items include those with no stock.
                         </p>
                     </Field>
                 )}
@@ -218,13 +254,17 @@ export function InventoryReportFilters({
                                 min={0}
                                 max={3650}
                                 value={
-                                    Number.isNaN(draft.expiryDays) ? "" : (draft.expiryDays ?? "")
+                                    Number.isNaN(draft.expiryDays)
+                                        ? ""
+                                        : (draft.expiryDays ?? "")
                                 }
                                 placeholder="Company default"
                                 onChange={(e) =>
                                     update({
                                         expiryDays:
-                                            e.target.value === "" ? undefined : Number(e.target.value),
+                                            e.target.value === ""
+                                                ? undefined
+                                                : Number(e.target.value),
                                     })
                                 }
                             />
@@ -233,7 +273,9 @@ export function InventoryReportFilters({
                             <Checkbox
                                 id={`${id}-expired`}
                                 checked={draft.includeExpired ?? true}
-                                onCheckedChange={(value) => update({ includeExpired: value })}
+                                onCheckedChange={(value) =>
+                                    update({ includeExpired: value })
+                                }
                             />
                             <FieldLabel htmlFor={`${id}-expired`}>
                                 Include already expired stock
@@ -246,7 +288,10 @@ export function InventoryReportFilters({
                         <FilterSelect
                             label="Movement type"
                             value={draft.transactionType ?? ""}
-                            choices={MOVEMENT_TYPES.map((value) => ({ value, label: value }))}
+                            choices={MOVEMENT_TYPES.map((value) => ({
+                                value,
+                                label: value,
+                            }))}
                             onChange={(value) =>
                                 update({
                                     transactionType: value
@@ -258,13 +303,19 @@ export function InventoryReportFilters({
                         {(["fromDate", "toDate"] as const).map((key) => (
                             <Field key={key}>
                                 <FieldLabel htmlFor={`${id}-${key}`}>
-                                    {key === "fromDate" ? "From date (UTC)" : "Through date (UTC)"}
+                                    {key === "fromDate"
+                                        ? "From date (UTC)"
+                                        : "Through date (UTC)"}
                                 </FieldLabel>
                                 <Input
                                     id={`${id}-${key}`}
                                     type="date"
                                     value={draft[key] ?? ""}
-                                    onChange={(e) => update({ [key]: e.target.value || undefined })}
+                                    onChange={(e) =>
+                                        update({
+                                            [key]: e.target.value || undefined,
+                                        })
+                                    }
                                 />
                             </Field>
                         ))}

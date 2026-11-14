@@ -54,8 +54,6 @@ import type { RoleService } from './modules/roles/role.controller.ts';
 import { createSalesOrderRouter } from './modules/sales-orders/sales-order.routes.ts';
 import type { SalesOrderService } from './modules/sales-orders/sales-order.controller.ts';
 import { createDeliveryOrderRouter } from './modules/delivery-orders/delivery-order.routes.ts';
-import { createBrandRouter } from './modules/brands/brand.routes.ts';
-import type { BrandService } from './modules/brands/brand.controller.ts';
 import { createFormulaRouter } from './modules/packing-formulas/packing-formula.routes.ts';
 import type { FormulaService } from './modules/packing-formulas/packing-formula.controller.ts';
 import type { DeliveryOrderService } from './modules/delivery-orders/delivery-order.controller.ts';
@@ -90,7 +88,6 @@ export function createApp(modules: {
     customerService?: CustomerService;
     salesOrderService?: SalesOrderService;
     deliveryOrderService?: DeliveryOrderService;
-    brandService?: BrandService;
     formulaService?: FormulaService;
     inventoryReportService?: InventoryReportService;
     settingsService?: SettingsService;
@@ -159,8 +156,6 @@ export function createApp(modules: {
             '/api/reports/inventory',
             createInventoryReportRouter(modules.inventoryReportService, authenticate),
         );
-    if (modules.brandService)
-        app.use('/api/brands', createBrandRouter(modules.brandService, authenticate));
     if (modules.formulaService)
         app.use('/api/packing-formulas', createFormulaRouter(modules.formulaService, authenticate));
     if (modules.salesOrderService)

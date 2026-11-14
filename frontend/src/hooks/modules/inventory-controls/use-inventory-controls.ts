@@ -1,8 +1,9 @@
 "use client"
+import { invalidateInventoryAvailability } from "@/lib/inventory-query-cache"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Toast } from "@base-ui/react/toast"
-import { apiRequest } from "@/lib/api-request"
-import { useSession } from "@/hooks/use-session"
+import { apiRequest, ApiError } from "@/lib/api-request"
+import { useSession, SESSION_QUERY_KEY } from "@/hooks/use-session"
 import { createDialogStore } from "@/lib/create-dialog-store"
 import { getLoadStatus } from "@/lib/load-status"
 import {
@@ -72,7 +73,7 @@ export function useInventoryControls(kind: ControlKind) {
         enabled: Boolean(session.data),
     })
     const detail = useQuery({
-        queryKey: ["inventory-control-detail", dialogs.detailId],
+        queryKey: ["inventory-control-detail", dialogs.detailId, session.data?.userId],
         queryFn: ({ signal }) => getControl(dialogs.detailId!, signal),
         enabled: Boolean(session.data && dialogs.detailId),
     })
@@ -93,7 +94,8 @@ export function useInventoryControls(kind: ControlKind) {
                   ? actOnControl(task.id, task.action, task.note)
                   : saveObservations(task.id, task.rows),
         onSuccess: (saved) => {
-            client.setQueryData(["inventory-control-detail", saved.requestId], saved)
+            void invalidateInventoryAvailability(client)
+            client.setQueryData(["inventory-control-detail", saved.requestId, session.data?.userId], saved)
             for (const key of [
                 "inventory-controls",
                 "inventory-control-options",
@@ -105,14 +107,24 @@ export function useInventoryControls(kind: ControlKind) {
                 "packing-formulas",
                 "packing-formula-options",
                 "packing-orders",
-                "packing-order-options",
+                "packing-options",
+                "packing-preview",
+                "packing-detail",
+                "lot-detail",
                 "operational-reports",
             ])
                 void client.invalidateQueries({ queryKey: [key] })
             toast.add({ type: "success", title: "Request saved." })
         },
-        onError: (e: Error) =>
-            toast.add({ type: "error", title: "Unable to save request", description: e.message }),
+        onError: (e: Error) => {
+            if (e instanceof ApiError && e.status === 403)
+                void client.invalidateQueries({queryKey: SESSION_QUERY_KEY})
+            if (e instanceof ApiError && e.status === 409) {
+                void client.invalidateQueries({queryKey: ["inventory-control-detail"]})
+                void client.invalidateQueries({queryKey: ["inventory-control-options"]})
+            }
+            toast.add({ type: "error", title: "Unable to save request", description: e.message })
+        },
     })
     async function save(input: ControlInput) {
         if (mutation.isPending) return false

@@ -1,6 +1,6 @@
 # Spice Trading & Packing System Flow
 
-Repository documentation reviewed on 2026-11-12. This document retains the
+Repository documentation reviewed on 2026-11-14. This document retains the
 original 26 sections and defines the shared business flow, including the
 implemented customer sales and delivery extension in section 17. Section 2
 distinguishes implemented workflows from planned modules; a documented route
@@ -11,6 +11,9 @@ for the stock columns, and section 22 for the successful operator flow. The
 [UI setup and happy-path guide](ui-setup-and-happy-path.md) expands that flow
 into field-by-field instructions and numerical checkpoints. This document
 remains the single source of business rules.
+
+The [14 November module audit](module-audit-2026-11-14.md) records executable
+coverage, corrected defects and the remaining browser-verification limits.
 
 ## 1. System Purpose
 
@@ -37,7 +40,12 @@ The system mainly handles:
 - User and role management
 - Reporting
 
-The primary business flow is:
+Customer demand can start the business flow: record the customer purchase order
+as a Sales Order, select the finished products, inspect Material plan, then buy
+any missing materials before continuing with the standard flow below. A customer
+PO is a customer reference; a supplier Purchase Order is our purchasing document.
+
+The primary inventory replenishment flow is:
 
 ```text
 Supplier
@@ -96,7 +104,7 @@ Routes:
 
 ## Current Implementation Coverage
 
-The following status reflects the repository source on 2026-11-12.
+The following status reflects the repository source on 2026-11-14.
 Implemented means that the page and operational API are present; database
 deployment and live verification are separate. The business examples below
 remain illustrative rather than fixed master data or promised feature coverage.
@@ -104,7 +112,7 @@ remain illustrative rather than fixed master data or promised feature coverage.
 | Module | Current implementation | Implementation contract |
 | --- | --- | --- |
 | Dashboard | Operational inventory, purchasing, packing and transfer summaries | Dashboard page and API |
-| Items / Products | Catalog management and reference protection | [Items](items-module.md) |
+| Items / Products | Catalog, finished-product label-material assignments and reference protection | [Items](items-module.md) |
 | Suppliers | Supplier contacts and shared item links | [Suppliers](suppliers-module.md) |
 | Customers | Contact master data linked to sales orders | [Customers](customers-module.md) |
 | Units and Locations | Master-data management and usage protection | [UOM and Locations](uom-locations-modules.md) |
@@ -113,10 +121,9 @@ remain illustrative rather than fixed master data or promised feature coverage.
 | Inventory, Movements and Adjustments | Balances, append-only ledger and direct physical-count corrections | [Inventory Stocks](inventory-stocks-module.md) |
 | Packing Orders and Material Reservations | BOM snapshots, planning, reservations, start and completion | [Packing Orders](packing-orders-module.md) |
 | Stock Transfers and Branch/Store Stock | Dispatch through In Transit, partial receiving and shared location inventory | [Stock Transfers](stock-transfers-module.md) |
-| Sales Orders and Delivery Orders | Customer demand allocation, lot dispatch and completed delivery fulfillment | [Sales and Delivery](sales-delivery-modules.md) |
+| Sales Orders and Delivery Orders | Customer PO references, BOM material shortage planning, demand allocation, lot dispatch and completed fulfillment | [Sales and Delivery](sales-delivery-modules.md) |
 | Users, Roles and Authentication | Accounts, sessions and the five supported permission settings | [Users and Roles](roles-users-module.md) |
-| Packing Formula / BOM maintenance | Published BOM inspection; numbered, dated revision releases with independent review | [Brands and Packing Formulas](brands-packing-formulas-modules.md) |
-| Brands | Brand management, active status and optional item assignments | [Brands and Packing Formulas](brands-packing-formulas-modules.md) |
+| Packing Formula / BOM maintenance | Published BOM inspection; numbered, dated revision releases with independent review | [Labels and Packing Formulas](brands-packing-formulas-modules.md) |
 | Inventory Reports | Stock by Location, Stock by Lot, Low Stock, Near Expiry and Inventory Movement with filters, exact unit totals and CSV export | [Inventory Reports](inventory-reports-module.md) |
 | Company Settings | Company/contact details, fixed currency after pricing history, alert defaults and optimistic version checks | [Controls and Reports](inventory-controls-and-reports.md) |
 | Packaging, Reorder Levels and Reason Codes | Item-specific conversions/barcodes, saved thresholds and active reasons | [Controls and Reports](inventory-controls-and-reports.md) |
@@ -137,12 +144,16 @@ Use master data to define the business records first. Use operational modules
 to buy, receive, pack and move goods. Use Inventory to inspect the resulting
 stock, and Reports to compare and export the recorded activity.
 
+Every active module page displays its purpose under the title and a **How to
+use this module** panel with operational steps, connected-module links and
+relevant notes. This in-app help follows the same rules and
+[module demo guide](module-demo-guide.md), including reports and administration.
+
 | Module / menu | Purpose and when to use it | Connected records and next step |
 | --- | --- | --- |
 | Dashboard | Review current stock, shortages and open work before operating | Reads purchasing, inventory, packing and transfers; open the relevant operational module to act |
 | Items / Products | Define each material or finished product, its type and primary stock UOM; inspect supplier tags | Used by supplier links, PO lines, BOMs, lots and every stock operation; creating an item creates no stock |
 | Suppliers | Maintain supplier contacts and the materials linked to each supplier | Shares supplier-item links with Items; these links determine the PO material dropdown |
-| Brands | Group finished products commercially | Optional item assignment; does not create a separate stock balance |
 | Units of Measure | Define compatible units and conversions | Items select a primary UOM; purchasing and BOM inputs convert into that unit |
 | Item Packaging | Define an item's units per box/case and optional barcode/weight | Overrides generic compatible UOM conversion for that item in receiving and packing requirements |
 | Locations | Define warehouses, packing areas, branches, stores and In Transit | Receiving, packing, transfers and deliveries write stock against these locations |
@@ -161,7 +172,7 @@ stock, and Reports to compare and export the recorded activity.
 | Packing Orders | Plan and execute conversion of materials into finished products | Copies a BOM, reserves material lots, then consumes inputs and produces a traceable finished lot |
 | Material Reservations | Inspect which packing order has committed which material lots | Created by packing planning; consumed/released on completion or released on cancellation |
 | Stock Transfers | Move company-owned finished goods between a warehouse and another warehouse, branch or store | Dispatch moves source stock into In Transit; receipt moves it into the destination |
-| Sales Orders | Record and confirm customer demand and track fulfillment | Uses Customers and finished Items; Delivery Orders allocate and fulfill its remaining demand |
+| Sales Orders | Record the customer PO, select products, inspect finished supply and material shortages, then confirm demand | Material plan reads BOMs, eligible inventory and supplier links; Purchase Orders replenishes shortages; Delivery Orders fulfills demand |
 | Delivery Orders | Ship selected finished-product lots and confirm customer receipt | Source stock moves to protected In Transit; completion posts Sale movements and updates the Sales Order |
 | Inventory Reports | Inspect/export stock by location/lot, low stock, near expiry and movements | Reads current stock, active reservations, master-data thresholds and ledger records |
 | Packing Report | Compare target/output and requirements/consumption | Reads packing snapshots and Consume/Produce movements |
@@ -221,14 +232,23 @@ Route:
 
 ---
 
-## Brands
+## Labels on finished products
 
-Brands identify commercial product families. Inventory managers maintain a
-unique code, name, optional description and active status at `/brands`, then
-optionally assign a brand in Items / Products. Only active brands may be newly
-assigned; deactivation preserves existing item links and operational history.
-Brands are not hard deleted. See
-[Brands and Packing Formulas](brands-packing-formulas-modules.md).
+Labels are inventory items with type `Packaging - Label`, maintained in
+Items / Products. A Finished Good can optionally select one such item in its
+**Labels** field. New assignments require an active label material. Clearing
+the field removes the catalog association; it does not delete the label item.
+An existing inactive assignment can remain during unrelated catalog edits.
+
+The label association identifies the intended printed label; the released BOM
+defines the label quantity actually required and consumed. Assigning a label
+does not create stock or automatically edit a formula. Include that same label
+in the product's formula when it must be consumed during packing.
+
+The Brands module is removed from the active application. Its legacy database
+records and old item references are retained for history. There is no new
+Brands workflow or separate Labels master-data module. See
+[Labels and Packing Formulas](brands-packing-formulas-modules.md).
 
 ## Suppliers
 
@@ -414,7 +434,7 @@ effective date. Releases atomically publish/remove the current BOM; new orders
 copy it and record its revision ID. Existing orders retain their own material
 snapshot and reservations. Item-specific pack ratios override global compatible
 UOM factors. See [Controls and Reports](inventory-controls-and-reports.md) and
-[Brands and Packing Formulas](brands-packing-formulas-modules.md).
+[Labels and Packing Formulas](brands-packing-formulas-modules.md).
 
 Example:
 
@@ -1283,7 +1303,7 @@ locations
 
 Sales orders record customer demand for active Finished Goods in each item's
 primary UOM. An order belongs to one active customer and contains an order
-number, order date, optional requested delivery date, notes, and one line per
+number, order date, optional customer PO number, optional requested delivery date, notes, and one line per
 finished product. Each line records item, primary UOM, quantity ordered,
 quantity delivered and unit price. Requested delivery cannot precede the order
 date. Quantities and prices use exact decimal strings with up to four decimal
@@ -1327,6 +1347,65 @@ quantity available to allocate = qtyRemaining - qtyAllocated
 Completed deliveries contribute to `qtyDelivered`, and no longer contribute
 to `qtyAllocated`. Cancelled deliveries contribute to neither. Demand
 allocation is separate from physical stock reservation and availability.
+
+## Customer purchase orders and material planning
+
+1. Create an active customer, then a Draft Sales Order. Enter the customer's
+   own PO reference in **Customer PO number**, select each finished product and
+   its requested quantity, and save. The internal sales number and customer PO
+   are separate fields; the customer reference is optional and not globally unique.
+2. Open **Material plan** on the saved sales order and select the active raw
+   material Warehouse or Packing source. The backend first checks remaining
+   unallocated demand and eligible finished goods across active warehouses,
+   branches and stores. Existing finished stock can fulfill that portion.
+3. For the uncovered portion, read the current released BOM and calculate raw
+   ingredients, hardware, printed labels and seals in primary stock UOMs.
+   Aggregate any shared material across all products before comparing it with
+   supply at the selected material source.
+4. Review each material's required, available and shortage quantities. Use its
+   listed active linked suppliers to prepare supplier POs for shortages, grouped
+   by supplier. Choose purchase units and prices explicitly on the PO. Existing
+   supplier POs do not count as stock until goods are physically received.
+5. Send each supplier PO, receive arrivals into the intended material source,
+   and refresh the plan. Then create Packing Orders for the required output,
+   reserve and start, complete into finished storage, and deliver or transfer
+   using the normal workflows. Confirm customer demand before creating deliveries.
+
+Calculations:
+
+```text
+unallocatedDemand = ordered - completedDelivered - Draft/InTransit delivery allocations
+fromFinishedStock = MIN(unallocatedDemand, eligibleFinishedAvailable)
+toPack = MAX(0, unallocatedDemand - fromFinishedStock)
+materialRequired = SUM(toPackForProduct * BOMRequirementInPrimaryUOM)
+materialShortage = MAX(0, materialRequired - eligibleMaterialAvailableAtSource)
+```
+
+The plan deducts this same order's Draft delivery quantities from eligible
+finished coverage, preventing reuse for the remaining unallocated demand. This
+deduction is planning only; Draft deliveries still do not reserve physical stock.
+
+Eligible availability uses Approved, unexpired (or undated where allowed) lots,
+active items/locations, and on hand less all active outstanding reservations.
+Finished lots also require packing provenance. The plan subtracts this same order's Draft delivery quantities from eligible finished supply to avoid reusing that stock for its unallocated demand. Draft deliveries still do not reserve physical inventory. Held, rejected, expired, In
+Transit and inactive-location stock do not supply this plan. Current BOM
+conversions use item-specific pack ratios before generic compatible UOMs.
+A missing/invalid formula blocks a product only when output still needs packing;
+an inactive product with positive demand is also a blocking issue.
+
+This is an advisory plan for one order at the time it is read. It does not
+reserve stock, create POs or packing orders, alter the ledger, or promise future
+supply from open packing orders or outstanding purchases. Separate customer
+plans can compete for the same stock; packing planning and delivery dispatch
+revalidate availability under database locks when committing work. No automatic
+cross-order production allocation or replenishment execution is implemented.
+
+For a separate isolated calculation example, a customer requests 500 garlic
+100g packs; 100 eligible finished pieces are available. Packing the remaining
+400 requires 40 kg garlic and 400 pc each of pouch, matching label and seal.
+If the selected source has 25 kg garlic and 300 labels available, shortages are
+15 kg garlic and 100 labels, provided pouch/seal availability covers 400 each.
+The normal supplier PO and Receiving steps replenish those exact shortages.
 
 ## Delivery Orders
 
@@ -1572,7 +1651,6 @@ Sales & Delivery
 
 Master Data
 ├── Items / Products
-├── Brands
 ├── Packing Formulas
 ├── Formula Revisions
 ├── Item Packaging
@@ -1617,7 +1695,16 @@ requests. Company Settings is an implemented settings page.
 
 # 22. Complete Operational Flow
 
-## Happy path: what the operator does
+## Customer-first demo path
+
+Start with the customer PO and Material plan described in section 17. Record
+demand before purchasing; inspect finished stock, calculate the packing gap,
+and purchase only material shortages. Follow the purchasing/receiving/packing
+steps below for replenishment, then the normal delivery steps. The detailed
+[module demo guide](module-demo-guide.md) covers every active module, with a
+prepared realistic-data exercise and the role responsible for each action.
+
+## Replenishment-first exercise: what the operator does
 
 The happy path is one successful journey with valid master data, enough eligible
 stock and no exceptions. It does not require an adjustment, count session, QC
@@ -1629,7 +1716,7 @@ performs each action; preparing and releasing a formula uses different people.
 | --- | --- | --- | --- |
 | 1 | Company Settings; administrator | Save company identity, currency and stock-alert defaults | Consistent company/currency labels and alert thresholds |
 | 2 | Units of Measure and Locations; Inventory | Set compatible kg/pc units and separate raw warehouse, finished warehouse, branch and In Transit locations | Valid units and stock destinations exist; setup creates no stock |
-| 3 | Items / Products and Brands; Inventory | Create raw spice, pouch, label, seal and finished-product records; set primary UOMs | One catalog record per material/product, ready for supplier links and formulas |
+| 3 | Items / Products; Inventory | Create raw spice, pouch, label, seal and finished-product records; set primary UOMs | One catalog record per material/product, ready for supplier links and formulas |
 | 4 | Suppliers and Items supplier links; Purchasing | Create suppliers in Suppliers; use Link items in Suppliers or the supplier dialog in Items to link materials | Only the selected supplier's active linked materials appear on its PO; both screens manage the same links; units and prices are entered on the PO |
 | 5 | Item Packaging / Reason Codes / Reorder Levels; Inventory | Set any needed item pack ratios, correction/disposal reasons and reorder overrides | Optional business configuration is ready before referenced operations |
 | 6 | Formula Revisions; Packing then independent reviewer | Prepare the finished product's per-unit formula, submit and release it | Packing Formulas shows the published BOM; future orders can snapshot it |
@@ -1681,7 +1768,7 @@ confirmation, drafting a delivery, reserving materials or starting packing.
 
 ## Operational sequence and system actions
 
-The complete system flow is:
+The stock-replenishment sequence is:
 
 ```text
 MASTER DATA
@@ -1764,8 +1851,10 @@ branch or store; it does not replace internal distribution:
 
 ```text
 CUSTOMER DEMAND
-Active Customer
-    -> Draft Sales Order
+Active Customer + Customer PO
+    -> Draft Sales Order with selected products
+    -> Material plan: finished supply -> packing gap -> BOM material shortages
+    -> Supplier PO -> Receiving -> Packing when replenishment is needed
     -> Confirm Sales Order
     -> Allocate outstanding demand to Draft Delivery Orders
 

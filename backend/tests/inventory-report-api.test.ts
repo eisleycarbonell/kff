@@ -62,7 +62,7 @@ test('report and options reads require authentication and allow viewers without 
                 calls++;
                 return buildInventoryReport(query, [], [], [], new Date('2026-11-07T00:00:00Z'));
             },
-            getInventoryReportOptions: async () => ({ items: [], locations: [], brands: [] }),
+            getInventoryReportOptions: async () => ({ items: [], locations: [], labels: [] }),
         },
         async (base, cookie) => {
             assert.equal((await fetch(base)).status, 401);
@@ -84,7 +84,7 @@ test('report and options reads require authentication and allow viewers without 
             }
             const options = await fetch(base + '/options', { headers: { cookie } });
             assert.equal(options.status, 200);
-            assert.deepEqual((await options.json()).data, { items: [], locations: [], brands: [] });
+            assert.deepEqual((await options.json()).data, { items: [], locations: [], labels: [] });
             assert.equal(calls, 5);
         },
     );
@@ -101,7 +101,7 @@ test('report query parsing normalizes exact filters and blocks invalid or unknow
                 assert.equal(query.q, 'Garlic');
                 return buildInventoryReport(query, [], [], []);
             },
-            getInventoryReportOptions: async () => ({ items: [], locations: [], brands: [] }),
+            getInventoryReportOptions: async () => ({ items: [], locations: [], labels: [] }),
         },
         async (base, cookie) => {
             const good = await fetch(

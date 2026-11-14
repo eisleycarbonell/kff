@@ -1,4 +1,5 @@
 "use client"
+import { invalidateInventoryAvailability } from "@/lib/inventory-query-cache"
 import { createDialogStore } from "@/lib/create-dialog-store"
 import { getLoadStatus } from "@/lib/load-status"
 
@@ -84,6 +85,7 @@ export function useInventoryStocks() {
             return recordStockAdjustment(toStockAdjustment(values))
         },
         onSuccess: ({ stock }) => {
+            void invalidateInventoryAvailability(client)
             client.setQueryData<Stock[]>(queryKey, (current) => {
                 if (!current) return current
                 return current.some((row) => row.stockId === stock.stockId)
@@ -98,6 +100,7 @@ export function useInventoryStocks() {
             void client.invalidateQueries({ queryKey: ["dashboard"] })
             void client.invalidateQueries({ queryKey: ["lots"] })
             void client.invalidateQueries({ queryKey: ["lot-detail"] })
+            void client.invalidateQueries({ queryKey: ["operational-reports"] })
             showToast({ type: "success", title: "Stock adjustment recorded." })
         },
         onError: (error) => {

@@ -49,7 +49,7 @@ test(
                 [transit] =
                     await client`select location_id as id from locations where code='TRANSIT'`;
             const [lot] =
-                await client`select l.lot_id as id,l.item_id,s.qty_on_hand::text as quantity from lots l join inventory_stock s using(lot_id) where l.lot_number='SAMPLE-LOT-GARLIC' and s.location_id=${location!.id}`;
+                await client`select l.lot_id as id,l.item_id,s.qty_on_hand::text as quantity from lots l join inventory_stock s using(lot_id) where l.lot_number='LOT-GARLIC' and s.location_id=${location!.id}`;
             const [reason] =
                     await client`select reason_id as id from scrap_reason_codes where category='Inventory Adjustment'`,
                 [scrapReason] =
@@ -200,7 +200,7 @@ test(
                 'legacy lot quality can be corrected directly without changing stock or historical requests',
                 async () => {
                     const [qc] =
-                        await client`select lot_id as id from lots where lot_number='SAMPLE-LOT-GARLIC-QC'`;
+                        await client`select lot_id as id from lots where lot_number='LOT-GARLIC-QC'`;
                     const before = await baseline();
                     const { updateLot } = await import('../src/modules/lots/lot.service.ts');
                     const saved = await updateLot(
@@ -218,7 +218,7 @@ test(
                 'formula releases are dated, preserve historical orders, and use item-specific packaging ratios',
                 async () => {
                     const [product] =
-                            await client`select item_id as id from items where sku like 'SAMPLE-FG-GARLIC-%'`,
+                            await client`select item_id as id from items where sku like 'FG-GARLIC-%'`,
                         [pack] =
                             await client`select item_id as id from items where item_type='Packaging - Hardware' limit 1`,
                         [box] = await client`select uom_id as id from uoms where name='box'`;
@@ -329,7 +329,7 @@ test(
                         inventoryReportQuerySchema.parse({ report: 'low-stock' }),
                         database,
                     );
-                    assert.ok(report.rows.some((r) => r.sku === 'SAMPLE-RM-REPORT-ZERO'));
+                    assert.ok(report.rows.some((r) => r.sku === 'RM-ONION'));
                     const dashboard = await getDashboardData(database);
                     assert.ok(
                         dashboard.activePackingOrders.every((r) =>
@@ -346,9 +346,7 @@ test(
                     assert.ok(
                         dashboard.summary.rawMaterialQuantities.every((r) => r.primaryUomId > 0),
                     );
-                    assert.ok(
-                        dashboard.lowStockItems.some((r) => r.itemSku === 'SAMPLE-RM-REPORT-ZERO'),
-                    );
+                    assert.ok(dashboard.lowStockItems.some((r) => r.itemSku === 'RM-ONION'));
                     assert.deepEqual(await baseline(), before);
                     assert.equal(before[0]!.mismatches, 0);
                 },

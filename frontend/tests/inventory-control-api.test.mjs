@@ -209,3 +209,81 @@ test("operational reports encode full history genealogy and date ranges separate
     globalThis.fetch = async () => response({ sections: [] })
     await assert.rejects(reports.getReport("packing", { lotId: "", fromDate: "", toDate: "" }))
 })
+
+test("reason code helpers normalize whitespace descriptions and toggle active status", async () => {
+    const longDescription = "x".repeat(2000)
+    globalThis.fetch = async (url, init) => {
+        assert.equal(new URL(url).pathname, "/api/reason-codes")
+        assert.equal(init.method, "POST")
+        assert.deepEqual(JSON.parse(init.body), {
+            codeName: "COUNT",
+            category: "Inventory Adjustment",
+            description: null,
+            isActive: true,
+        })
+        return response({
+            reasonId: 9,
+            codeName: "COUNT",
+            category: "Inventory Adjustment",
+            description: null,
+            isActive: true,
+        })
+    }
+    await reasons.saveRecord(
+        {
+            codeName: " COUNT ",
+            category: "Inventory Adjustment",
+            description: "   ",
+            isActive: true,
+        },
+        null,
+    )
+
+    globalThis.fetch = async (url, init) => {
+        assert.equal(new URL(url).pathname, "/api/reason-codes/9")
+        assert.equal(init.method, "PATCH")
+        assert.deepEqual(JSON.parse(init.body), {
+            codeName: "COUNT",
+            category: "Inventory Adjustment",
+            description: longDescription,
+            isActive: true,
+        })
+        return response({
+            reasonId: 9,
+            codeName: "COUNT",
+            category: "Inventory Adjustment",
+            description: longDescription,
+            isActive: true,
+        })
+    }
+    await reasons.saveRecord(
+        {
+            codeName: "COUNT",
+            category: "Inventory Adjustment",
+            description: longDescription,
+            isActive: true,
+        },
+        {
+            reasonId: 9,
+            codeName: "COUNT",
+            category: "Inventory Adjustment",
+            description: null,
+            isActive: true,
+        },
+    )
+
+    globalThis.fetch = async (url, init) => {
+        assert.equal(new URL(url).pathname, "/api/reason-codes/9")
+        assert.equal(init.method, "PATCH")
+        assert.deepEqual(JSON.parse(init.body), { isActive: false })
+        return response({
+            reasonId: 9,
+            codeName: "COUNT",
+            category: "Inventory Adjustment",
+            description: longDescription,
+            isActive: false,
+        })
+    }
+    const updated = await reasons.setRecordActiveStatus(9, false)
+    assert.equal(updated.isActive, false)
+})

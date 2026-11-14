@@ -4,7 +4,7 @@ export const SAMPLE_ADMIN_EMAIL = 'demo@spice.local';
 
 export const sampleRoles = [
     {
-        name: 'Sample Administrator',
+        name: 'Administrator',
         description: 'Full access to all implemented modules.',
         settings: {
             canManageInventory: true,
@@ -15,7 +15,7 @@ export const sampleRoles = [
         },
     },
     {
-        name: 'Sample Warehouse Manager',
+        name: 'Warehouse Manager',
         description: 'Inventory, packing, transfers, sales orders and customer deliveries.',
         settings: {
             canManageInventory: true,
@@ -24,59 +24,59 @@ export const sampleRoles = [
         },
     },
     {
-        name: 'Sample Purchasing',
+        name: 'Purchasing',
         description: 'Supplier and purchase-order management.',
         settings: { canManagePurchasing: true },
     },
     {
-        name: 'Sample Sales',
+        name: 'Sales',
         description: 'Sales orders and inventory management through the Inventory permission.',
         settings: { canManageInventory: true },
     },
     {
-        name: 'Sample Delivery',
+        name: 'Delivery',
         description: 'Customer deliveries and stock transfers through the Transfers permission.',
         settings: { canManageTransfers: true },
     },
-    { name: 'Sample Viewer', description: 'Read-only access.', settings: {} },
+    { name: 'Viewer', description: 'Read-only access.', settings: {} },
 ] as const satisfies readonly { name: string; description: string; settings: RoleSettings }[];
 
 export const sampleAccounts = [
     {
-        firstName: 'Demo',
-        lastName: 'Administrator',
+        firstName: 'Elena',
+        lastName: 'Reyes',
         email: SAMPLE_ADMIN_EMAIL,
-        roleName: 'Sample Administrator',
+        roleName: 'Administrator',
     },
     {
         firstName: 'Maria',
-        lastName: 'Warehouse',
+        lastName: 'Santos',
         email: 'warehouse@spice.local',
-        roleName: 'Sample Warehouse Manager',
+        roleName: 'Warehouse Manager',
     },
     {
         firstName: 'Carlo',
-        lastName: 'Purchasing',
+        lastName: 'Mendoza',
         email: 'purchasing@spice.local',
-        roleName: 'Sample Purchasing',
+        roleName: 'Purchasing',
     },
     {
         firstName: 'Sofia',
-        lastName: 'Sales',
+        lastName: 'Garcia',
         email: 'sales@spice.local',
-        roleName: 'Sample Sales',
+        roleName: 'Sales',
     },
     {
         firstName: 'Diego',
-        lastName: 'Delivery',
+        lastName: 'Ramos',
         email: 'delivery@spice.local',
-        roleName: 'Sample Delivery',
+        roleName: 'Delivery',
     },
     {
         firstName: 'Ana',
-        lastName: 'Viewer',
+        lastName: 'Cruz',
         email: 'viewer@spice.local',
-        roleName: 'Sample Viewer',
+        roleName: 'Viewer',
     },
 ] as const satisfies readonly {
     firstName: string;

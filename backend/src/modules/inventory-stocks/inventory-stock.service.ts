@@ -127,8 +127,12 @@ export async function listStockOptions() {
     ]);
     return { lots: lotOptions, locations: locationOptions, reasons };
 }
-export async function recordStockAdjustment(input: StockAdjustmentInput, actorId: number) {
-    return db.transaction(async (tx) => {
+export async function recordStockAdjustment(
+    input: StockAdjustmentInput,
+    actorId: number,
+    database: typeof db = db,
+) {
+    return database.transaction(async (tx) => {
         // Lock the parent lot first. FK checks for concurrent reservation/stock
         // inserts wait for this lock; existing reservation rows are locked below.
         const [lot] = await tx

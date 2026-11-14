@@ -326,3 +326,84 @@ test("link and unlink from Items write the same supplier-item endpoint without i
     (error) => error instanceof ApiError && error.status === 403,
   );
 });
+
+test("item labels use existing label materials and preserve an assigned inactive label", () => {
+  const unit = { uomId: 1, name: "pc", uomClassId: 2, uomClassName: "Count" };
+  const label = {
+    ...item,
+    itemId: 21,
+    sku: "LBL-GARLIC-100",
+    itemType: "Packaging - Label",
+    isActive: true,
+  };
+  const product = {
+    ...item,
+    itemId: 22,
+    sku: "FG-GARLIC-100",
+    itemType: "Finished Good",
+    labelItemId: 21,
+  };
+  const values = {
+    ...product,
+    primaryUomId: 1,
+    netWeightG: "",
+    shelfLifeDays: "",
+  };
+  const writable = {
+    sku: values.sku,
+    name: values.name,
+    itemType: values.itemType,
+    primaryUomId: 1,
+    unitCost: values.unitCost,
+    netWeightG: "",
+    shelfLifeDays: "",
+    requiresQc: false,
+    isActive: true,
+    labelItemId: 21,
+  };
+  assert.deepEqual(
+    schema.validateItem(writable, [label, product], [unit], product),
+    {},
+  );
+  assert.equal(schema.toItemInput(writable).labelItemId, 21);
+  assert.ok(
+    schema.validateItem(
+      { ...writable, itemType: "Raw Material - Bulk" },
+      [label, product],
+      [unit],
+      product,
+    ).labelItemId,
+  );
+  assert.ok(
+    schema.validateItem(
+      { ...writable, labelItemId: item.itemId },
+      [item, product],
+      [unit],
+      product,
+    ).labelItemId,
+  );
+  assert.ok(
+    schema.validateItem(writable, [{ ...label, isActive: false }], [unit])
+      .labelItemId,
+  );
+  assert.deepEqual(
+    schema.validateItem(
+      writable,
+      [{ ...label, isActive: false }, product],
+      [unit],
+      product,
+    ),
+    {},
+  );
+  assert.equal(
+    schema.toItemInput({ ...writable, labelItemId: null }).labelItemId,
+    null,
+  );
+  assert.equal(
+    schema.itemInputSchema.safeParse({
+      ...schema.toItemInput(writable),
+      brandId: 1,
+    }).success,
+    false,
+  );
+});

@@ -29,8 +29,8 @@ async function createDemoUser() {
     const email = (process.env.DEMO_USER_EMAIL ?? 'demo@spice.local').trim().toLowerCase();
     const password = process.env.DEMO_USER_PASSWORD ?? 'KffDemo123!';
     const parsed = createUserSchema.omit({ roleId: true }).safeParse({
-        firstName: 'Demo',
-        lastName: 'Administrator',
+        firstName: 'Elena',
+        lastName: 'Reyes',
         email,
         password,
     });
@@ -73,18 +73,18 @@ async function createDemoUser() {
             await transaction
                 .insert(roles)
                 .values({
-                    name: 'Demo Administrator',
-                    description: 'Sample account administrator',
+                    name: 'Administrator',
+                    description: 'Full system access for business administration',
                     settings: permissions,
                 })
                 .onConflictDoNothing();
             [role] = await transaction
                 .select({ roleId: roles.roleId, settings: roles.settings })
                 .from(roles)
-                .where(eq(roles.name, 'Demo Administrator'));
+                .where(eq(roles.name, 'Administrator'));
             if (!role || !hasAdminPermissions(role.settings)) {
                 throw new DemoAccountError(
-                    'The Demo Administrator role does not have administrator permissions.',
+                    'The Administrator role does not have administrator permissions.',
                 );
             }
         }
@@ -101,10 +101,10 @@ async function createDemoUser() {
 
     const user = await login({ username: input.email, password: input.password });
     if (!user || !(await getSessionUser(user.userId))) {
-        throw new DemoAccountError('The sample account could not be authenticated.');
+        throw new DemoAccountError('The demo account could not be authenticated.');
     }
 
-    console.log('Sample login verified.');
+    console.log('Demo login verified.');
     console.log('Login: http://localhost:3000/');
     console.log(`Username: ${input.email}`);
     console.log(`Password: ${input.password}`);
@@ -117,7 +117,7 @@ createDemoUser()
             console.error(error.message);
         } else {
             console.error(
-                'Cannot connect to the database or create the sample account. Check DATABASE_URL and database availability.',
+                'Cannot connect to the database or create the demo account. Check DATABASE_URL and database availability.',
             );
         }
         process.exit(1);

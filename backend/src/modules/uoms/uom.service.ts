@@ -51,13 +51,14 @@ const query = (database: Reader = db) =>
         .select(fields)
         .from(uoms)
         .innerJoin(uomClasses, eq(uoms.uomClassId, uomClasses.uomClassId));
+const classIdReference = sql`${uomClasses}.${sql.identifier(uomClasses.uomClassId.name)}`;
 const classFields = {
     uomClassId: uomClasses.uomClassId,
     name: uomClasses.name,
-    unitCount: sql<number>`(select count(*) from ${uoms} where ${uoms.uomClassId}=${uomClasses.uomClassId})::integer`,
+    unitCount: sql<number>`(select count(*) from ${uoms} where ${uoms.uomClassId}=${classIdReference})::integer`,
     baseUomName: sql<
         string | null
-    >`(select ${uoms.name} from ${uoms} where ${uoms.uomClassId}=${uomClasses.uomClassId} and ${uoms.isBase} limit 1)`,
+    >`(select ${uoms.name} from ${uoms} where ${uoms.uomClassId}=${classIdReference} and ${uoms.isBase} limit 1)`,
     createdBy: uomClasses.createdBy,
     createdAt: uomClasses.createdAt,
     updatedBy: uomClasses.updatedBy,
@@ -73,8 +74,8 @@ export async function getUom(
     const [unit] = await query(database).where(eq(uoms.uomId, id)).limit(1);
     return unit ?? null;
 }
-export async function listUomClasses() {
-    return db.select(classFields).from(uomClasses).orderBy(asc(uomClasses.name));
+export async function listUomClasses(database: Reader = db) {
+    return database.select(classFields).from(uomClasses).orderBy(asc(uomClasses.name));
 }
 async function getClass(
     id: number,
@@ -111,8 +112,8 @@ async function hasOtherBase(database: Reader, classId: number, excludeId?: numbe
         .limit(1);
     return Boolean(base);
 }
-export async function createUom(input: CreateUomInput, actorId: number) {
-    return db.transaction(async (tx) => {
+export async function createUom(input: CreateUomInput, actorId: number, database: typeof db = db) {
+    return database.transaction(async (tx) => {
         await lockClasses(tx, [input.uomClassId]);
         assertUomDefinition(input, await hasOtherBase(tx, input.uomClassId));
         const [created] = await tx
@@ -125,8 +126,13 @@ export async function createUom(input: CreateUomInput, actorId: number) {
         return saved;
     });
 }
-export async function updateUom(id: number, input: UpdateUomInput, actorId: number) {
-    return db.transaction(async (tx) => {
+export async function updateUom(
+    id: number,
+    input: UpdateUomInput,
+    actorId: number,
+    database: typeof db = db,
+) {
+    return database.transaction(async (tx) => {
         const observed = await getUom(id, tx);
         if (!observed) return null;
         // Ordered parent locks serialize base-unit changes and class deletion.
@@ -152,8 +158,8 @@ export async function updateUom(id: number, input: UpdateUomInput, actorId: numb
         return getUom(id, tx);
     });
 }
-export async function deleteUom(id: number) {
-    return db.transaction(async (tx) => {
+export async function deleteUom(id: number, database: typeof db = db) {
+    return database.transaction(async (tx) => {
         const observed = await getUom(id, tx);
         if (!observed) return null;
         await lockClasses(tx, [observed.uomClassId]);
@@ -171,8 +177,12 @@ export async function deleteUom(id: number) {
         return removed ?? null;
     });
 }
-export async function createUomClass(input: UomClassInput, actorId: number) {
-    return db.transaction(async (tx) => {
+export async function createUomClass(
+    input: UomClassInput,
+    actorId: number,
+    database: typeof db = db,
+) {
+    return database.transaction(async (tx) => {
         const [created] = await tx
             .insert(uomClasses)
             .values({ ...input, createdBy: actorId, updatedBy: actorId })
@@ -183,8 +193,13 @@ export async function createUomClass(input: UomClassInput, actorId: number) {
         return saved;
     });
 }
-export async function updateUomClass(id: number, input: UomClassInput, actorId: number) {
-    return db.transaction(async (tx) => {
+export async function updateUomClass(
+    id: number,
+    input: UomClassInput,
+    actorId: number,
+    database: typeof db = db,
+) {
+    return database.transaction(async (tx) => {
         const [current] = await tx
             .select({ id: uomClasses.uomClassId })
             .from(uomClasses)
@@ -198,8 +213,8 @@ export async function updateUomClass(id: number, input: UomClassInput, actorId: 
         return getClass(id, tx);
     });
 }
-export async function deleteUomClass(id: number) {
-    return db.transaction(async (tx) => {
+export async function deleteUomClass(id: number, database: typeof db = db) {
+    return database.transaction(async (tx) => {
         const [locked] = await tx
             .select({ id: uomClasses.uomClassId })
             .from(uomClasses)

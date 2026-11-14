@@ -1,4 +1,5 @@
 "use client"
+import { invalidateInventoryAvailability } from "@/lib/inventory-query-cache"
 import { createDialogStore } from "@/lib/create-dialog-store"
 import { getLoadStatus } from "@/lib/load-status"
 import { useCallback, useRef } from "react"
@@ -88,6 +89,7 @@ export function useUoms() {
     const canManage = session.data?.permissions.canManageInventory === true
     const loadError = query.error ?? classesQuery.error ?? session.error
     function refresh() {
+            void invalidateInventoryAvailability(client)
         for (const key of [
             "uoms",
             "uom-classes",
@@ -102,6 +104,14 @@ export function useUoms() {
             "packing-formulas",
             "items",
             "inventory-stocks",
+            "receiving-options",
+            "purchase-order-options",
+            "dashboard",
+            "lots",
+            "lot-detail",
+            "packing-detail",
+            "transfer-detail",
+            "inventory-report-options",
             "inventory-stock-options",
             "sales-order-options",
             "delivery-order-options",

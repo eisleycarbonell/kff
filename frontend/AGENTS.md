@@ -75,7 +75,7 @@ The other modules' placeholder pages are not complete implementation examples.
 
 | Concern | Reference file |
 | --- | --- |
-| Page composition, header action, loading, and dialogs | [users/page.tsx](src/app/(protected)/(users-access)/users/page.tsx) |
+| Page composition, header action, loading, and dialogs | [users/page.tsx](<src/app/(protected)/(users-access)/users/page.tsx>) |
 | Requests, query cache, mutations, notifications, and feature state | [use-users.ts](src/hooks/modules/users/use-users.ts) |
 | Shared dialog store and load status | [create-dialog-store.ts](src/lib/create-dialog-store.ts), [load-status.ts](src/lib/load-status.ts) |
 | Public DTOs, writable inputs, form values, and validation | [user.schema.ts](src/components/modules/users/user.schema.ts) |
@@ -199,6 +199,11 @@ substantial; do not create empty files to match this tree.
   Put the primary create action, such as "Add item", in its `actions` prop,
   beside the title on desktop. Keep the empty table's create shortcut where
   useful.
+- Every active sidebar module must have a matching entry in
+  [module-guides.ts](src/lib/module-guides.ts): its purpose, operator steps,
+  connected workflow links and relevant notes. The shared PageHeader displays
+  the purpose and [in-app usage panel](src/components/shared/module-guide.tsx).
+  Keep this content aligned with the canonical flow and actual available actions.
 - Place meaningful statistics below the header, followed by the table. Follow
   the current statistics cards' spacing, large values, and simple green icons.
   Choose useful metrics for the feature; the number of cards can vary.
@@ -273,7 +278,7 @@ substantial; do not create empty files to match this tree.
 - Authenticated routes belong under `app/(protected)/`; public routes belong
   directly under `app/`.
 - Organize protected pages by sidebar section using route groups such as
-  `(master-data)/items/` and `(master-data)/brands/`. Route groups do not change
+  `(master-data)/items/` and `(master-data)/bom/`. Route groups do not change
   the documented URL paths or backend API paths.
 - `components/ui/` is generated shadcn code. Do not place custom components
   there or edit primitives except for necessary type or dark-mode fixes.

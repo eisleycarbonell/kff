@@ -1,4 +1,5 @@
 "use client";
+import { invalidateInventoryAvailability } from "@/lib/inventory-query-cache"
 import { createDialogStore } from "@/lib/create-dialog-store";
 import { getLoadStatus } from "@/lib/load-status";
 
@@ -10,11 +11,9 @@ import { SESSION_QUERY_KEY, useSession } from "@/hooks/use-session";
 import {
   itemSchema,
   itemUomSchema,
-  itemBrandSchema,
   itemSupplierOptionSchema,
   itemSupplierOfferSchema,
   type ItemSupplierOption,
-  type ItemBrand,
   toItemInput,
   type Item,
   type ItemUom,
@@ -60,16 +59,6 @@ export async function updateItem(
   );
 }
 export const ITEMS_QUERY_KEY = ["items"] as const;
-export async function getItemBrands(
-  signal?: AbortSignal,
-): Promise<ItemBrand[]> {
-  const result = itemBrandSchema
-    .array()
-    .safeParse(await apiRequest("/brands", { signal }));
-  if (!result.success)
-    throw new Error("The item API returned invalid brand options.");
-  return result.data;
-}
 const EMPTY_ITEMS: Item[] = [];
 const EMPTY_UOMS: ItemUom[] = [];
 
@@ -101,11 +90,6 @@ export function useItems() {
     setTarget: setDeactivatingItems,
   } = useModuleDialogs();
   const writePending = useRef(false);
-  const brandsQuery = useQuery({
-    queryKey: ["item-brands", session.data?.userId],
-    queryFn: ({ signal }) => getItemBrands(signal),
-    enabled: Boolean(session.data) && formOpen,
-  });
   const deactivatingItems = target ?? EMPTY_ITEMS;
   const canManage = session.data?.permissions.canManageInventory === true;
   const loadError = itemsQuery.error ?? uomsQuery.error ?? session.error;
@@ -122,6 +106,7 @@ export function useItems() {
     });
   }
   function refresh() {
+            void invalidateInventoryAvailability(client)
     for (const key of [
       "items",
       "item-supplier-links",
@@ -130,7 +115,7 @@ export function useItems() {
       "purchase-order-options",
       "dashboard",
       "sales-order-options",
-      "brands",
+      "sales-order-material-plan",
       "inventory-reports",
       "inventory-control-options",
       "inventory-controls",
@@ -239,9 +224,6 @@ export function useItems() {
   return {
     items: itemsQuery.data ?? EMPTY_ITEMS,
     uoms: uomsQuery.data ?? EMPTY_UOMS,
-    brands: brandsQuery.data,
-    brandsError: brandsQuery.error?.message,
-    retryBrands: () => void brandsQuery.refetch(),
     canManage,
     loadStatus,
     loadError,
@@ -366,6 +348,7 @@ export function useItemSupplierLinks(itemId: number) {
       await setItemSupplierLink(itemId, supplierId, supplierItemId, isActive);
     },
     onSuccess: async () => {
+      await invalidateInventoryAvailability(client);
       await Promise.all(
         [
           "items",

@@ -107,11 +107,6 @@ const routeConfig: Record<string, BreadcrumbConfig> = {
         label: "Packing Formulas",
         group: "Master Data",
     },
-    "/brands": {
-        label: "Brands",
-        group: "Master Data",
-    },
-
     // Business Partners
     "/suppliers": {
         label: "Suppliers",
@@ -165,7 +160,8 @@ function formatLabel(segment: string): string {
 export function AppBreadcrumb() {
     const pathname = usePathname()
 
-    const currentPath = pathname === "/" ? "/dashboard" : pathname.replace(/\/+$/, "")
+    const currentPath =
+        pathname === "/" ? "/dashboard" : pathname.replace(/\/+$/, "")
 
     const segments = currentPath.split("/").filter(Boolean)
 
@@ -206,7 +202,8 @@ export function AppBreadcrumb() {
         if (!parent) return
 
         // Avoid duplicating the group name.
-        if (parent.label === group || parent.label === currentRoute?.label) return
+        if (parent.label === group || parent.label === currentRoute?.label)
+            return
 
         // Inventory's nested pages are sibling modules, not children of Inventory Stock.
         if (href === "/inventory" && currentRoute?.group === "Inventory") return
@@ -222,7 +219,9 @@ export function AppBreadcrumb() {
 
     // Add current page.
     breadcrumbs.push({
-        label: currentRoute?.label ?? formatLabel(segments[segments.length - 1] ?? "Dashboard"),
+        label:
+            currentRoute?.label ??
+            formatLabel(segments[segments.length - 1] ?? "Dashboard"),
     })
 
     return (
@@ -237,13 +236,19 @@ export function AppBreadcrumb() {
 
                             <BreadcrumbItem>
                                 {isLast ? (
-                                    <BreadcrumbPage>{item.label}</BreadcrumbPage>
+                                    <BreadcrumbPage>
+                                        {item.label}
+                                    </BreadcrumbPage>
                                 ) : item.href ? (
-                                    <BreadcrumbLink render={<Link href={item.href} />}>
+                                    <BreadcrumbLink
+                                        render={<Link href={item.href} />}
+                                    >
                                         {item.label}
                                     </BreadcrumbLink>
                                 ) : (
-                                    <span className="text-muted-foreground">{item.label}</span>
+                                    <span className="text-muted-foreground">
+                                        {item.label}
+                                    </span>
                                 )}
                             </BreadcrumbItem>
                         </Fragment>

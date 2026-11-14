@@ -19,7 +19,7 @@ const fixtureSql = [
         'name varchar(20) not null unique, factor_to_base numeric(18,8) not null, is_base boolean not null, ' +
         audit +
         ')',
-    'create table items (brand_id integer, item_id integer primary key, sku varchar(50) not null unique, name varchar(120) not null, ' +
+    'create table items (brand_id integer, label_item_id integer, item_id integer primary key, sku varchar(50) not null unique, name varchar(120) not null, ' +
         'item_type text not null, primary_uom_id integer not null references uoms, ' +
         'net_weight_g numeric(12,4), shelf_life_days integer, requires_qc boolean not null default false, ' +
         'unit_cost numeric(14,4) not null default 0, is_active boolean not null default true, ' +

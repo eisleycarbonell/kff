@@ -5,15 +5,18 @@ registerHooks({
     resolve(specifier, context, nextResolve) {
         return nextResolve(
             specifier.startsWith("@/")
-                ? new URL(`../src/${specifier.slice(2)}.ts`, import.meta.url).href
+                ? new URL(`../src/${specifier.slice(2)}.ts`, import.meta.url)
+                      .href
                 : specifier,
             context,
         )
     },
 })
 process.env.NEXT_PUBLIC_API_BASE_URL = "https://sales.example.test/api///"
-const api = await import("../src/hooks/modules/sales-orders/use-sales-orders.ts")
-const schema = await import("../src/components/modules/sales-orders/sales-order.schema.ts")
+const api =
+    await import("../src/hooks/modules/sales-orders/use-sales-orders.ts")
+const schema =
+    await import("../src/components/modules/sales-orders/sales-order.schema.ts")
 const { ApiError } = await import("../src/lib/api-request.ts")
 const originalFetch = globalThis.fetch
 const line = {
@@ -34,6 +37,7 @@ const line = {
 const order = {
     salesOrderId: 5,
     salesOrderNumber: "SO-2026-001",
+    customerPoNumber: "CPO-2419",
     customerId: 4,
     customerName: "Customer",
     customerIsActive: true,
@@ -50,6 +54,9 @@ const order = {
     updatedAt: "2026-11-05T08:00:00+08:00",
 }
 const options = {
+    sourceLocations: [
+        { locationId: 1, code: "WH-RM", name: "Raw warehouse", isActive: true },
+    ],
     customers: [{ customerId: 4, name: "Customer", isActive: true }],
     items: [
         {
@@ -64,11 +71,14 @@ const options = {
 }
 const input = {
     salesOrderNumber: "SO-2026-001",
+    customerPoNumber: "CPO-2419",
     customerId: 4,
     orderDate: "2026-11-05",
     requestedDeliveryDate: null,
     notes: null,
-    lines: [{ itemId: 3, uomId: 2, qtyOrdered: "20.0001", unitPrice: "5.1250" }],
+    lines: [
+        { itemId: 3, uomId: 2, qtyOrdered: "20.0001", unitPrice: "5.1250" },
+    ],
 }
 const values = {
     ...input,
@@ -76,7 +86,8 @@ const values = {
     requestedDeliveryDate: "",
     notes: "",
 }
-const response = (data, status = 200) => Response.json({ success: true, data }, { status })
+const response = (data, status = 200) =>
+    Response.json({ success: true, data }, { status })
 afterEach(() => {
     globalThis.fetch = originalFetch
 })
@@ -85,8 +96,16 @@ test("sales reads normalize API prefix, preserve decimals and nullable fields, a
     const controller = new AbortController()
     for (const [path, data, invoke] of [
         ["/sales-orders", [order], () => api.getSalesOrders(controller.signal)],
-        ["/sales-orders/5", order, () => api.getSalesOrder(5, controller.signal)],
-        ["/sales-orders/options", options, () => api.getSalesOrderOptions(controller.signal)],
+        [
+            "/sales-orders/5",
+            order,
+            () => api.getSalesOrder(5, controller.signal),
+        ],
+        [
+            "/sales-orders/options",
+            options,
+            () => api.getSalesOrderOptions(controller.signal),
+        ],
     ]) {
         globalThis.fetch = async (url, request) => {
             assert.equal(url, `https://sales.example.test/api${path}`)
@@ -124,7 +143,10 @@ test("sales workflow actions POST empty objects and use authoritative states", a
         ["cancel", "Cancelled", () => api.cancelSalesOrder(5)],
     ]) {
         globalThis.fetch = async (url, request) => {
-            assert.equal(url, `https://sales.example.test/api/sales-orders/5/${action}`)
+            assert.equal(
+                url,
+                `https://sales.example.test/api/sales-orders/5/${action}`,
+            )
             assert.equal(request.method, "POST")
             assert.equal(request.body, "{}")
             return response({ ...order, status })
@@ -156,7 +178,9 @@ test("sales errors retain server status and network cancellation", async () => {
         Response.json(
             {
                 success: false,
-                error: { message: "Active deliveries must be cancelled first." },
+                error: {
+                    message: "Active deliveries must be cancelled first.",
+                },
             },
             { status: 409 },
         )
@@ -179,8 +203,10 @@ test("sales forms normalize writable values and reject inactive or incompatible 
     assert.deepEqual(schema.toSalesOrderInput(values), input)
     assert.deepEqual(schema.validateSalesOrder(values, options), {})
     assert.ok(
-        schema.validateSalesOrder({ ...values, requestedDeliveryDate: "2026-11-04" }, options)
-            .requestedDeliveryDate,
+        schema.validateSalesOrder(
+            { ...values, requestedDeliveryDate: "2026-11-04" },
+            options,
+        ).requestedDeliveryDate,
     )
     assert.ok(
         schema.validateSalesOrder(values, {
@@ -212,5 +238,96 @@ test("sales forms normalize writable values and reject inactive or incompatible 
         ]),
         "0.0100",
     )
-    assert.equal(schema.compareSalesDecimals("9999999999.9999", "9999999999.9998"), 1)
+    assert.equal(
+        schema.compareSalesDecimals("9999999999.9999", "9999999999.9998"),
+        1,
+    )
+})
+
+test("customer material plans preserve exact quantities, suppliers and selected source, and forward cancellation", async () => {
+    const controller = new AbortController()
+    const plan = {
+        salesOrderId: 5,
+        salesOrderNumber: "SO-2026-001",
+        customerPoNumber: "CPO-2419",
+        sourceLocationId: 1,
+        sourceLocationName: "Raw warehouse",
+        advisory: true,
+        products: [
+            {
+                salesOrderLineId: 8,
+                itemId: 3,
+                itemSku: "FG-GARLIC",
+                itemName: "Garlic 100g",
+                uomName: "pc",
+                qtyDemand: "20.0001",
+                qtyFinishedAvailable: "5.0000",
+                qtyFromStock: "5.0000",
+                qtyToPack: "15.0001",
+                issue: null,
+            },
+        ],
+        materials: [
+            {
+                itemId: 1,
+                itemSku: "RM-GARLIC",
+                itemName: "Garlic powder",
+                uomName: "kg",
+                qtyRequired: "1.50001",
+                qtyAvailable: "1.0000",
+                qtyShortage: "0.50001",
+                suppliers: [{ supplierId: 7, name: "Spice supplier" }],
+            },
+        ],
+        canPack: false,
+    }
+    globalThis.fetch = async (url, request) => {
+        assert.equal(
+            url,
+            "https://sales.example.test/api/sales-orders/5/material-plan?sourceLocationId=1",
+        )
+        assert.equal(request.signal, controller.signal)
+        assert.equal(request.credentials, "include")
+        return response(plan)
+    }
+    assert.deepEqual(
+        await api.getSalesMaterialPlan(5, 1, controller.signal),
+        plan,
+    )
+    for (const invalid of [
+        { ...plan, advisory: false },
+        { ...plan, materials: [{ ...plan.materials[0], qtyRequired: 1.5 }] },
+        { ...plan, products: [{ ...plan.products[0], qtyDemand: "-1" }] },
+    ]) {
+        globalThis.fetch = async () => response(invalid)
+        await assert.rejects(api.getSalesMaterialPlan(5, 1), /invalid record/)
+    }
+    const aborted = new DOMException("Aborted", "AbortError")
+    globalThis.fetch = async () => {
+        throw aborted
+    }
+    await assert.rejects(
+        api.getSalesMaterialPlan(5, 1),
+        (error) => error === aborted,
+    )
+})
+test("customer PO references trim, clear to null, and enforce the database length", () => {
+    assert.equal(
+        schema.toSalesOrderInput({
+            ...values,
+            customerPoNumber: "  CPO-0042  ",
+        }).customerPoNumber,
+        "CPO-0042",
+    )
+    assert.equal(
+        schema.toSalesOrderInput({ ...values, customerPoNumber: "  " })
+            .customerPoNumber,
+        null,
+    )
+    assert.ok(
+        schema.validateSalesOrder(
+            { ...values, customerPoNumber: "X".repeat(101) },
+            options,
+        ).customerPoNumber,
+    )
 })

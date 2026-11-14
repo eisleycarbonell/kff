@@ -9,6 +9,13 @@ const positive = decimal.refine((value) => /[1-9]/.test(value), 'Quantity must b
 const fields = {
     salesOrderNumber: z.string().trim().toUpperCase().min(1).max(30),
     customerId: id,
+    customerPoNumber: z
+        .string()
+        .trim()
+        .max(100)
+        .transform((value) => value || null)
+        .nullable()
+        .optional(),
     orderDate: z.iso.date(),
     requestedDeliveryDate: z.iso.date().nullable().optional(),
     notes: z
@@ -48,6 +55,12 @@ export const updateSalesOrderSchema = z
     });
 const params = z.object({ id: z.string().regex(/^\d+$/).transform(Number).pipe(id) });
 export const salesOrderIdRequestSchema = z.object({ params });
+export const salesOrderMaterialPlanRequestSchema = z.object({
+    params,
+    query: z.strictObject({
+        sourceLocationId: z.string().regex(/^\d+$/).transform(Number).pipe(id),
+    }),
+});
 export const createSalesOrderRequestSchema = z.object({ body: createSalesOrderSchema });
 export const updateSalesOrderRequestSchema = z.object({ params, body: updateSalesOrderSchema });
 export const salesOrderActionRequestSchema = z.object({ params, body: z.strictObject({}) });

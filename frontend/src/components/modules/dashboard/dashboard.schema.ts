@@ -11,7 +11,7 @@ export const QC_STATUSES = ["Quarantine", "Approved", "Rejected", "Expired"] as 
 
 const id = z.int().positive().max(2_147_483_647)
 const timestamp = z.iso.datetime({ offset: true })
-const decimal = z.string().trim()
+const decimal = z.string().trim().regex(/^-?\d+(?:\.\d+)?$/)
 
 const unitTotalsSchema = z.array(
     z.object({
@@ -28,7 +28,7 @@ export const dashboardSummarySchema = z.object({
     packagingValue: decimal,
     finishedGoodsValue: decimal,
     totalItemsCount: z.number().int().nonnegative(),
-    currencyCode: z.string(),
+    currencyCode: z.string().regex(/^[A-Z]{3}$/),
     rawMaterialQuantities: unitTotalsSchema,
     finishedGoodsQuantities: unitTotalsSchema,
     activePackingOrdersCount: z.number().int().nonnegative(),
@@ -156,20 +156,24 @@ export type DashboardLowStockItem = z.output<typeof dashboardLowStockItemSchema>
 export type DashboardRecentActivity = z.output<typeof dashboardRecentActivitySchema>
 export type DashboardData = z.output<typeof dashboardDataSchema>
 
-/** Format currency amounts with thousands separators and 2 decimal places (PHP ₱) */
+/** Round exact decimal amounts to cents without converting aggregate values to Number. */
 export function formatCurrency(
     value: string | number | null | undefined,
     currencyCode = "PHP",
 ): string {
-    if (value === null || value === undefined || value === "") return "₱0.00"
-    const num = typeof value === "number" ? value : parseFloat(value)
-    if (isNaN(num)) return "₱0.00"
-    return new Intl.NumberFormat("en-PH", {
-        style: "currency",
-        currency: currencyCode,
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    }).format(num)
+    const formatter = new Intl.NumberFormat("en-PH", {
+        style: "currency", currency: currencyCode, minimumFractionDigits: 2, maximumFractionDigits: 2,
+    })
+    if (typeof value === "number") return formatter.format(Number.isFinite(value) ? value : 0)
+    const text = value?.trim() ?? ""
+    if (!/^-?\d+(?:\.\d+)?$/.test(text)) return formatter.format(0)
+    const negative = text.startsWith("-")
+    const [whole, fraction = ""] = text.replace(/^-/, "").split(".")
+    const cents = BigInt(whole) * BigInt(100) + BigInt(fraction.padEnd(2, "0").slice(0,2)) + (fraction[2] && fraction[2] >= "5" ? BigInt(1) : BigInt(0))
+    const integer = cents / BigInt(100)
+    const remainder = (cents % BigInt(100)).toString().padStart(2, "0")
+    const signed = negative ? (integer === BigInt(0) ? -0 : -integer) : integer
+    return formatter.formatToParts(signed).map(part => part.type === "fraction" ? remainder : part.value).join("")
 }
 
 /** Format quantity decimals neatly, removing trailing zeros */
@@ -203,6 +207,6 @@ export function formatUnitTotals(
     key: "onHand" | "reserved" | "available",
 ) {
     return rows.length
-        ? rows.map((r) => formatQuantity(r[key]) + " " + r.primaryUomName).join(" � ")
+        ? rows.map((r) => formatQuantity(r[key]) + " " + r.primaryUomName).join(" · ")
         : "0"
 }

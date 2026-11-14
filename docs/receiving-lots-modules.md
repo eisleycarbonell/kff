@@ -55,7 +55,7 @@ updated or deleted as corrections.
 
 ### Receiving screen
 
-The [receiving page](../frontend/src/app/(protected)/(purchasing)/receiving/page.tsx) shows
+The [receiving page](<../frontend/src/app/(protected)/(purchasing)/receiving/page.tsx>) shows
 receipt statistics, primary-UOM quantity totals, and searchable, filterable receipt
 history with sorting, selection, CSV export, and pagination. Inventory managers
 can open the [receiving form](../frontend/src/components/modules/receiving/receiving-form.tsx)
