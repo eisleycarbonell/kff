@@ -70,9 +70,9 @@ export function createItemColumns({
   canManage,
 }: Actions) {
   return helper.columns([
-    helper.accessor((item) => item.brandName ?? "", {
-      id: "brandName",
-      header: "Brand",
+    helper.accessor((item) => item.labelItemName ?? "", {
+      id: "labelItemName",
+      header: "Labels",
       sortFn: "text",
       cell: ({ cell }) => cell.getValue() || "—",
     }),

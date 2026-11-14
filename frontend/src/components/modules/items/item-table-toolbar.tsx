@@ -40,7 +40,7 @@ const filters = [
     },
 ]
 const columnLabels: Record<string, string> = {
-    brandName: "Brand",
+    labelItemName: "Labels",
     sku: "SKU",
     itemType: "Type",
     primaryUomName: "Primary UOM",
@@ -59,7 +59,7 @@ export function exportItems(items: Item[]) {
         [
             "SKU",
             "Name",
-            "Brand",
+            "Labels",
             "Type",
             "Primary UOM",
             "Reference cost",
@@ -71,7 +71,7 @@ export function exportItems(items: Item[]) {
         ...items.map((item) => [
             item.sku,
             item.name,
-            item.brandName ?? "",
+            item.labelItemName ?? "",
             item.itemType,
             item.primaryUomName,
             item.unitCost,
@@ -82,9 +82,15 @@ export function exportItems(items: Item[]) {
         ]),
     ]
     const url = URL.createObjectURL(
-        new Blob(["\uFEFF" + rows.map((row) => row.map(escape).join(",")).join("\r\n")], {
-            type: "text/csv;charset=utf-8;",
-        }),
+        new Blob(
+            [
+                "\uFEFF" +
+                    rows.map((row) => row.map(escape).join(",")).join("\r\n"),
+            ],
+            {
+                type: "text/csv;charset=utf-8;",
+            },
+        ),
     )
     const link = document.createElement("a")
     link.href = url
@@ -135,11 +141,17 @@ export function ItemTableToolbar({
                 <Select
                     key={filter.id}
                     items={filter.items}
-                    value={(table.getColumn(filter.id)?.getFilterValue() as string) ?? "all"}
+                    value={
+                        (table
+                            .getColumn(filter.id)
+                            ?.getFilterValue() as string) ?? "all"
+                    }
                     onValueChange={(value) => {
                         table
                             .getColumn(filter.id)
-                            ?.setFilterValue(value === "all" ? undefined : value)
+                            ?.setFilterValue(
+                                value === "all" ? undefined : value,
+                            )
                         table.resetRowSelection()
                         table.setPageIndex(0)
                     }}
@@ -162,7 +174,11 @@ export function ItemTableToolbar({
                 </Select>
             ))}
             {hasFilters && (
-                <Button variant="ghost" className="h-10" onClick={onClearFilters}>
+                <Button
+                    variant="ghost"
+                    className="h-10"
+                    onClick={onClearFilters}
+                >
                     <X data-icon="inline-start" />
                     Reset
                 </Button>
@@ -181,8 +197,14 @@ export function ItemTableToolbar({
                         <Button
                             variant="outline"
                             className="h-10"
-                            disabled={!selected.some((row) => row.original.isActive)}
-                            onClick={() => onDeactivate(selected.map((row) => row.original))}
+                            disabled={
+                                !selected.some((row) => row.original.isActive)
+                            }
+                            onClick={() =>
+                                onDeactivate(
+                                    selected.map((row) => row.original),
+                                )
+                            }
                         >
                             <Archive data-icon="inline-start" />
                             Deactivate selected
@@ -197,7 +219,9 @@ export function ItemTableToolbar({
                     disabled={!filtered.length}
                     onClick={() =>
                         exportItems(
-                            (selected.length ? selected : filtered).map((row) => row.original),
+                            (selected.length ? selected : filtered).map(
+                                (row) => row.original,
+                            ),
                         )
                     }
                 >
@@ -205,13 +229,17 @@ export function ItemTableToolbar({
                     {selected.length ? "Export selected" : "Export CSV"}
                 </Button>
                 <DropdownMenu>
-                    <DropdownMenuTrigger render={<Button variant="outline" className="h-10" />}>
+                    <DropdownMenuTrigger
+                        render={<Button variant="outline" className="h-10" />}
+                    >
                         <Settings2 data-icon="inline-start" />
                         Columns
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                         <DropdownMenuGroup>
-                            <DropdownMenuLabel>Visible columns</DropdownMenuLabel>
+                            <DropdownMenuLabel>
+                                Visible columns
+                            </DropdownMenuLabel>
                             {table
                                 .getAllLeafColumns()
                                 .filter((column) => column.getCanHide())

@@ -12,20 +12,22 @@ import {
 import type { CreateLocationInput, UpdateLocationInput } from './location.schema.ts';
 import { assertLocationChange, assertActiveLocation } from './location.rules.ts';
 type Reader = Pick<typeof db, 'select'>;
+// Single-table projections must keep the outer reference explicitly qualified.
+const locationIdReference = sql`${locations}.${sql.identifier(locations.locationId.name)}`;
 const isInUse = sql<boolean>`(
- exists(select 1 from ${inventoryStock} where ${inventoryStock.locationId}=${locations.locationId}) or
- exists(select 1 from ${inventoryReservations} where ${inventoryReservations.locationId}=${locations.locationId}) or
- exists(select 1 from ${inventoryTransactions} where ${inventoryTransactions.locationId}=${locations.locationId}) or
- exists(select 1 from ${packingOrders} where ${packingOrders.sourceLocationId}=${locations.locationId} or ${packingOrders.destinationLocationId}=${locations.locationId}) or
- exists(select 1 from ${stockTransfers} where ${stockTransfers.sourceLocationId}=${locations.locationId} or ${stockTransfers.destinationLocationId}=${locations.locationId}) or
- exists(select 1 from ${deliveryOrders} where ${deliveryOrders.sourceLocationId}=${locations.locationId} or ${deliveryOrders.transitLocationId}=${locations.locationId})
+ exists(select 1 from ${inventoryStock} where ${inventoryStock.locationId}=${locationIdReference}) or
+ exists(select 1 from ${inventoryReservations} where ${inventoryReservations.locationId}=${locationIdReference}) or
+ exists(select 1 from ${inventoryTransactions} where ${inventoryTransactions.locationId}=${locationIdReference}) or
+ exists(select 1 from ${packingOrders} where ${packingOrders.sourceLocationId}=${locationIdReference} or ${packingOrders.destinationLocationId}=${locationIdReference}) or
+ exists(select 1 from ${stockTransfers} where ${stockTransfers.sourceLocationId}=${locationIdReference} or ${stockTransfers.destinationLocationId}=${locationIdReference}) or
+ exists(select 1 from ${deliveryOrders} where ${deliveryOrders.sourceLocationId}=${locationIdReference} or ${deliveryOrders.transitLocationId}=${locationIdReference})
 )`;
 const hasOperationalActivity = sql<boolean>`(
- exists(select 1 from ${inventoryStock} where ${inventoryStock.locationId}=${locations.locationId} and ${inventoryStock.qtyOnHand}>0) or
- exists(select 1 from ${inventoryReservations} where ${inventoryReservations.locationId}=${locations.locationId} and ${inventoryReservations.releasedAt} is null and ${inventoryReservations.qtyReserved}>${inventoryReservations.qtyConsumed}) or
- exists(select 1 from ${packingOrders} where (${packingOrders.sourceLocationId}=${locations.locationId} or ${packingOrders.destinationLocationId}=${locations.locationId}) and ${packingOrders.status} in ('Draft','Planned','In Progress')) or
- exists(select 1 from ${stockTransfers} where (${stockTransfers.sourceLocationId}=${locations.locationId} or ${stockTransfers.destinationLocationId}=${locations.locationId}) and ${stockTransfers.status} in ('Draft','In Transit')) or
- exists(select 1 from ${deliveryOrders} where (${deliveryOrders.sourceLocationId}=${locations.locationId} or ${deliveryOrders.transitLocationId}=${locations.locationId}) and ${deliveryOrders.status} in ('Draft','In Transit'))
+ exists(select 1 from ${inventoryStock} where ${inventoryStock.locationId}=${locationIdReference} and ${inventoryStock.qtyOnHand}>0) or
+ exists(select 1 from ${inventoryReservations} where ${inventoryReservations.locationId}=${locationIdReference} and ${inventoryReservations.releasedAt} is null and ${inventoryReservations.qtyReserved}>${inventoryReservations.qtyConsumed}) or
+ exists(select 1 from ${packingOrders} where (${packingOrders.sourceLocationId}=${locationIdReference} or ${packingOrders.destinationLocationId}=${locationIdReference}) and ${packingOrders.status} in ('Draft','Planned','In Progress')) or
+ exists(select 1 from ${stockTransfers} where (${stockTransfers.sourceLocationId}=${locationIdReference} or ${stockTransfers.destinationLocationId}=${locationIdReference}) and ${stockTransfers.status} in ('Draft','In Transit')) or
+ exists(select 1 from ${deliveryOrders} where (${deliveryOrders.sourceLocationId}=${locationIdReference} or ${deliveryOrders.transitLocationId}=${locationIdReference}) and ${deliveryOrders.status} in ('Draft','In Transit'))
 )`;
 const fields = {
     locationId: locations.locationId,
@@ -40,8 +42,11 @@ const fields = {
     updatedBy: locations.updatedBy,
     updatedAt: locations.updatedAt,
 };
-export async function listLocations() {
-    return db.select(fields).from(locations).orderBy(asc(locations.name), asc(locations.code));
+export async function listLocations(database: Reader = db) {
+    return database
+        .select(fields)
+        .from(locations)
+        .orderBy(asc(locations.name), asc(locations.code));
 }
 export async function getLocation(
     id: number,
@@ -65,8 +70,12 @@ export async function requireActiveLocation(database: Reader, id: number) {
     assertActiveLocation(location);
     return location!;
 }
-export async function createLocation(input: CreateLocationInput, actorId: number) {
-    return db.transaction(async (tx) => {
+export async function createLocation(
+    input: CreateLocationInput,
+    actorId: number,
+    database: typeof db = db,
+) {
+    return database.transaction(async (tx) => {
         const [created] = await tx
             .insert(locations)
             .values({ ...input, createdBy: actorId, updatedBy: actorId })
@@ -77,8 +86,13 @@ export async function createLocation(input: CreateLocationInput, actorId: number
         return saved;
     });
 }
-export async function updateLocation(id: number, input: UpdateLocationInput, actorId: number) {
-    return db.transaction(async (tx) => {
+export async function updateLocation(
+    id: number,
+    input: UpdateLocationInput,
+    actorId: number,
+    database: typeof db = db,
+) {
+    return database.transaction(async (tx) => {
         const [locked] = await tx
             .select({ id: locations.locationId })
             .from(locations)

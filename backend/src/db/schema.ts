@@ -14,6 +14,7 @@ import {
     unique,
     uniqueIndex,
     foreignKey,
+    type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
 import { defineRelations, sql } from 'drizzle-orm';
 import { auditFields } from './column.helpers.ts';
@@ -230,6 +231,10 @@ export const items = pgTable(
         sku: varchar('sku', { length: 50 }).notNull().unique(),
         name: varchar('name', { length: 120 }).notNull(),
         brandId: integer('brand_id').references(() => brands.brandId, { onDelete: 'restrict' }),
+        // Legacy brands stay in storage; new product assignments reference a label material.
+        labelItemId: integer('label_item_id').references((): AnyPgColumn => items.itemId, {
+            onDelete: 'restrict',
+        }),
         itemType: itemTypeEnum('item_type').notNull(),
         primaryUomId: integer('primary_uom_id')
             .notNull()
@@ -253,6 +258,15 @@ export const items = pgTable(
         check('items_unit_cost_nonneg', sql`${t.unitCost} >= 0`),
         index('items_type_idx').on(t.itemType),
         index('items_brand_idx').on(t.brandId),
+        index('items_label_item_idx').on(t.labelItemId),
+        check(
+            'items_label_finished_only',
+            sql`${t.labelItemId} is null or ${t.itemType} = 'Finished Good'`,
+        ),
+        check(
+            'items_label_not_self',
+            sql`${t.labelItemId} is null or ${t.labelItemId} <> ${t.itemId}`,
+        ),
         index('items_primary_uom_idx').on(t.primaryUomId),
     ],
 );
@@ -980,6 +994,7 @@ export const salesOrders = pgTable(
     {
         salesOrderId: integer('sales_order_id').primaryKey().generatedByDefaultAsIdentity(),
         salesOrderNumber: varchar('sales_order_number', { length: 30 }).notNull().unique(),
+        customerPoNumber: varchar('customer_po_number', { length: 100 }),
         customerId: integer('customer_id')
             .notNull()
             .references(() => customers.customerId, { onDelete: 'restrict' }),
@@ -1351,6 +1366,16 @@ export const dbRelations = defineRelations(
             items: r.many.items(),
         },
         items: {
+            label: r.one.items({
+                from: r.items.labelItemId,
+                to: r.items.itemId,
+                alias: 'product_label',
+            }),
+            labelledProducts: r.many.items({
+                from: r.items.itemId,
+                to: r.items.labelItemId,
+                alias: 'product_label',
+            }),
             brand: r.one.brands({ from: r.items.brandId, to: r.brands.brandId }),
             primaryUom: r.one.uoms({
                 from: r.items.primaryUomId,

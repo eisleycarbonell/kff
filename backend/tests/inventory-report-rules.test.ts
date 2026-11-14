@@ -13,8 +13,8 @@ const item: ReportItem = {
     sku: 'RM',
     itemName: 'Garlic',
     itemType: 'Raw Material - Bulk',
-    brandId: null,
-    brandName: null,
+    labelItemId: null,
+    labelItemName: null,
     primaryUomId: 1,
     primaryUomName: 'kg',
     isActive: true,
@@ -46,7 +46,7 @@ test('report inputs reject invalid dates, duplicate query values, unsupported fi
         { report: 'wrong' },
         { locationId: '0' },
         { itemId: ['1', '2'] },
-        { brandId: '2147483648' },
+        { labelItemId: '2147483648' },
         { expiryDays: '3651' },
         { includeExpired: 'yes' },
         { threshold: '1e2' },
@@ -110,7 +110,7 @@ test('location aggregation keeps locations and primary units separate with exact
     assert.equal(result.summary.lotCount, 2);
     assert.equal(result.summary.locationCount, 2);
 });
-test('low stock includes never-stocked active items and respects location, brand, QC and threshold', () => {
+test('low stock includes never-stocked active items and respects location, label, QC and threshold', () => {
     const usable = { ...stock, expirationDate: '2026-12-31' };
     const empty = { ...item, itemId: 2, sku: 'ZERO', itemName: 'Unstocked' };
     const inactive = { ...empty, itemId: 3, isActive: false };
@@ -131,7 +131,7 @@ test('low stock includes never-stocked active items and respects location, brand
         '0.0000',
     );
     assert.equal(
-        run({ report: 'low-stock', brandId: '7' }, [usable], [item, empty]).rows.length,
+        run({ report: 'low-stock', labelItemId: '7' }, [usable], [item, empty]).rows.length,
         0,
     );
     assert.equal(

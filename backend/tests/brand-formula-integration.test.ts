@@ -6,7 +6,7 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import { exportApplicationSchema } from '../src/db/test-database.ts';
 const url = process.env.TEST_DATABASE_URL;
 test(
-    'brands and formula edits preserve snapshots, concurrent creation and transactional rollback',
+    'label assignments and formula edits preserve snapshots, concurrent creation and transactional rollback',
     { skip: !url, timeout: 240_000 },
     async (context) => {
         const schema = 'brand_formula_' + randomBytes(8).toString('hex');
@@ -26,16 +26,15 @@ test(
                 schemaName: schema,
                 environment: { KFF_ALLOW_TEST_DATA: 'true' },
             });
-            const brandService = await import('../src/modules/brands/brand.service.ts');
             const published =
                 await import('../src/modules/packing-formulas/packing-formula.service.ts');
             const itemService = await import('../src/modules/items/item.service.ts');
             const packing = await import('../src/modules/packing-orders/packing-order.service.ts');
             const [actor] = await client`select user_id from users where email='demo@spice.local'`;
-            const [raw] = await client`select * from items where sku='SAMPLE-RM-GARLIC'`;
+            const [raw] = await client`select * from items where sku='RM-GARLIC'`;
             // Read the configured pack by following garlic's existing formula rather than fixed item IDs.
             const [finishedSeed] =
-                await client`select item_id from items where sku like 'SAMPLE-FG-GARLIC-%'`;
+                await client`select item_id from items where sku like 'FG-GARLIC-%'`;
             const definition = await published.getFormula(finishedSeed!.item_id, database);
             assert.ok(definition);
             const hardware = definition.components.find(
@@ -108,19 +107,15 @@ test(
                 },
             };
 
-            const brand = await brandService.createBrand(
-                { code: 'TEST-BRAND', name: 'Test Brand', isActive: true },
-                actorId,
-                database,
-            );
-            assert.ok(brand);
+            const [label] = await client`select item_id,name from items where sku='LBL-GARLIC'`;
+            assert.ok(label);
             const product = await itemService.createItem(
                 {
                     sku: 'TEST-FG',
                     name: 'Test finished good',
                     itemType: 'Finished Good',
                     primaryUomId: pc!.uom_id,
-                    brandId: brand.brandId,
+                    labelItemId: label.item_id,
                     unitCost: '0',
                     isActive: true,
                     requiresQc: false,
@@ -128,8 +123,7 @@ test(
                 actorId,
                 database,
             );
-            assert.equal(product!.brandName, 'Test Brand');
-            assert.equal((await brandService.getBrand(brand.brandId, database))!.itemCount, 1);
+            assert.equal(product!.labelItemName, label.name);
             const components = [
                 {
                     componentItemId: raw!.item_id as number,
@@ -260,10 +254,10 @@ test(
                 },
             );
             await context.test(
-                'inactive brands retain existing assignments and reject new assignments',
+                'inactive labels retain existing assignments and reject new assignments',
                 async () => {
-                    await brandService.updateBrand(
-                        brand.brandId,
+                    await itemService.updateItem(
+                        label.item_id,
                         { isActive: false },
                         actorId,
                         database,
@@ -271,20 +265,20 @@ test(
                     assert.equal(
                         (await itemService.updateItem(
                             product!.itemId,
-                            { name: 'Retained brand' },
+                            { name: 'Retained label' },
                             actorId,
                             database,
-                        ))!.brandId,
-                        brand.brandId,
+                        ))!.labelItemId,
+                        label.item_id,
                     );
                     await assert.rejects(
                         itemService.createItem(
                             {
-                                sku: 'INACTIVE-BRAND',
+                                sku: 'INACTIVE-LABEL',
                                 name: 'Blocked',
                                 itemType: 'Finished Good',
                                 primaryUomId: pc!.uom_id,
-                                brandId: brand.brandId,
+                                labelItemId: label.item_id,
                                 unitCost: '0',
                                 isActive: true,
                                 requiresQc: false,
@@ -292,11 +286,10 @@ test(
                             actorId,
                             database,
                         ),
-                        /active brand/,
+                        /Packaging - Label/,
                     );
                 },
             );
-            assert.equal((await brandService.listBrands(database)).length, 4);
         } finally {
             await client.end({ timeout: 3 });
             await admin.unsafe(`drop schema if exists "${schema}" cascade`);

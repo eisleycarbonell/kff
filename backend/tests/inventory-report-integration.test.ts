@@ -73,7 +73,7 @@ test(
                 'unstocked active catalog items appear at threshold zero, with validated location filters',
                 async () => {
                     const low = await report({ report: 'low-stock', threshold: '0' });
-                    const zero = low.rows.find((row) => row.sku === 'SAMPLE-RM-REPORT-ZERO');
+                    const zero = low.rows.find((row) => row.sku === 'RM-ONION');
                     assert.equal(zero?.qtyAvailable, '0.0000');
                     assert.equal(zero?.lotCount, 0);
                     const [location] =
@@ -97,15 +97,14 @@ test(
                     assert.ok(
                         expiry.rows.some(
                             (row) =>
-                                row.lotNumber === 'SAMPLE-LOT-LAUREL-NEAR-EXPIRY' &&
+                                row.lotNumber === 'LOT-LAUREL-NEAR-EXPIRY' &&
                                 row.daysToExpiry === 10,
                         ),
                     );
                     assert.ok(
                         expiry.rows.some(
                             (row) =>
-                                row.lotNumber === 'SAMPLE-LOT-CHILI-EXPIRED' &&
-                                row.daysToExpiry === -1,
+                                row.lotNumber === 'LOT-CHILI-EXPIRED' && row.daysToExpiry === -1,
                         ),
                     );
                     assert.ok(
@@ -126,8 +125,8 @@ test(
                         all.rows.some(
                             (row) =>
                                 row.transactionType === 'Sale' &&
-                                row.sourceReference?.includes('SAMPLE-DO-') &&
-                                row.sourceReference.includes('SAMPLE-SO-'),
+                                row.sourceReference?.includes('DO-') &&
+                                row.sourceReference.includes('SO-'),
                         ),
                     );
                     const today = await report({
@@ -147,7 +146,7 @@ test(
                     });
                     assert.ok(transfer.totals.every((row) => row.netChange === '0.0000'));
                     const options = await getInventoryReportOptions(database);
-                    assert.ok(options.items.some((row) => row.sku === 'SAMPLE-RM-REPORT-ZERO'));
+                    assert.ok(options.items.some((row) => row.sku === 'RM-ONION'));
                 },
             );
             assert.deepEqual(

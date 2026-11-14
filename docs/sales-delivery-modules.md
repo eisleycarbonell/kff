@@ -9,7 +9,9 @@ The frontend routes are `/sales-orders` and `/delivery-orders`.
 
 1. Create a draft sales order for an active customer, with active finished products,
    quantities in each product's primary UOM, unit prices, order date, optional
-   requested delivery date, and notes. Edit drafts and confirm when ready.
+   requested delivery date, customer PO reference, and notes. Edit drafts and confirm when ready.
+   Open Material plan before replenishment to inspect existing finished supply
+   and the BOM-based material shortages for uncovered demand.
 2. Create draft delivery orders against a Confirmed or Partially Delivered sales
    order. Select a source warehouse, branch, or store, and the finished-product lots.
    A delivery can fulfill part of the order or split an order line across lots.
@@ -64,7 +66,8 @@ The backend enforces permissions independently of visible frontend actions.
 | POST | — | /api/delivery-orders/:id/dispatch | Dispatch, body {transitLocationId} |
 | POST | — | /api/delivery-orders/:id/complete | Complete full shipment, body {} |
 
-Sales inputs contain salesOrderNumber, customerId, orderDate,
+Sales inputs contain salesOrderNumber, customerPoNumber (optional/nullable, trimmed,
+maximum 100 characters), customerId, orderDate,
 requestedDeliveryDate (optional/nullable), notes (optional/nullable), and lines
 [{itemId, uomId, qtyOrdered, unitPrice}]. Each product appears once.
 Delivery inputs contain deliveryOrderNumber, salesOrderId, sourceLocationId,
@@ -90,6 +93,45 @@ Responses use the shared {success:true,data} envelope. Missing records return
 conflicts return 409. No hard-delete endpoint is exposed. List DTOs include all
 lines, supporting complete client filtering, statistics, selection, and CSV export.
 
+## Customer PO and material plan
+
+`customerPoNumber` records the customer's own purchasing reference separately
+from the internal `salesOrderNumber`. It is optional and not globally unique;
+different customers can reuse the same reference. It can be changed on Drafts
+with the other header fields; omitted PATCH values retain it and blank/null clears it.
+
+`GET /api/sales-orders/:id/material-plan?sourceLocationId=<id>` is an
+authenticated read. The selected material source must be an active Warehouse
+or Packing location. It returns the normal success envelope containing:
+
+- Header: `salesOrderId`, `salesOrderNumber`, `customerPoNumber`,
+  `sourceLocationId`, `sourceLocationName`, `advisory: true`, `canPack`.
+- `products`: `salesOrderLineId`, `itemId`, `itemSku`, `itemName`,
+  `uomName`, `qtyDemand`, `qtyFinishedAvailable`, `qtyFromStock`,
+  `qtyToPack`, nullable `issue`.
+- `materials`: `itemId`, `itemSku`, `itemName`, `uomName`,
+  `qtyRequired`, `qtyAvailable`, `qtyShortage`, and active linked
+  `suppliers: [{supplierId, name}]`.
+
+Demand is ordered less completed delivered and Draft/In Transit delivery
+allocations. Eligible finished supply spans active Warehouse/Branch/Store
+locations and needs packing provenance. Same-order Draft delivery quantities
+are also deducted from finished supply to avoid reusing that stock for the
+remaining unallocated demand; this is planning only, not a stock reservation.
+The uncovered demand is expanded using
+the current BOM and exact primary-unit conversions. Shared requirements are
+aggregated before subtracting source availability once. Supply excludes held,
+expired, inactive and In Transit stock and deducts active outstanding packing
+and delivery reservations. Missing/invalid BOMs report an issue only when output needs packing;
+inactive products with positive demand also report an issue; any issue or material shortage blocks `canPack`.
+
+This is a read-only plan for one sales order, not an allocation across sales
+orders. It does not include future receipts or unfinished packing output,
+reserve stock, save POs, or create packing orders. Purchase shortages from the
+suggested linked suppliers, receive them, refresh the plan, then use Packing
+Orders. Existing write workflows recheck stock under locks. See the exact
+formulas in [system-flow section 17](system-flow.md#customer-purchase-orders-and-material-planning).
+
 ## Persistence and deployment
 
 The authoritative [schema](../backend/src/db/schema.ts) adds sales_orders,
@@ -112,9 +154,13 @@ preserves prior unrelated entities and includes all new tables, enum values,
 columns, keys, indexes, and constraints. No live database migration is applied
 automatically by application startup.
 
-## Sample data
+Apply the additional [customer-planning/labels migration](../backend/supabase/migrations/20261114000000_customer_planning_labels/migration.sql)
+using `npm run db:migrate:customer-planning` for `sales_orders.customer_po_number`
+and the item-label reference. Existing orders and immutable ledger records remain intact.
 
-The [sample loader](test-data.md) defines five sales orders and six delivery
+## Realistic demo data
+
+The [demo loader](test-data.md) defines five sales orders and six delivery
 orders covering every supported status, including partial fulfillment, shared
 transit lots, completed Sale entries, and active/consumed delivery reservations.
 Its six role/account assignments include Sales and Delivery accounts using the

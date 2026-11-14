@@ -49,7 +49,7 @@ test('sample catalog covers the requested ingredients with compatible bulk and p
 test('sample accounts have assigned roles with the existing sales and delivery permissions', () => {
     const expectedPermissions = new Map([
         [
-            'Sample Administrator',
+            'Administrator',
             {
                 canManageInventory: true,
                 canManagePurchasing: true,
@@ -59,13 +59,13 @@ test('sample accounts have assigned roles with the existing sales and delivery p
             },
         ],
         [
-            'Sample Warehouse Manager',
+            'Warehouse Manager',
             { canManageInventory: true, canManagePacking: true, canManageTransfers: true },
         ],
-        ['Sample Purchasing', { canManagePurchasing: true }],
-        ['Sample Viewer', {}],
-        ['Sample Sales', { canManageInventory: true }],
-        ['Sample Delivery', { canManageTransfers: true }],
+        ['Purchasing', { canManagePurchasing: true }],
+        ['Viewer', {}],
+        ['Sales', { canManageInventory: true }],
+        ['Delivery', { canManageTransfers: true }],
     ]);
     assert.equal(sampleRoles.length, 6);
     assert.equal(sampleAccounts.length, 6);
@@ -82,15 +82,15 @@ test('sample accounts have assigned roles with the existing sales and delivery p
     }
     assert.equal(
         sampleAccounts.find((account) => account.email === SAMPLE_ADMIN_EMAIL)?.roleName,
-        'Sample Administrator',
+        'Administrator',
     );
     assert.equal(
         sampleAccounts.find((account) => account.email === 'sales@spice.local')?.roleName,
-        'Sample Sales',
+        'Sales',
     );
     assert.equal(
         sampleAccounts.find((account) => account.email === 'delivery@spice.local')?.roleName,
-        'Sample Delivery',
+        'Delivery',
     );
 });
 
@@ -308,7 +308,7 @@ test(
                 );
             }
             const [nearExpiry] = await read(
-                "select expiration_date::text as expiry from lots where lot_number='SAMPLE-LOT-LAUREL-NEAR-EXPIRY'",
+                "select expiration_date::text as expiry from lots where lot_number='LOT-LAUREL-NEAR-EXPIRY'",
             );
             assert.equal(nearExpiry!.expiry, '2026-11-14');
             const [account] = await read(
@@ -316,9 +316,9 @@ test(
             );
             assert.ok(await comparePasswords(SAMPLE_PASSWORD, String(account!.password_hash)));
 
-            await read("update items set name='Preserved test edit' where sku='SAMPLE-RM-GARLIC'");
+            await read("update items set name='Preserved test edit' where sku='RM-GARLIC'");
             assert.equal((await seedSampleData(options)).status, 'skipped-existing');
-            const [preserved] = await read("select name from items where sku='SAMPLE-RM-GARLIC'");
+            const [preserved] = await read("select name from items where sku='RM-GARLIC'");
             assert.equal(preserved!.name, 'Preserved test edit');
 
             await assert.rejects(
@@ -330,7 +330,7 @@ test(
                 ),
             );
             assert.equal(
-                (await read("select name from items where sku='SAMPLE-RM-GARLIC'"))[0]!.name,
+                (await read("select name from items where sku='RM-GARLIC'"))[0]!.name,
                 'Preserved test edit',
                 'failed schema creation must restore the previous database',
             );

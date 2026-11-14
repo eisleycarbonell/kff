@@ -1,8 +1,8 @@
 import { and, asc, desc, eq, gte, lt, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import { db } from '../../db/index.ts';
 import { AppError } from '../../errors/app-error.ts';
 import {
-    brands,
     items,
     uoms,
     lots,
@@ -26,13 +26,14 @@ import { getSettings } from '../company-settings/company-setting.service.ts';
 import { buildInventoryReport } from './inventory-report.rules.ts';
 import type { InventoryReportQuery } from './inventory-report.schema.ts';
 
+const label = alias(items, 'report_label');
 const catalogFields = {
     itemId: items.itemId,
     sku: items.sku,
     itemName: items.name,
     itemType: items.itemType,
-    brandId: items.brandId,
-    brandName: brands.name,
+    labelItemId: items.labelItemId,
+    labelItemName: label.name,
     primaryUomId: uoms.uomId,
     primaryUomName: uoms.name,
     isActive: items.isActive,
@@ -61,7 +62,7 @@ export async function getInventoryReport(
                 .select(catalogFields)
                 .from(items)
                 .innerJoin(uoms, eq(items.primaryUomId, uoms.uomId))
-                .leftJoin(brands, eq(items.brandId, brands.brandId));
+                .leftJoin(label, eq(items.labelItemId, label.itemId));
             if (query.itemId && !catalog.some((row) => row.itemId === query.itemId))
                 throw new AppError(400, 'Select an existing report item.');
             if (
@@ -76,16 +77,21 @@ export async function getInventoryReport(
             )
                 throw new AppError(400, 'Select an existing report location.');
             if (
-                query.brandId &&
+                query.labelItemId &&
                 !(
                     await tx
-                        .select({ id: brands.brandId })
-                        .from(brands)
-                        .where(eq(brands.brandId, query.brandId))
+                        .select({ id: label.itemId })
+                        .from(label)
+                        .where(
+                            and(
+                                eq(label.itemId, query.labelItemId),
+                                eq(label.itemType, 'Packaging - Label'),
+                            ),
+                        )
                         .limit(1)
                 )[0]
             )
-                throw new AppError(400, 'Select an existing report brand.');
+                throw new AppError(400, 'Select an existing report label.');
             if (query.report === 'movement') {
                 const conditions = [];
                 if (query.fromDate)
@@ -127,7 +133,7 @@ export async function getInventoryReport(
                     )
                     .innerJoin(items, eq(items.itemId, inventoryTransactions.itemId))
                     .innerJoin(uoms, eq(uoms.uomId, items.primaryUomId))
-                    .leftJoin(brands, eq(brands.brandId, items.brandId))
+                    .leftJoin(label, eq(label.itemId, items.labelItemId))
                     .innerJoin(lots, eq(lots.lotId, inventoryTransactions.lotId))
                     .innerJoin(
                         locations,
@@ -201,7 +207,7 @@ export async function getInventoryReport(
                 .from(inventoryStock)
                 .innerJoin(items, eq(items.itemId, inventoryStock.itemId))
                 .innerJoin(uoms, eq(uoms.uomId, items.primaryUomId))
-                .leftJoin(brands, eq(brands.brandId, items.brandId))
+                .leftJoin(label, eq(label.itemId, items.labelItemId))
                 .innerJoin(
                     lots,
                     and(
@@ -219,7 +225,7 @@ export async function getInventoryReport(
     );
 }
 export async function getInventoryReportOptions(database: typeof db = db) {
-    const [itemOptions, locationOptions, brandOptions] = await Promise.all([
+    const [itemOptions, locationOptions, labelOptions] = await Promise.all([
         database
             .select({ itemId: items.itemId, sku: items.sku, name: items.name })
             .from(items)
@@ -233,9 +239,10 @@ export async function getInventoryReportOptions(database: typeof db = db) {
             .from(locations)
             .orderBy(asc(locations.name)),
         database
-            .select({ brandId: brands.brandId, name: brands.name })
-            .from(brands)
-            .orderBy(asc(brands.name)),
+            .select({ labelItemId: label.itemId, name: label.name })
+            .from(label)
+            .where(eq(label.itemType, 'Packaging - Label'))
+            .orderBy(asc(label.name)),
     ]);
-    return { items: itemOptions, locations: locationOptions, brands: brandOptions };
+    return { items: itemOptions, locations: locationOptions, labels: labelOptions };
 }

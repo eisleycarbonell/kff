@@ -12,7 +12,13 @@ import {
     columnVisibilityFeature,
     sortFn_text,
 } from "@tanstack/react-table"
-import { ArrowUpDown, ChevronLeft, ChevronRight, Download, Settings2 } from "lucide-react"
+import {
+    ArrowUpDown,
+    ChevronLeft,
+    ChevronRight,
+    Download,
+    Settings2,
+} from "lucide-react"
 import {
     decimalUnits,
     reportCsv,
@@ -53,10 +59,15 @@ const numericSort = (a: string | null, b: string | null) => {
     const right = decimalUnits(b ?? "0")
     return left < right ? -1 : left > right ? 1 : 0
 }
-export const InventoryReportTable = memo(function InventoryReportTable({ report }: { report: InventoryReport }) {
+export const InventoryReportTable = memo(function InventoryReportTable({
+    report,
+}: {
+    report: InventoryReport
+}) {
     const columns = useMemo(() => {
         const movement = report.report === "movement"
-        const detail = report.report === "stock-by-lot" || report.report === "near-expiry"
+        const detail =
+            report.report === "stock-by-lot" || report.report === "near-expiry"
         return helper.columns([
             helper.display({
                 id: "select",
@@ -66,9 +77,12 @@ export const InventoryReportTable = memo(function InventoryReportTable({ report 
                         aria-label="Select report rows on this page"
                         checked={table.getIsAllPageRowsSelected()}
                         indeterminate={
-                            table.getIsSomePageRowsSelected() && !table.getIsAllPageRowsSelected()
+                            table.getIsSomePageRowsSelected() &&
+                            !table.getIsAllPageRowsSelected()
                         }
-                        onCheckedChange={(value) => table.toggleAllPageRowsSelected(value)}
+                        onCheckedChange={(value) =>
+                            table.toggleAllPageRowsSelected(value)
+                        }
                     />
                 ),
                 cell: ({ row }) => (
@@ -93,9 +107,9 @@ export const InventoryReportTable = memo(function InventoryReportTable({ report 
                     </div>
                 ),
             }),
-            helper.accessor((row) => row.brandName ?? "", {
-                id: "brandName",
-                header: "Brand",
+            helper.accessor((row) => row.labelItemName ?? "", {
+                id: "labelItemName",
+                header: "Labels",
                 sortFn: "text",
             }),
             ...(report.report !== "low-stock"
@@ -108,7 +122,8 @@ export const InventoryReportTable = memo(function InventoryReportTable({ report 
                               <div>
                                   {row.original.locationName}
                                   <p className="text-xs text-muted-foreground">
-                                      {row.original.locationCode} / {row.original.locationType}
+                                      {row.original.locationCode} /{" "}
+                                      {row.original.locationType}
                                   </p>
                               </div>
                           ),
@@ -126,7 +141,8 @@ export const InventoryReportTable = memo(function InventoryReportTable({ report 
                 : [
                       helper.accessor("lotCount", {
                           header: "Lots",
-                          sortFn: (a, b) => a.original.lotCount - b.original.lotCount,
+                          sortFn: (a, b) =>
+                              a.original.lotCount - b.original.lotCount,
                       }),
                   ]),
             ...(report.report === "low-stock"
@@ -142,25 +158,30 @@ export const InventoryReportTable = memo(function InventoryReportTable({ report 
                       }),
                   ]
                 : []),
-            helper.accessor("primaryUomName", { header: "Unit", sortFn: "text" }),
+            helper.accessor("primaryUomName", {
+                header: "Unit",
+                sortFn: "text",
+            }),
             ...(!movement
-                ? (["qtyOnHand", "qtyReserved", "qtyAvailable"] as const).map((key) =>
-                      helper.accessor(key, {
-                          header: {
-                              qtyOnHand: "On hand",
-                              qtyReserved: "Reserved",
-                              qtyAvailable:
-                                  report.report === "low-stock"
-                                      ? "Eligible available"
-                                      : "Available",
-                          }[key],
-                          sortFn: (a, b) => numericSort(a.original[key], b.original[key]),
-                          cell: ({ cell }) => (
-                              <span className="whitespace-nowrap tabular-nums">
-                                  {cell.getValue()}
-                              </span>
-                          ),
-                      }),
+                ? (["qtyOnHand", "qtyReserved", "qtyAvailable"] as const).map(
+                      (key) =>
+                          helper.accessor(key, {
+                              header: {
+                                  qtyOnHand: "On hand",
+                                  qtyReserved: "Reserved",
+                                  qtyAvailable:
+                                      report.report === "low-stock"
+                                          ? "Eligible available"
+                                          : "Available",
+                              }[key],
+                              sortFn: (a, b) =>
+                                  numericSort(a.original[key], b.original[key]),
+                              cell: ({ cell }) => (
+                                  <span className="whitespace-nowrap tabular-nums">
+                                      {cell.getValue()}
+                                  </span>
+                              ),
+                          }),
                   )
                 : []),
             ...(detail
@@ -188,8 +209,10 @@ export const InventoryReportTable = memo(function InventoryReportTable({ report 
                               id: "expiryStatus",
                               header: "Expiry status",
                               sortFn: (a, b) =>
-                                  (a.original.daysToExpiry ?? Number.MAX_SAFE_INTEGER) -
-                                  (b.original.daysToExpiry ?? Number.MAX_SAFE_INTEGER),
+                                  (a.original.daysToExpiry ??
+                                      Number.MAX_SAFE_INTEGER) -
+                                  (b.original.daysToExpiry ??
+                                      Number.MAX_SAFE_INTEGER),
                           },
                       ),
                   ]
@@ -201,7 +224,10 @@ export const InventoryReportTable = memo(function InventoryReportTable({ report 
                           header: "Date / Time (UTC)",
                           sortFn: "text",
                           cell: ({ cell }) =>
-                              cell.getValue().replace("T", " ").replace("Z", " UTC"),
+                              cell
+                                  .getValue()
+                                  .replace("T", " ")
+                                  .replace("Z", " UTC"),
                       }),
                       helper.accessor((row) => row.transactionType ?? "", {
                           id: "transactionType",
@@ -211,7 +237,11 @@ export const InventoryReportTable = memo(function InventoryReportTable({ report 
                       helper.accessor((row) => row.qtyChange ?? "0", {
                           id: "qtyChange",
                           header: "Quantity change",
-                          sortFn: (a, b) => numericSort(a.original.qtyChange, b.original.qtyChange),
+                          sortFn: (a, b) =>
+                              numericSort(
+                                  a.original.qtyChange,
+                                  b.original.qtyChange,
+                              ),
                           cell: ({ cell }) => (
                               <span className="whitespace-nowrap font-medium tabular-nums">
                                   {cell.getValue()}
@@ -252,7 +282,9 @@ export const InventoryReportTable = memo(function InventoryReportTable({ report 
     return (
         <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-3 border-b p-4">
-                <p className="text-sm text-muted-foreground">{report.rows.length} matching rows</p>
+                <p className="text-sm text-muted-foreground">
+                    {report.rows.length} matching rows
+                </p>
                 {selected.length > 0 && (
                     <Button
                         variant="ghost"
@@ -283,13 +315,19 @@ export const InventoryReportTable = memo(function InventoryReportTable({ report 
                         {selected.length ? "Export selected" : "Export CSV"}
                     </Button>
                     <DropdownMenu>
-                        <DropdownMenuTrigger render={<Button className="h-10" variant="outline" />}>
+                        <DropdownMenuTrigger
+                            render={
+                                <Button className="h-10" variant="outline" />
+                            }
+                        >
                             <Settings2 />
                             Columns
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                             <DropdownMenuGroup>
-                                <DropdownMenuLabel>Visible columns</DropdownMenuLabel>
+                                <DropdownMenuLabel>
+                                    Visible columns
+                                </DropdownMenuLabel>
                                 {table
                                     .getAllLeafColumns()
                                     .filter((column) => column.getCanHide())
@@ -302,7 +340,8 @@ export const InventoryReportTable = memo(function InventoryReportTable({ report 
                                                 column.toggleVisibility(value)
                                             }
                                         >
-                                            {typeof column.columnDef.header === "string"
+                                            {typeof column.columnDef.header ===
+                                            "string"
                                                 ? column.columnDef.header
                                                 : column.id}
                                         </DropdownMenuCheckboxItem>
@@ -322,9 +361,11 @@ export const InventoryReportTable = memo(function InventoryReportTable({ report 
                                     className="px-4"
                                     aria-sort={
                                         header.column.getCanSort()
-                                            ? header.column.getIsSorted() === "asc"
+                                            ? header.column.getIsSorted() ===
+                                              "asc"
                                                 ? "ascending"
-                                                : header.column.getIsSorted() === "desc"
+                                                : header.column.getIsSorted() ===
+                                                    "desc"
                                                   ? "descending"
                                                   : "none"
                                             : undefined
@@ -351,11 +392,16 @@ export const InventoryReportTable = memo(function InventoryReportTable({ report 
                     {table.getRowModel().rows.map((row) => (
                         <TableRow
                             key={row.id}
-                            data-state={row.getIsSelected() ? "selected" : undefined}
+                            data-state={
+                                row.getIsSelected() ? "selected" : undefined
+                            }
                             className="hover:bg-primary/5 data-[state=selected]:bg-primary/10"
                         >
                             {row.getVisibleCells().map((cell) => (
-                                <TableCell key={cell.id} className="px-4 py-4 align-top">
+                                <TableCell
+                                    key={cell.id}
+                                    className="px-4 py-4 align-top"
+                                >
                                     <table.FlexRender cell={cell} />
                                 </TableCell>
                             ))}
@@ -367,8 +413,9 @@ export const InventoryReportTable = memo(function InventoryReportTable({ report 
                                 colSpan={table.getVisibleLeafColumns().length}
                                 className="h-40 text-center text-muted-foreground"
                             >
-                                No records match these report filters. Adjust the filters or record
-                                the relevant inventory operation.
+                                No records match these report filters. Adjust
+                                the filters or record the relevant inventory
+                                operation.
                             </TableCell>
                         </TableRow>
                     )}

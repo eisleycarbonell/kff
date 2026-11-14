@@ -18,11 +18,15 @@ export const formulaInputSchema = z
     .superRefine((input, context) => {
         const seen = new Set<number>()
         for (const row of input.components) {
-            if (row.componentItemId === input.itemId || seen.has(row.componentItemId))
+            if (
+                row.componentItemId === input.itemId ||
+                seen.has(row.componentItemId)
+            )
                 context.addIssue({
                     code: "custom",
                     path: ["components"],
-                    message: "Choose distinct materials other than the finished product.",
+                    message:
+                        "Choose distinct materials other than the finished product.",
                 })
             seen.add(row.componentItemId)
         }
@@ -32,7 +36,7 @@ export const formulaSchema = z.object({
     itemId: id,
     itemSku: z.string(),
     itemName: z.string(),
-    brandName: z.string().nullable(),
+    labelItemName: z.string().nullable(),
     isActive: z.boolean(),
     primaryUomId: id,
     primaryUomName: z.string(),
@@ -76,19 +80,29 @@ export const formulaOptionsSchema = z.object({
         }),
     ),
     uoms: z.array(
-        z.object({ uomId: id, name: z.string(), uomClassId: id, factorToBase: z.string() }),
+        z.object({
+            uomId: id,
+            name: z.string(),
+            uomClassId: id,
+            factorToBase: z.string(),
+        }),
     ),
 })
 export type PackingFormula = z.output<typeof formulaSchema>
 export type FormulaInput = z.output<typeof formulaInputSchema>
 export type FormulaOptions = z.output<typeof formulaOptionsSchema>
-export function validateFormula(input: FormulaInput, options: FormulaOptions): string | undefined {
+export function validateFormula(
+    input: FormulaInput,
+    options: FormulaOptions,
+): string | undefined {
     const parsed = formulaInputSchema.safeParse(input)
     if (!parsed.success) return parsed.error.issues[0]?.message
     if (!options.products.some((row) => row.itemId === input.itemId))
         return "Select an active finished product."
     for (const row of input.components) {
-        const material = options.components.find((entry) => entry.itemId === row.componentItemId)
+        const material = options.components.find(
+            (entry) => entry.itemId === row.componentItemId,
+        )
         const unit = options.uoms.find((entry) => entry.uomId === row.uomId)
         if (!material || !unit || material.uomClassId !== unit.uomClassId)
             return "Select an active material and a compatible unit for every row."

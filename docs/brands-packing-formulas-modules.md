@@ -1,36 +1,34 @@
-# Brands and Packing Formulas
+# Labels and Packing Formulas
 
-These master-data modules follow the [system flow](system-flow.md). Brands are
-available at `/brands`; Packing Formulas are available at `/bom`. Both use real
-backend records and the existing Users-style forms, tables, search, sorting,
-selection, CSV export, column controls and pagination.
+These master-data responsibilities follow the [system flow](system-flow.md).
+Labels are maintained as inventory items at `/items`; published Packing
+Formulas are inspected at `/bom`. Formula Revisions publishes changes.
 
-## Brands
+## Labels in Items / Products
 
-A brand has a unique uppercase code (up to 30 characters), a name unique ignoring
-case (up to 120 characters), an optional description (up to 2,000 characters),
-active status and authenticated audit fields. Public records include `itemCount`.
-Items have an optional `brandId`; responses include nullable brand code/name.
-The item form offers active brands and preserves an item's current inactive
-brand. Clearing the selection sends null; an omitted PATCH value is unchanged.
+Create a printed label as type `Packaging - Label`, with its own SKU and primary
+stock UOM, usually pc. On a Finished Good select that material in **Labels**.
+The association is optional and stored in `items.label_item_id`, a nullable
+self-referencing foreign key. Public item fields are `labelItemId`,
+`labelItemSku` and `labelItemName`. Only active label materials may be newly
+assigned; existing inactive assignments can survive unrelated edits. Only a
+Finished Good can carry a label association. Catalog writes require Inventory.
 
-All authenticated users can read brands. Writes require `canManageInventory`.
-Only active brands may be newly assigned. Deactivation preserves existing item
-assignments; it does not deactivate items or change stock. Brands are not hard
-deleted. Names/labels represent current master data, not versioned historical
-brand artwork or a labeling-approval workflow.
+The assignment is descriptive. Add the material with its required quantity to
+the released BOM to purchase, reserve and consume labels. Changing the catalog
+association does not silently change BOMs or historical packing snapshots.
 
-| Method | API | Behavior |
-| --- | --- | --- |
-| GET | `/api/brands` | Complete brand collection |
-| GET | `/api/brands/:id` | Brand or 404 |
-| POST | `/api/brands` | Create; 201 |
-| PATCH | `/api/brands/:id` | Update supplied fields; activate/deactivate |
+Brands are removed from the menu and active API composition. The old
+`/brands` page redirects to Items. Legacy brand tables/references are retained
+to preserve existing history; no new brand records are seeded or required.
+The filename of this contract is retained so existing documentation links work.
 
-Apply the [additive migration](../backend/supabase/migrations/20261107000000_brands/migration.sql)
-once before starting the updated application against an existing database. It
-creates brands and adds a nullable item reference without changing stock, lot,
-order, ledger or reservation records. Existing items initially have no brand.
+Apply [the additive migration](../backend/supabase/migrations/20261114000000_customer_planning_labels/migration.sql)
+with `npm run db:migrate:customer-planning` from `backend/`. It adds the label
+reference and sales customer-PO reference without resetting operational data.
+For existing formulas a unique label component can safely identify the initial
+association; otherwise choose the label explicitly in Items. Do not infer a
+label material from a former brand name.
 
 ## Packing formulas
 
@@ -38,7 +36,7 @@ Each Finished Good has at most one current formula, stored as its existing
 `bill_of_materials` component rows. The finished product's `itemId` identifies the grouped current BOM.
 [Formula Revisions](inventory-controls-and-reports.md) provides release headers.
 Quantities describe the material required per one primary finished-product unit.
-Product, brand, output UOM, material details, component count and audits are
+Product, label, output UOM, material details, component count and audits are
 returned for inspection. Read access is authenticated; writes require
 `canManagePacking`; release review additionally requires `canManageUsers`
 and an independent user.
@@ -80,18 +78,11 @@ success/error envelopes and safe database-error boundary. Reads missing records
 return 404; invalid inputs return 400; permission failures return 401/403; state,
 duplicate or reference conflicts use 409 where applicable.
 
-## Sample data and checks
+## Demo data and checks
 
-[Sample data](test-data.md) includes two active brands, one inactive brand and
-eight branded finished goods, each with a four-material packing formula. The
-empty-database importer does not overwrite existing brands, formulas, items or
-operational data. Existing populated datasets need explicit UI setup or a fresh
-dedicated test dataset to receive the new examples.
-
-Backend HTTP/schema tests check strict inputs, independent permissions, exact
-decimals, server audit identity and safe failures. Frontend request tests check
-URLs, payloads, DTOs, cancellation, six-place quantities and compatible units.
-The PostgreSQL integration test uses `TEST_DATABASE_URL` only and checks actual
-brand assignment, concurrent formula creation, failed-replacement rollback,
-immutable packing snapshots, completion after formula removal and ledger/balance
-consistency. It never falls back to the application database.
+[Realistic demo data](test-data.md) contains eight finished goods with matching
+label-material assignments and four-component formulas. Each product uses bulk
+ingredient, hardware, printed label and seal. The importer preserves populated
+databases; it does not recreate Brands. Historical packing orders retain their
+own material requirements. See [the module demo guide](module-demo-guide.md)
+for setup, release, material planning and packing steps.

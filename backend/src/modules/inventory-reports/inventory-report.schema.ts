@@ -13,7 +13,7 @@ export const inventoryReportQuerySchema = z
         report: z.enum(reportTypes).default('stock-by-location'),
         itemId: id.optional(),
         locationId: id.optional(),
-        brandId: id.optional(),
+        labelItemId: id.optional(),
         itemType: z
             .enum([
                 'Raw Material - Bulk',
@@ -86,8 +86,8 @@ export type ReportItem = {
     sku: string;
     itemName: string;
     itemType: import('../../db/schema.ts').Item['itemType'];
-    brandId: number | null;
-    brandName: string | null;
+    labelItemId: number | null;
+    labelItemName: string | null;
     primaryUomId: number;
     primaryUomName: string;
     isActive: boolean;

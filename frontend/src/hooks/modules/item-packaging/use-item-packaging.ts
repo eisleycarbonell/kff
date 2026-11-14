@@ -1,4 +1,5 @@
 "use client"
+import { invalidateInventoryAvailability } from "@/lib/inventory-query-cache"
 import { useCallback, useRef } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Toast } from "@base-ui/react/toast"
@@ -54,6 +55,7 @@ export function useFeature() {
         enabled: Boolean(session.data) && canManage && formRequested,
     })
     function refreshAffected() {
+            void invalidateInventoryAvailability(client)
         for (const key of ["item-packaging", "item-packaging-options", "inventory-control-options", "inventory-reports", "dashboard", "receiving-options", "packing-options", "packing-preview"]) {
             void client.invalidateQueries({ queryKey: [key] })
         }

@@ -20,7 +20,9 @@
         "dev:test": "tsx watch src/start-test.ts",
         "build": "tsc",
         "start": "node dist/src/index.js",
-        "start:test": "node dist/src/start-test.js"
+        "start:test": "node dist/src/start-test.js",
+        "db:migrate:customer-planning": "node --experimental-strip-types src/db/migrate-customer-planning.ts",
+        "db:upgrade:demo": "node --experimental-strip-types src/db/upgrade-demo-data.ts"
     },
     "devDependencies": {
         "@types/cors": "^2.8.19",

@@ -1,4 +1,5 @@
 "use client"
+import { invalidateInventoryAvailability } from "@/lib/inventory-query-cache"
 import { createDialogStore } from "@/lib/create-dialog-store"
 import { getLoadStatus } from "@/lib/load-status"
 import { useCallback, useRef } from "react"
@@ -57,6 +58,7 @@ export function useLocations() {
         )
     }
     function refresh() {
+            void invalidateInventoryAvailability(client)
         for (const key of [
             "locations",
             "inventory-reports",
@@ -67,6 +69,14 @@ export function useLocations() {
             "operational-reports",
             "inventory-report-options",
             "inventory-stocks",
+            "receiving-options",
+            "purchase-order-options",
+            "dashboard",
+            "lots",
+            "lot-detail",
+            "packing-detail",
+            "transfer-detail",
+            "inventory-report-options",
             "inventory-stock-options",
             "delivery-order-options",
             "delivery-orders",

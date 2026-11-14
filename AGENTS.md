@@ -36,7 +36,14 @@ implemented in the current code.
 - The business buys already processed spices and packs finished products. Keep
   workflows focused on buy, receive, store, reserve, pack, transfer, track, and
   report, with the minimal complexity needed for the actual business process.
-- Follow the operational sequence: supplier and purchase order, receiving into
+- Customer demand can initiate replenishment: record the customer PO on a Sales
+  Order, select finished products and inspect the advisory Material plan. Use
+  eligible finished stock first, aggregate BOM requirements for the packing gap,
+  and buy material shortages through supplier POs. Planning creates no reservation.
+- Labels are Packaging - Label items assigned to Finished Goods through
+  `labelItemId`. Brands are retired; retain legacy data. The published BOM
+  determines label consumption, independently of the catalog assignment.
+- Follow the inventory sequence: supplier and purchase order, receiving into
   raw/packaging storage, packing order and material reservations, packing into
   finished-goods storage, then transfer through In Transit to a branch or store.
 - The Create Purchase Order form opens with a backend-generated PO number.

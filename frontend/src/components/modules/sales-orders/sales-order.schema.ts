@@ -33,6 +33,7 @@ export const salesOrderLineSchema = z.object({
 export const salesOrderSchema = z.object({
     salesOrderId: id,
     salesOrderNumber: z.string(),
+    customerPoNumber: z.string().max(100).nullable(),
     customerId: id,
     customerName: z.string(),
     customerIsActive: z.boolean(),
@@ -49,7 +50,17 @@ export const salesOrderSchema = z.object({
     updatedAt: timestamp,
 })
 export const salesOrderOptionsSchema = z.object({
-    customers: z.array(z.object({ customerId: id, name: z.string(), isActive: z.boolean() })),
+    sourceLocations: z.array(
+        z.object({
+            locationId: id,
+            code: z.string(),
+            name: z.string(),
+            isActive: z.boolean(),
+        }),
+    ),
+    customers: z.array(
+        z.object({ customerId: id, name: z.string(), isActive: z.boolean() }),
+    ),
     items: z.array(
         z.object({
             itemId: id,
@@ -69,6 +80,7 @@ export const salesOrderInputSchema = z
             .min(1, "Enter a sales order number.")
             .max(30)
             .toUpperCase(),
+        customerPoNumber: z.string().trim().max(100).nullable().optional(),
         customerId: id,
         orderDate: z.iso.date(),
         requestedDeliveryDate: z.iso.date().nullable().optional(),
@@ -86,7 +98,10 @@ export const salesOrderInputSchema = z
             .max(100),
     })
     .superRefine((input, context) => {
-        if (input.requestedDeliveryDate && input.requestedDeliveryDate < input.orderDate)
+        if (
+            input.requestedDeliveryDate &&
+            input.requestedDeliveryDate < input.orderDate
+        )
             context.addIssue({
                 code: "custom",
                 path: ["requestedDeliveryDate"],
@@ -109,6 +124,7 @@ export type CreateSalesOrderInput = z.output<typeof salesOrderInputSchema>
 export type UpdateSalesOrderInput = Partial<CreateSalesOrderInput>
 export type SalesOrderFormValues = {
     salesOrderNumber: string
+    customerPoNumber: string
     customerId: number | null
     orderDate: string
     requestedDeliveryDate: string
@@ -121,7 +137,9 @@ export type SalesOrderFormValues = {
     }[]
 }
 export type SalesOrderFormErrors = Record<string, string>
-export function toSalesOrderInput(values: SalesOrderFormValues): CreateSalesOrderInput {
+export function toSalesOrderInput(
+    values: SalesOrderFormValues,
+): CreateSalesOrderInput {
     return salesOrderInputSchema.parse(formInput(values))
 }
 export function validateSalesOrder(
@@ -131,20 +149,26 @@ export function validateSalesOrder(
     const errors: SalesOrderFormErrors = {}
     const result = salesOrderInputSchema.safeParse(formInput(values))
     if (!result.success)
-        for (const issue of result.error.issues) errors[issue.path.join(".")] ??= issue.message
+        for (const issue of result.error.issues)
+            errors[issue.path.join(".")] ??= issue.message
     if (
         !options.customers.some(
-            (customer) => customer.customerId === values.customerId && customer.isActive,
+            (customer) =>
+                customer.customerId === values.customerId && customer.isActive,
         )
     )
         errors.customerId = "Select an active customer."
     values.lines.forEach((line, index) => {
         const item = options.items.find(
-            (candidate) => candidate.itemId === line.itemId && candidate.isActive,
+            (candidate) =>
+                candidate.itemId === line.itemId && candidate.isActive,
         )
-        if (!item) errors[`lines.${index}.itemId`] = "Select an active finished product."
+        if (!item)
+            errors[`lines.${index}.itemId`] =
+                "Select an active finished product."
         if (item && item.primaryUomId !== line.uomId)
-            errors[`lines.${index}.itemId`] = "Reselect this item to use its primary unit."
+            errors[`lines.${index}.itemId`] =
+                "Reselect this item to use its primary unit."
     })
     return errors
 }
@@ -163,7 +187,9 @@ export function compareSalesDecimals(left: string, right: string): number {
         b = scaled(right)
     return a === b ? 0 : a < b ? -1 : 1
 }
-export function previewSalesTotal(lines: SalesOrderFormValues["lines"]): string | null {
+export function previewSalesTotal(
+    lines: SalesOrderFormValues["lines"],
+): string | null {
     if (
         lines.some(
             (line) =>
@@ -175,7 +201,9 @@ export function previewSalesTotal(lines: SalesOrderFormValues["lines"]): string 
     const total = lines.reduce(
         (sum, line) =>
             sum +
-            (scaled(line.qtyOrdered, 4) * scaled(line.unitPrice, 4) + BigInt(5000)) / BigInt(10000),
+            (scaled(line.qtyOrdered, 4) * scaled(line.unitPrice, 4) +
+                BigInt(5000)) /
+                BigInt(10000),
         BigInt(0),
     )
     const digits = total.toString().padStart(5, "0")
@@ -185,6 +213,7 @@ export function previewSalesTotal(lines: SalesOrderFormValues["lines"]): string 
 function formInput(values: SalesOrderFormValues) {
     return {
         ...values,
+        customerPoNumber: values.customerPoNumber.trim() || null,
         requestedDeliveryDate: values.requestedDeliveryDate.trim() || null,
         notes: values.notes.trim() || null,
         lines: values.lines.map(({ itemId, uomId, qtyOrdered, unitPrice }) => ({
@@ -195,3 +224,41 @@ function formInput(values: SalesOrderFormValues) {
         })),
     }
 }
+
+const planQuantity = z.string().regex(/^\d+(?:\.\d{1,8})?$/)
+export const salesMaterialPlanSchema = z.object({
+    salesOrderId: id,
+    salesOrderNumber: z.string(),
+    customerPoNumber: z.string().nullable(),
+    sourceLocationId: id,
+    sourceLocationName: z.string(),
+    advisory: z.literal(true),
+    products: z.array(
+        z.object({
+            salesOrderLineId: id,
+            itemId: id,
+            itemSku: z.string(),
+            itemName: z.string(),
+            uomName: z.string(),
+            qtyDemand: planQuantity,
+            qtyFinishedAvailable: planQuantity,
+            qtyFromStock: planQuantity,
+            qtyToPack: planQuantity,
+            issue: z.string().nullable(),
+        }),
+    ),
+    materials: z.array(
+        z.object({
+            itemId: id,
+            itemSku: z.string(),
+            itemName: z.string(),
+            uomName: z.string(),
+            qtyRequired: planQuantity,
+            qtyAvailable: planQuantity,
+            qtyShortage: planQuantity,
+            suppliers: z.array(z.object({ supplierId: id, name: z.string() })),
+        }),
+    ),
+    canPack: z.boolean(),
+})
+export type SalesMaterialPlan = z.output<typeof salesMaterialPlanSchema>

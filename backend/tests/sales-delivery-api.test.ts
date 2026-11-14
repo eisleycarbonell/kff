@@ -18,6 +18,7 @@ const salesOrder = {
     salesOrderId: 1,
     salesOrderNumber: 'SO-1',
     customerId: 2,
+    customerPoNumber: null,
     customerName: 'Customer',
     customerIsActive: true,
     orderDate: '2026-11-05',
@@ -104,7 +105,8 @@ function sales(overrides: Partial<SalesOrderService> = {}): SalesOrderService {
     return {
         listSalesOrders: async () => [salesOrder],
         getSalesOrder: async () => salesOrder,
-        getSalesOrderOptions: async () => ({ customers: [], items: [] }),
+        getSalesOrderOptions: async () => ({ customers: [], items: [], sourceLocations: [] }),
+        getSalesOrderMaterialPlan: async () => null,
         createSalesOrder: async () => salesOrder,
         updateSalesOrder: async () => salesOrder,
         confirmSalesOrder: async () => ({ ...salesOrder, status: 'Confirmed' }),
@@ -448,4 +450,46 @@ test('workflow and database failures preserve safe errors and status codes', asy
                 },
             }),
         );
+});
+
+test('material planning is an authenticated read and validates its warehouse query before invoking service', async () => {
+    const calls: number[][] = [];
+    const plan = {
+        salesOrderId: 1,
+        salesOrderNumber: 'SO-1',
+        customerPoNumber: 'CUSTOMER-PO-27',
+        sourceLocationId: 6,
+        sourceLocationName: 'Raw Warehouse',
+        advisory: true as const,
+        products: [],
+        materials: [],
+        canPack: true,
+    };
+    await withApi(
+        async (url, token) => {
+            const anonymous = await fetch(url + '/sales-orders/1/material-plan?sourceLocationId=6');
+            assert.equal(anonymous.status, 401);
+            await anonymous.json();
+            const response = await fetch(url + '/sales-orders/1/material-plan?sourceLocationId=6', {
+                headers: { Authorization: 'Bearer ' + token },
+            });
+            assert.equal(response.status, 200);
+            assert.deepEqual((await response.json()).data, plan);
+            for (const suffix of ['', '?sourceLocationId=0', '?sourceLocationId=6&reserve=true']) {
+                const invalid = await fetch(url + '/sales-orders/1/material-plan' + suffix, {
+                    headers: { Authorization: 'Bearer ' + token },
+                });
+                assert.equal(invalid.status, 400);
+                await invalid.json();
+            }
+            assert.deepEqual(calls, [[1, 6]]);
+        },
+        {},
+        sales({
+            getSalesOrderMaterialPlan: async (id, sourceId) => {
+                calls.push([id, sourceId]);
+                return plan;
+            },
+        }),
+    );
 });

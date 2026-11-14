@@ -40,7 +40,7 @@ function matchesItem(row: ReportItem, query: InventoryReportQuery) {
     return (
         (!query.itemId || row.itemId === query.itemId) &&
         (!query.itemType || row.itemType === query.itemType) &&
-        (!query.brandId || row.brandId === query.brandId)
+        (!query.labelItemId || row.labelItemId === query.labelItemId)
     );
 }
 /** Exact quantities, with one bucket per primary UOM; no cross-unit grand total. */
@@ -159,7 +159,7 @@ export function buildInventoryReport(
             [
                 row.sku,
                 row.itemName,
-                row.brandName,
+                row.labelItemName,
                 row.locationCode,
                 row.locationName,
                 row.lotNumber,
