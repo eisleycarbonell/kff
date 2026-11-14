@@ -26,7 +26,6 @@ import * as CustomerService from './modules/customers/customer.service.ts';
 import * as InventoryMovementService from './modules/inventory-movements/inventory-movement.service.ts';
 import * as SalesOrderService from './modules/sales-orders/sales-order.service.ts';
 import * as DeliveryOrderService from './modules/delivery-orders/delivery-order.service.ts';
-import * as BrandService from './modules/brands/brand.service.ts';
 import * as FormulaService from './modules/packing-formulas/packing-formula.service.ts';
 import * as InventoryReportService from './modules/inventory-reports/inventory-report.service.ts';
 
@@ -55,7 +54,6 @@ const app = createApp({
     customerService: CustomerService,
     salesOrderService: SalesOrderService,
     deliveryOrderService: DeliveryOrderService,
-    brandService: BrandService,
     formulaService: FormulaService,
     inventoryReportService: InventoryReportService,
 });

@@ -1,5 +1,12 @@
 # KFF documentation compliance audit
 
+Current update (14 November 2026): this file preserves the historical review.
+Brands has since been retired and replaced by finished-product label-material
+selection. Customer PO references and advisory BOM material planning are now
+implemented. Use [the canonical system flow](system-flow.md) and
+[the module demo guide](module-demo-guide.md) for current behavior; earlier
+findings and code paths below describe their original review date.
+
 Review date: 7 November 2026. Scope: current repository source and available automated checks. Application behavior, database schema deployment, and client acceptance were not verified in a running environment. No application code or business specification was changed.
 
 ## Implementation follow-up

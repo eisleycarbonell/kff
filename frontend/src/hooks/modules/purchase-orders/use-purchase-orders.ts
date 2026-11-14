@@ -169,6 +169,8 @@ export function usePurchaseOrders() {
     const optionsError = optionsQuery.error
 
     function cacheOrder(saved: PurchaseOrderDetail) {
+        for (const key of ["receiving-options", "operational-reports", "dashboard"])
+            void client.invalidateQueries({ queryKey: [key] })
         const row = purchaseOrderSchema.parse(saved)
         client.setQueryData<PurchaseOrder[]>(queryKey, (current = []) =>
             current.some((order) => order.poId === saved.poId)

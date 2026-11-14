@@ -29,14 +29,19 @@ export const MOVEMENT_TYPES = [
     "Adjustment",
     "Sale",
 ] as const
-export const QC_STATUSES = ["Quarantine", "Approved", "Rejected", "Expired"] as const
+export const QC_STATUSES = [
+    "Quarantine",
+    "Approved",
+    "Rejected",
+    "Expired",
+] as const
 const id = z.int().positive().max(2147483647)
 const decimal = z.string().regex(/^-?\d+(?:\.\d{1,4})?$/)
 export type ReportFilters = {
     report: ReportType
     itemId?: number
     locationId?: number
-    brandId?: number
+    labelItemId?: number
     itemType?: (typeof ITEM_TYPES)[number]
     qcStatus?: (typeof QC_STATUSES)[number]
     q?: string
@@ -54,8 +59,8 @@ export const reportRowSchema = z.object({
     sku: z.string(),
     itemName: z.string(),
     itemType: z.enum(ITEM_TYPES),
-    brandId: id.nullable(),
-    brandName: z.string().nullable(),
+    labelItemId: id.nullable(),
+    labelItemName: z.string().nullable(),
     primaryUomId: id,
     primaryUomName: z.string(),
     isActive: z.boolean(),
@@ -89,7 +94,7 @@ export const reportSchema = z.object({
         report: z.enum(REPORT_TYPES),
         itemId: id.optional(),
         locationId: id.optional(),
-        brandId: id.optional(),
+        labelItemId: id.optional(),
         itemType: z.enum(ITEM_TYPES).optional(),
         qcStatus: z.enum(QC_STATUSES).optional(),
         q: z.string().optional(),
@@ -122,8 +127,10 @@ export const reportSchema = z.object({
 })
 export const reportOptionsSchema = z.object({
     items: z.array(z.object({ itemId: id, sku: z.string(), name: z.string() })),
-    locations: z.array(z.object({ locationId: id, code: z.string(), name: z.string() })),
-    brands: z.array(z.object({ brandId: id, name: z.string() })),
+    locations: z.array(
+        z.object({ locationId: id, code: z.string(), name: z.string() }),
+    ),
+    labels: z.array(z.object({ labelItemId: id, name: z.string() })),
 })
 export type InventoryReport = z.output<typeof reportSchema>
 export type InventoryReportRow = z.output<typeof reportRowSchema>
@@ -136,8 +143,11 @@ export function reportQuery(filters: ReportFilters) {
 }
 export function decimalUnits(value: string): bigint {
     const negative = value.startsWith("-")
-    const [whole, fraction = ""] = (negative ? value.slice(1) : value).split(".")
-    const result = BigInt(whole) * BigInt(10000) + BigInt(fraction.padEnd(4, "0"))
+    const [whole, fraction = ""] = (negative ? value.slice(1) : value).split(
+        ".",
+    )
+    const result =
+        BigInt(whole) * BigInt(10000) + BigInt(fraction.padEnd(4, "0"))
     return negative ? -result : result
 }
 export function reportCsv(report: InventoryReport, rows: InventoryReportRow[]) {
@@ -150,7 +160,7 @@ export function reportCsv(report: InventoryReport, rows: InventoryReportRow[]) {
             "SKU",
             "Item",
             "Type",
-            "Brand",
+            "Labels",
             "Primary UOM",
             "Location code",
             "Location",
@@ -176,7 +186,7 @@ export function reportCsv(report: InventoryReport, rows: InventoryReportRow[]) {
             row.sku,
             row.itemName,
             row.itemType,
-            row.brandName ?? "",
+            row.labelItemName ?? "",
             row.primaryUomName,
             row.locationCode ?? "",
             row.locationName ?? "",

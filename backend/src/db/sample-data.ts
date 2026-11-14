@@ -2,7 +2,6 @@ import { sql } from 'drizzle-orm';
 import { db } from './index.ts';
 import {
     roles,
-    brands,
     users,
     uomClasses,
     uoms,
@@ -110,50 +109,18 @@ async function populateSampleData(tx: Transaction, now: Date, passwordHash: stri
     if (!admin) throw new Error('The sample administrator was not created.');
     const actor = admin.userId;
     const maker = userRows.find((u) => u.email === 'warehouse@spice.local')!.userId;
-    await tx
-        .insert(companySettings)
-        .values({
-            settingsId: 1,
-            companyName: 'KFF Sample Trading & Packing',
-            currencyCode: 'PHP',
-            defaultReorderLevel: '10.0000',
-            expiryWarningDays: 30,
-            createdBy: actor,
-            updatedBy: actor,
-        });
+    await tx.insert(companySettings).values({
+        settingsId: 1,
+        companyName: 'Kusina Filipino Food Trading & Packing',
+        currencyCode: 'PHP',
+        defaultReorderLevel: '10.0000',
+        expiryWarningDays: 30,
+        createdBy: actor,
+        updatedBy: actor,
+    });
     const audit = { createdBy: actor, updatedBy: actor, createdAt: day(-40), updatedAt: day(-1) };
     await tx.update(roles).set({ createdBy: actor, updatedBy: actor });
     await tx.update(users).set({ createdBy: actor, updatedBy: actor });
-    const brandRows = await tx
-        .insert(brands)
-        .values([
-            {
-                code: 'SAMPLE-KFF',
-                name: 'Sample KFF Spices',
-                description: 'Spice and seasoning products.',
-                ...audit,
-            },
-            {
-                code: 'SAMPLE-PANTRY',
-                name: 'Sample KFF Pantry',
-                description: 'Pantry and preserved food products.',
-                ...audit,
-            },
-            {
-                code: 'SAMPLE-ARCHIVE',
-                name: 'Sample Archived Brand',
-                description: 'Inactive brand retained for reference.',
-                isActive: false,
-                ...audit,
-            },
-        ])
-        .returning();
-    const brandFor = (code: string) =>
-        brandRows.find(
-            (row) =>
-                row.code ===
-                (['NATA', 'KAONG', 'NOODLES'].includes(code) ? 'SAMPLE-PANTRY' : 'SAMPLE-KFF'),
-        )!.brandId;
     const [mass, count] = await tx
         .insert(uomClasses)
         .values([
@@ -217,16 +184,16 @@ async function populateSampleData(tx: Transaction, now: Date, passwordHash: stri
         .insert(customers)
         .values([
             {
-                name: 'Sample Kusina Restaurant',
+                name: 'Lutong Bahay Restaurant',
                 contactName: 'Liza Santos',
-                email: 'kusina@example.test',
+                email: 'kusina@kff-demo.example',
                 address: 'Manila',
                 ...audit,
             },
             {
-                name: 'Sample Neighborhood Grocery',
+                name: 'Barangay Fresh Mart',
                 contactName: 'Ben Cruz',
-                email: 'grocery@example.test',
+                email: 'grocery@kff-demo.example',
                 address: 'Quezon City',
                 ...audit,
             },
@@ -235,24 +202,24 @@ async function populateSampleData(tx: Transaction, now: Date, passwordHash: stri
     const [spiceSupplier, pantrySupplier, packagingSupplier] = await tx
         .insert(suppliers)
         .values([
-            { name: 'Sample Philippine Spice Trading', email: 'spices@example.test', ...audit },
-            { name: 'Sample Pantry Ingredients', email: 'pantry@example.test', ...audit },
-            { name: 'Sample Food Packaging Supplies', email: 'packaging@example.test', ...audit },
+            { name: 'Davao Harvest Spice Trading', email: 'spices@kff-demo.example', ...audit },
+            { name: 'Laguna Pantry Ingredients', email: 'pantry@kff-demo.example', ...audit },
+            { name: 'Metro Manila Food Packaging', email: 'packaging@kff-demo.example', ...audit },
         ])
         .returning();
     const [countReason, expiredReason] = await tx
         .insert(scrapReasonCodes)
         .values([
             {
-                codeName: 'Sample Physical Count',
+                codeName: 'Physical Count Correction',
                 category: 'Inventory Adjustment',
-                description: 'Test counted-stock correction',
+                description: 'Verified difference between physical count and recorded stock',
                 ...audit,
             },
             {
-                codeName: 'Sample Expired Stock',
+                codeName: 'Expired Stock Disposal',
                 category: 'Expired',
-                description: 'Test expired-stock disposal',
+                description: 'Permanent removal of expired goods',
                 ...audit,
             },
         ])
@@ -286,7 +253,7 @@ async function populateSampleData(tx: Transaction, now: Date, passwordHash: stri
         .insert(purchaseOrders)
         .values([
             {
-                poNumber: 'SAMPLE-PO-SPICES',
+                poNumber: 'PO-2026-1001',
                 supplierId: spiceSupplier!.supplierId,
                 status: 'Completed',
                 orderDate: day(-35),
@@ -294,7 +261,7 @@ async function populateSampleData(tx: Transaction, now: Date, passwordHash: stri
                 ...audit,
             },
             {
-                poNumber: 'SAMPLE-PO-PANTRY',
+                poNumber: 'PO-2026-1002',
                 supplierId: pantrySupplier!.supplierId,
                 status: 'Completed',
                 orderDate: day(-35),
@@ -302,7 +269,7 @@ async function populateSampleData(tx: Transaction, now: Date, passwordHash: stri
                 ...audit,
             },
             {
-                poNumber: 'SAMPLE-PO-PACKAGING',
+                poNumber: 'PO-2026-1003',
                 supplierId: packagingSupplier!.supplierId,
                 status: 'Completed',
                 orderDate: day(-35),
@@ -310,7 +277,7 @@ async function populateSampleData(tx: Transaction, now: Date, passwordHash: stri
                 ...audit,
             },
             {
-                poNumber: 'SAMPLE-PO-QC',
+                poNumber: 'PO-2026-1004',
                 supplierId: spiceSupplier!.supplierId,
                 status: 'Completed',
                 orderDate: day(-20),
@@ -362,7 +329,7 @@ async function populateSampleData(tx: Transaction, now: Date, passwordHash: stri
         const [lot] = await tx
             .insert(lots)
             .values({
-                lotNumber: `SAMPLE-LOT-${code}`,
+                lotNumber: `LOT-${code}`,
                 supplierLotNumber: `SUP-${code}`,
                 itemId: item.itemId,
                 poLineId: line!.poLineId,
@@ -381,7 +348,7 @@ async function populateSampleData(tx: Transaction, now: Date, passwordHash: stri
             qtyChange: quantity,
             transactionType: 'Receive',
             poLineId: line!.poLineId,
-            referenceId: 'SAMPLE-RECEIVING',
+            referenceId: 'RECEIVING',
             createdAt: day(receivedDay),
         });
         return lot!;
@@ -391,7 +358,7 @@ async function populateSampleData(tx: Transaction, now: Date, passwordHash: stri
         const [item] = await tx
             .insert(items)
             .values({
-                sku: `SAMPLE-PKG-${packaging.code}`,
+                sku: `PKG-${packaging.code}`,
                 name: packaging.name,
                 itemType: 'Packaging - Hardware',
                 primaryUomId: pc!.uomId,
@@ -416,7 +383,7 @@ async function populateSampleData(tx: Transaction, now: Date, passwordHash: stri
             .insert(items)
             .values([
                 {
-                    sku: `SAMPLE-RM-${product.code}`,
+                    sku: `RM-${product.code}`,
                     name: `${product.name} Bulk`,
                     itemType: 'Raw Material - Bulk',
                     primaryUomId: kg!.uomId,
@@ -426,7 +393,7 @@ async function populateSampleData(tx: Transaction, now: Date, passwordHash: stri
                     ...audit,
                 },
                 {
-                    sku: `SAMPLE-LBL-${product.code}`,
+                    sku: `LBL-${product.code}`,
                     name: `${product.name} ${product.grams}g Label`,
                     itemType: 'Packaging - Label',
                     primaryUomId: pc!.uomId,
@@ -471,8 +438,8 @@ async function populateSampleData(tx: Transaction, now: Date, passwordHash: stri
         const [finished] = await tx
             .insert(items)
             .values({
-                sku: `SAMPLE-FG-${product.code}-${product.grams}`,
-                brandId: brandFor(product.code),
+                sku: `FG-${product.code}-${product.grams}`,
+                labelItemId: label!.itemId,
                 name: `${product.name} ${product.grams}g`,
                 itemType: 'Finished Good',
                 primaryUomId: pc!.uomId,
@@ -499,22 +466,20 @@ async function populateSampleData(tx: Transaction, now: Date, passwordHash: stri
                 ...audit,
             })),
         ]);
-        await tx
-            .insert(itemPackaging)
-            .values({
-                itemId: finished!.itemId,
-                uomId: box!.uomId,
-                baseQty: '12.0000',
-                barcode: 'SAMPLE-' + product.code + '-BOX',
-                grossWeightG: String(product.grams * 12),
-                ...audit,
-            });
+        await tx.insert(itemPackaging).values({
+            itemId: finished!.itemId,
+            uomId: box!.uomId,
+            baseQty: '12.0000',
+            barcode: product.code + '-BOX',
+            grossWeightG: String(product.grams * 12),
+            ...audit,
+        });
     }
 
     // Low Stock must include active catalog items that have never had a lot or receipt.
     await tx.insert(items).values({
-        sku: 'SAMPLE-RM-REPORT-ZERO',
-        name: 'Sample Unstocked Report Material',
+        sku: 'RM-ONION',
+        name: 'Onion Powder Bulk',
         itemType: 'Raw Material - Bulk',
         primaryUomId: kg!.uomId,
         unitCost: '0.0000',
@@ -533,7 +498,7 @@ async function populateSampleData(tx: Transaction, now: Date, passwordHash: stri
         const [order] = await tx
             .insert(packingOrders)
             .values({
-                packingOrderNumber: `SAMPLE-PK-${code}-${status === 'Completed' ? 'DONE' : 'OPEN'}`,
+                packingOrderNumber: `PK-${code}-${status === 'Completed' ? 'DONE' : 'OPEN'}`,
                 itemId: finished.itemId,
                 targetQty: String(output),
                 actualQty: completed ? String(output) : '0',
@@ -543,7 +508,7 @@ async function populateSampleData(tx: Transaction, now: Date, passwordHash: stri
                 scheduledDate: date(completed ? -12 : 1),
                 startedAt: completed ? day(-12) : status === 'In Progress' ? day(-1) : null,
                 completedAt: completed ? day(-11) : null,
-                notes: 'Testing only: saved material snapshot.',
+                notes: 'Retail replenishment run; materials use the saved packing formula.',
                 ...audit,
             })
             .returning();
@@ -596,7 +561,7 @@ async function populateSampleData(tx: Transaction, now: Date, passwordHash: stri
             const [lot] = await tx
                 .insert(lots)
                 .values({
-                    lotNumber: `SAMPLE-FG-${code}`,
+                    lotNumber: `FG-${code}`,
                     itemId: finished.itemId,
                     packingOrderId: order!.packingOrderId,
                     manufactureDate: date(-11),
@@ -682,13 +647,13 @@ async function populateSampleData(tx: Transaction, now: Date, passwordHash: stri
         qtyChange: '-0.5000',
         transactionType: 'Adjustment',
         reasonId: countReason!.reasonId,
-        referenceId: 'SAMPLE-COUNT-001',
+        referenceId: 'COUNT-001',
         createdAt: day(-2),
     });
     const [expiredLot] = await tx
         .select()
         .from(lots)
-        .where(sql`${lots.lotNumber} = 'SAMPLE-LOT-CHILI-EXPIRED'`);
+        .where(sql`${lots.lotNumber} = 'LOT-CHILI-EXPIRED'`);
     post({
         itemId: expiredLot!.itemId,
         lotId: expiredLot!.lotId,
@@ -696,7 +661,7 @@ async function populateSampleData(tx: Transaction, now: Date, passwordHash: stri
         qtyChange: '-0.2500',
         transactionType: 'Scrap',
         reasonId: expiredReason!.reasonId,
-        referenceId: 'SAMPLE-SCRAP-001',
+        referenceId: 'SCRAP-001',
         createdAt: day(0),
     });
 
@@ -729,14 +694,14 @@ async function populateSampleData(tx: Transaction, now: Date, passwordHash: stri
         const [order] = await tx
             .insert(stockTransfers)
             .values({
-                transferNumber: `SAMPLE-TR-${transfer.code}`,
+                transferNumber: `TR-${transfer.code}`,
                 sourceLocationId: location('WH-FG'),
                 destinationLocationId: location(transfer.destination),
                 status: transfer.status,
                 requestedAt: day(-8),
                 dispatchedAt: shipped ? day(-7) : null,
                 receivedAt: transfer.status === 'Completed' ? day(-5) : null,
-                notes: 'Testing only: dispatch through In Transit.',
+                notes: 'Branch replenishment; confirm received quantities after arrival.',
                 ...audit,
             })
             .returning();
@@ -793,11 +758,14 @@ async function populateSampleData(tx: Transaction, now: Date, passwordHash: stri
             .insert(salesOrders)
             .values({
                 salesOrderNumber: number,
+                customerPoNumber:
+                    (customerId === restaurant!.customerId ? 'LB-PO-' : 'BFM-PO-') +
+                    number.replace('SO-', ''),
                 customerId,
                 status,
                 orderDate: date(-6),
                 requestedDeliveryDate: date(status === 'Completed' ? -2 : 2),
-                notes: 'Testing only: customer order and lot-level delivery examples.',
+                notes: 'Customer purchase order for retail packs; deliver against the confirmed order.',
                 ...audit,
                 createdAt: day(-6),
             })
@@ -834,7 +802,7 @@ async function populateSampleData(tx: Transaction, now: Date, passwordHash: stri
                     deliveryDate: date(completed ? -2 : shipment.status === 'In Transit' ? 1 : 2),
                     dispatchedAt: dispatched ? day(-3) : null,
                     completedAt: completed ? day(-2) : null,
-                    notes: 'Testing only: drafts allocate demand; dispatch protects stock in transit.',
+                    notes: 'Deliver selected product lots to the customer delivery address.',
                     ...audit,
                     createdAt: day(-4),
                 })
@@ -901,12 +869,12 @@ async function populateSampleData(tx: Transaction, now: Date, passwordHash: stri
             }
         }
     };
-    await sale('SAMPLE-SO-DRAFT', 'Draft', restaurant!.customerId, [
-        { code: 'GARLIC', quantity: 24, price: '25.0000' },
-        { code: 'PEPPER', quantity: 12, price: '45.0000' },
+    await sale('SO-2026-0001', 'Draft', restaurant!.customerId, [
+        { code: 'GARLIC', quantity: 1500, price: '25.0000' },
+        { code: 'PEPPER', quantity: 1000, price: '45.0000' },
     ]);
     await sale(
-        'SAMPLE-SO-CONFIRMED',
+        'SO-2026-0002',
         'Confirmed',
         grocery!.customerId,
         [
@@ -915,7 +883,7 @@ async function populateSampleData(tx: Transaction, now: Date, passwordHash: stri
         ],
         [
             {
-                number: 'SAMPLE-DO-DRAFT',
+                number: 'DO-2026-0001',
                 status: 'Draft',
                 products: [
                     { code: 'GARLIC', quantity: 20 },
@@ -923,14 +891,14 @@ async function populateSampleData(tx: Transaction, now: Date, passwordHash: stri
                 ],
             },
             {
-                number: 'SAMPLE-DO-TRANSIT',
+                number: 'DO-2026-0002',
                 status: 'In Transit',
                 products: [{ code: 'GARLIC', quantity: 20 }],
             },
         ],
     );
     await sale(
-        'SAMPLE-SO-PARTIAL',
+        'SO-2026-0003',
         'Partially Delivered',
         restaurant!.customerId,
         [
@@ -939,7 +907,7 @@ async function populateSampleData(tx: Transaction, now: Date, passwordHash: stri
         ],
         [
             {
-                number: 'SAMPLE-DO-PARTIAL-COMPLETED',
+                number: 'DO-2026-0003',
                 status: 'Completed',
                 products: [
                     { code: 'PEPPER', quantity: 12 },
@@ -947,7 +915,7 @@ async function populateSampleData(tx: Transaction, now: Date, passwordHash: stri
                 ],
             },
             {
-                number: 'SAMPLE-DO-PARTIAL-DRAFT',
+                number: 'DO-2026-0004',
                 status: 'Draft',
                 products: [
                     { code: 'PEPPER', quantity: 6 },
@@ -957,7 +925,7 @@ async function populateSampleData(tx: Transaction, now: Date, passwordHash: stri
         ],
     );
     await sale(
-        'SAMPLE-SO-COMPLETED',
+        'SO-2026-0004',
         'Completed',
         grocery!.customerId,
         [
@@ -966,7 +934,7 @@ async function populateSampleData(tx: Transaction, now: Date, passwordHash: stri
         ],
         [
             {
-                number: 'SAMPLE-DO-COMPLETED',
+                number: 'DO-2026-0005',
                 status: 'Completed',
                 products: [
                     { code: 'CAYENNE', quantity: 10 },
@@ -976,13 +944,13 @@ async function populateSampleData(tx: Transaction, now: Date, passwordHash: stri
         ],
     );
     await sale(
-        'SAMPLE-SO-CANCELLED',
+        'SO-2026-0005',
         'Cancelled',
         restaurant!.customerId,
         [{ code: 'NOODLES', quantity: 15, price: '35.0000' }],
         [
             {
-                number: 'SAMPLE-DO-CANCELLED',
+                number: 'DO-2026-0006',
                 status: 'Cancelled',
                 products: [{ code: 'NOODLES', quantity: 10 }],
             },
@@ -990,14 +958,14 @@ async function populateSampleData(tx: Transaction, now: Date, passwordHash: stri
     );
 
     for (const pending of [
-        { number: 'SAMPLE-PO-SENT', status: 'Sent' as const, received: '0', ordered: '50' },
+        { number: 'PO-2026-1005', status: 'Sent' as const, received: '0', ordered: '50' },
         {
-            number: 'SAMPLE-PO-PARTIAL',
+            number: 'PO-2026-1006',
             status: 'Partially Received' as const,
             received: '10',
             ordered: '30',
         },
-        { number: 'SAMPLE-PO-DRAFT', status: 'Draft' as const, received: '0', ordered: '20' },
+        { number: 'PO-2026-1007', status: 'Draft' as const, received: '0', ordered: '20' },
     ]) {
         const [order] = await tx
             .insert(purchaseOrders)
@@ -1026,7 +994,7 @@ async function populateSampleData(tx: Transaction, now: Date, passwordHash: stri
             const [lot] = await tx
                 .insert(lots)
                 .values({
-                    lotNumber: 'SAMPLE-LOT-GARLIC-PARTIAL',
+                    lotNumber: 'LOT-GARLIC-PARTIAL',
                     itemId: garlic.itemId,
                     poLineId: line!.poLineId,
                     manufactureDate: date(-15),
@@ -1083,44 +1051,42 @@ async function populateSampleData(tx: Transaction, now: Date, passwordHash: stri
                     ? {
                           reviewedBy: actor,
                           reviewedAt: now,
-                          reviewNote: 'Independent sample review: unchanged count confirmed.',
+                          reviewNote: 'Independent review: unchanged physical count confirmed.',
                       }
                     : {}),
             })
             .returning();
-        await tx
-            .insert(reviewEvents)
-            .values([
-                {
-                    requestId: row!.requestId,
-                    action: 'create',
-                    note: notes,
-                    actorId: maker,
-                    createdAt: now,
-                },
-                ...(status !== 'Draft'
-                    ? [
-                          {
-                              requestId: row!.requestId,
-                              action: 'submit',
-                              note: 'Prepared for independent review.',
-                              actorId: maker,
-                              createdAt: now,
-                          },
-                      ]
-                    : []),
-                ...(status === 'Approved'
-                    ? [
-                          {
-                              requestId: row!.requestId,
-                              action: 'approve',
-                              note: 'Independent sample review: unchanged count confirmed.',
-                              actorId: actor,
-                              createdAt: now,
-                          },
-                      ]
-                    : []),
-            ]);
+        await tx.insert(reviewEvents).values([
+            {
+                requestId: row!.requestId,
+                action: 'create',
+                note: notes,
+                actorId: maker,
+                createdAt: now,
+            },
+            ...(status !== 'Draft'
+                ? [
+                      {
+                          requestId: row!.requestId,
+                          action: 'submit',
+                          note: 'Prepared for independent review.',
+                          actorId: maker,
+                          createdAt: now,
+                      },
+                  ]
+                : []),
+            ...(status === 'Approved'
+                ? [
+                      {
+                          requestId: row!.requestId,
+                          action: 'approve',
+                          note: 'Independent sample review: unchanged count confirmed.',
+                          actorId: actor,
+                          createdAt: now,
+                      },
+                  ]
+                : []),
+        ]);
         return row!.requestId;
     }
     const garlicLot = purchasedLots.get(garlic.itemId)!;
@@ -1129,7 +1095,7 @@ async function populateSampleData(tx: Transaction, now: Date, passwordHash: stri
     );
     for (const status of ['Draft', 'Approved'] as const) {
         const requestId = await request(
-            'SAMPLE-COUNT-SESSION-' + status.toUpperCase(),
+            'COUNT-SESSION-' + status.toUpperCase(),
             'Count',
             status,
             'Physical count observation for garlic; no ledger movement for unchanged counts.',
@@ -1137,106 +1103,94 @@ async function populateSampleData(tx: Transaction, now: Date, passwordHash: stri
         await tx
             .insert(countSessions)
             .values({ requestId, locationId: location('WH-RM'), reasonId: countReason!.reasonId });
-        await tx
-            .insert(countObservations)
-            .values({
-                requestId,
-                lotId: garlicLot.lotId,
-                expectedQty: garlicBalance,
-                countedQty: status === 'Approved' ? garlicBalance : null,
-                observedBy: status === 'Approved' ? maker : null,
-                observedAt: status === 'Approved' ? now : null,
-            });
+        await tx.insert(countObservations).values({
+            requestId,
+            lotId: garlicLot.lotId,
+            expectedQty: garlicBalance,
+            countedQty: status === 'Approved' ? garlicBalance : null,
+            observedBy: status === 'Approved' ? maker : null,
+            observedAt: status === 'Approved' ? now : null,
+        });
     }
     const scrapId = await request(
-        'SAMPLE-SCRAP-REVIEW',
+        'SCRAP-REVIEW',
         'Scrap',
         'Submitted',
         'Dispose of a measured portion of expired chili after independent review.',
     );
-    await tx
-        .insert(inventoryDisposals)
-        .values({
-            requestId: scrapId,
-            lotId: expiredLot!.lotId,
-            sourceLocationId: location('QC-HOLD'),
-            reasonId: expiredReason!.reasonId,
-            quantity: '0.2500',
-            expectedQty: quantityString(
-                balances.get(expiredLot!.lotId + ':' + location('QC-HOLD'))!.units,
-            ),
-        });
+    await tx.insert(inventoryDisposals).values({
+        requestId: scrapId,
+        lotId: expiredLot!.lotId,
+        sourceLocationId: location('QC-HOLD'),
+        reasonId: expiredReason!.reasonId,
+        quantity: '0.2500',
+        expectedQty: quantityString(
+            balances.get(expiredLot!.lotId + ':' + location('QC-HOLD'))!.units,
+        ),
+    });
     const [qcLot] = await tx
         .select()
         .from(lots)
-        .where(sql`${lots.lotNumber} = 'SAMPLE-LOT-GARLIC-QC'`);
+        .where(sql`${lots.lotNumber} = 'LOT-GARLIC-QC'`);
     const qcId = await request(
-        'SAMPLE-QC-REVIEW',
+        'QC-REVIEW',
         'QC',
         'Submitted',
         'Laboratory evidence supports approving quarantined garlic; release storage separately.',
     );
-    await tx
-        .insert(qcDecisions)
-        .values({
-            requestId: qcId,
-            lotId: qcLot!.lotId,
-            previousStatus: 'Quarantine',
-            newStatus: 'Approved',
-        });
+    await tx.insert(qcDecisions).values({
+        requestId: qcId,
+        lotId: qcLot!.lotId,
+        previousStatus: 'Quarantine',
+        newStatus: 'Approved',
+    });
     const dispositionId = await request(
-        'SAMPLE-DISPOSITION-DRAFT',
+        'DISPOSITION-DRAFT',
         'Disposition',
         'Draft',
         'Move expired chili into the scrap holding location; this does not dispose of stock.',
     );
-    await tx
-        .insert(inventoryDisposals)
-        .values({
-            requestId: dispositionId,
-            lotId: expiredLot!.lotId,
-            sourceLocationId: location('QC-HOLD'),
-            destinationLocationId: location('SCRAP'),
-            reasonId: expiredReason!.reasonId,
-            quantity: '0.5000',
-            expectedQty: quantityString(
-                balances.get(expiredLot!.lotId + ':' + location('QC-HOLD'))!.units,
-            ),
-        });
+    await tx.insert(inventoryDisposals).values({
+        requestId: dispositionId,
+        lotId: expiredLot!.lotId,
+        sourceLocationId: location('QC-HOLD'),
+        destinationLocationId: location('SCRAP'),
+        reasonId: expiredReason!.reasonId,
+        quantity: '0.5000',
+        expectedQty: quantityString(
+            balances.get(expiredLot!.lotId + ':' + location('QC-HOLD'))!.units,
+        ),
+    });
     const revisionId = await request(
-        'SAMPLE-FORMULA-REVIEW',
+        'FORMULA-REVIEW',
         'Formula',
         'Submitted',
         'Release revision one of the garlic formula for future packing orders.',
     );
-    await tx
-        .insert(formulaRevisions)
-        .values({
-            requestId: revisionId,
-            itemId: finishedItems.get('GARLIC')!.itemId,
-            revisionNumber: 1,
-            effectiveDate: date(0),
-            changeType: 'Replace',
-        });
+    await tx.insert(formulaRevisions).values({
+        requestId: revisionId,
+        itemId: finishedItems.get('GARLIC')!.itemId,
+        revisionNumber: 1,
+        effectiveDate: date(0),
+        changeType: 'Replace',
+    });
     const product = sampleProducts.find((p) => p.code === 'GARLIC')!;
-    await tx
-        .insert(formulaRevisionMaterials)
-        .values([
-            {
-                requestId: revisionId,
-                componentItemId: garlic.itemId,
-                quantity: quantityString(BigInt(product.grams) * 10n),
-                uomId: kg!.uomId,
-            },
-            ...[
-                componentItems.get(product.pack)!,
-                componentItems.get('LABEL-GARLIC')!,
-                componentItems.get('SEAL')!,
-            ].map((item) => ({
-                requestId: revisionId,
-                componentItemId: item.itemId,
-                quantity: '1.000000',
-                uomId: pc!.uomId,
-            })),
-        ]);
+    await tx.insert(formulaRevisionMaterials).values([
+        {
+            requestId: revisionId,
+            componentItemId: garlic.itemId,
+            quantity: quantityString(BigInt(product.grams) * 10n),
+            uomId: kg!.uomId,
+        },
+        ...[
+            componentItems.get(product.pack)!,
+            componentItems.get('LABEL-GARLIC')!,
+            componentItems.get('SEAL')!,
+        ].map((item) => ({
+            requestId: revisionId,
+            componentItemId: item.itemId,
+            quantity: '1.000000',
+            uomId: pc!.uomId,
+        })),
+    ]);
 }

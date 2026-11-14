@@ -45,6 +45,7 @@ type SalesOrderTableProps = {
     orders: SalesOrder[]
     canManage: boolean
     onAdd: () => void
+    onPlan: (order: SalesOrder) => void
     onView: (order: SalesOrder) => void
     onEdit: (order: SalesOrder) => void
     onAction: (order: SalesOrder, action: "confirm" | "cancel") => void
@@ -55,12 +56,20 @@ export const SalesOrderTable = memo(function SalesOrderTable({
     canManage,
     onAdd,
     onView,
+    onPlan,
     onEdit,
     onAction,
 }: SalesOrderTableProps) {
     const columns = useMemo(
-        () => createSalesOrderColumns({ canManage, onView, onEdit, onAction }),
-        [canManage, onView, onEdit, onAction],
+        () =>
+            createSalesOrderColumns({
+                canManage,
+                onView,
+                onPlan,
+                onEdit,
+                onAction,
+            }),
+        [canManage, onView, onPlan, onEdit, onAction],
     )
     const table = useTable({
         features: salesOrderTableFeatures,
@@ -75,7 +84,9 @@ export const SalesOrderTable = memo(function SalesOrderTable({
         },
     })
     const filteredRows = table.getFilteredRowModel().rows
-    const hasFilters = Boolean(table.state.globalFilter) || table.state.columnFilters.length > 0
+    const hasFilters =
+        Boolean(table.state.globalFilter) ||
+        table.state.columnFilters.length > 0
     const { pageIndex, pageSize } = table.state.pagination
     const pageCount = Math.max(table.getPageCount(), 1)
 
@@ -109,9 +120,11 @@ export const SalesOrderTable = memo(function SalesOrderTable({
                                     }
                                     aria-sort={
                                         header.column.getCanSort()
-                                            ? header.column.getIsSorted() === "asc"
+                                            ? header.column.getIsSorted() ===
+                                              "asc"
                                                 ? "ascending"
-                                                : header.column.getIsSorted() === "desc"
+                                                : header.column.getIsSorted() ===
+                                                    "desc"
                                                   ? "descending"
                                                   : "none"
                                             : undefined
@@ -125,9 +138,11 @@ export const SalesOrderTable = memo(function SalesOrderTable({
                                             onClick={header.column.getToggleSortingHandler()}
                                         >
                                             <table.FlexRender header={header} />
-                                            {header.column.getIsSorted() === "asc" ? (
+                                            {header.column.getIsSorted() ===
+                                            "asc" ? (
                                                 <ArrowUp className="size-3.5" />
-                                            ) : header.column.getIsSorted() === "desc" ? (
+                                            ) : header.column.getIsSorted() ===
+                                              "desc" ? (
                                                 <ArrowDown className="size-3.5" />
                                             ) : (
                                                 <ArrowUpDown className="size-3.5 text-muted-foreground" />
@@ -147,7 +162,9 @@ export const SalesOrderTable = memo(function SalesOrderTable({
                             <TableRow
                                 key={row.id}
                                 className="hover:bg-primary/5 data-[state=selected]:bg-primary/10"
-                                data-state={row.getIsSelected() ? "selected" : undefined}
+                                data-state={
+                                    row.getIsSelected() ? "selected" : undefined
+                                }
                             >
                                 {row.getVisibleCells().map((cell) => (
                                     <TableCell
@@ -188,7 +205,9 @@ export const SalesOrderTable = memo(function SalesOrderTable({
                                     className="mt-4"
                                     onClick={hasFilters ? clearFilters : onAdd}
                                 >
-                                    {hasFilters ? "Clear filters" : "Create sales order"}
+                                    {hasFilters
+                                        ? "Clear filters"
+                                        : "Create sales order"}
                                 </Button>
                             </TableCell>
                         </TableRow>
@@ -204,7 +223,9 @@ export const SalesOrderTable = memo(function SalesOrderTable({
                 </p>
                 <div className="flex flex-wrap items-center gap-4">
                     <div className="flex items-center gap-2 text-sm">
-                        <span className="text-muted-foreground">Rows per page</span>
+                        <span className="text-muted-foreground">
+                            Rows per page
+                        </span>
                         <Select
                             items={pageSizeItems}
                             value={String(pageSize)}
@@ -212,12 +233,18 @@ export const SalesOrderTable = memo(function SalesOrderTable({
                                 if (value) table.setPageSize(Number(value))
                             }}
                         >
-                            <SelectTrigger aria-label="Rows per page" className="w-16">
+                            <SelectTrigger
+                                aria-label="Rows per page"
+                                className="w-16"
+                            >
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
                                 {pageSizeItems.map((item) => (
-                                    <SelectItem key={item.value} value={item.value}>
+                                    <SelectItem
+                                        key={item.value}
+                                        value={item.value}
+                                    >
                                         {item.label}
                                     </SelectItem>
                                 ))}

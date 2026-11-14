@@ -1,4 +1,5 @@
 "use client"
+import { invalidateInventoryAvailability } from "@/lib/inventory-query-cache"
 
 import { useCallback } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -101,6 +102,7 @@ export function useLots() {
             return updateLot(lot.lotId, toLotInput(values, lot))
         },
         onSuccess: (saved) => {
+            void invalidateInventoryAvailability(client)
             const row = lotSchema.parse(saved)
             client.setQueryData<Lot[]>(queryKey, (current = []) =>
                 current.map((lot) => (lot.lotId === saved.lotId ? row : lot)),

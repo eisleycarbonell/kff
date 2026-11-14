@@ -23,7 +23,7 @@ const fields = {
     name: z.string().trim().min(1).max(120),
     itemType: z.enum(ITEM_TYPES),
     primaryUomId: id,
-    brandId: id.nullable().optional(),
+    labelItemId: id.nullable().optional(),
     netWeightG: decimalSchema(8).nullable().optional(),
     shelfLifeDays: id.nullable().optional(),
     requiresQc: z.boolean(),

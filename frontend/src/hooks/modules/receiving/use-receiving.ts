@@ -1,4 +1,5 @@
 "use client"
+import { invalidateInventoryAvailability } from "@/lib/inventory-query-cache"
 
 import { useCallback, useEffect, useRef } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
@@ -78,6 +79,7 @@ export function useReceiving() {
             return recordReceipt(toReceivingInput(values))
         },
         onSuccess: (saved) => {
+            void invalidateInventoryAvailability(client)
             const receivedIds = new Set(saved.receipts.map((receipt) => receipt.transactionId))
             client.setQueryData<ReceivingReceipt[]>(queryKey, (current = []) => [
                 ...saved.receipts,
@@ -91,6 +93,7 @@ export function useReceiving() {
                 "purchase-order-options",
                 "suppliers",
                 "inventory-stocks",
+                "inventory-movements",
                 "inventory-reports",
                 "inventory-control-options",
                 "operational-reports",

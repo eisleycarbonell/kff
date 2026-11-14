@@ -4,6 +4,7 @@ import { validateRequest } from '../../middleware/validate-request.ts';
 import { createSalesOrderController, type SalesOrderService } from './sales-order.controller.ts';
 import {
     salesOrderIdRequestSchema,
+    salesOrderMaterialPlanRequestSchema,
     createSalesOrderRequestSchema,
     updateSalesOrderRequestSchema,
     salesOrderActionRequestSchema,
@@ -14,6 +15,11 @@ export function createSalesOrderRouter(service: SalesOrderService, authenticate:
     router.use(authenticate);
     router.get('/', controller.list);
     router.get('/options', controller.options);
+    router.get(
+        '/:id/material-plan',
+        validateRequest(salesOrderMaterialPlanRequestSchema),
+        controller.materialPlan,
+    );
     router.get('/:id', validateRequest(salesOrderIdRequestSchema), controller.get);
     router.use(requirePermission('canManageInventory'));
     router.post('/', validateRequest(createSalesOrderRequestSchema), controller.create);

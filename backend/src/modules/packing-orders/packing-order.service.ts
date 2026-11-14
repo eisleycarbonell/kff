@@ -213,7 +213,11 @@ async function packingLocations(database: Reader, ids: number[]) {
         assertPackingLocation(row.locationType);
     }
 }
-async function snapshot(database: Reader, input: PreviewPackingOrderInput, lock = false) {
+export async function packingMaterialSnapshot(
+    database: Reader,
+    input: PreviewPackingOrderInput,
+    lock = false,
+) {
     const productQuery = database
         .select({
             itemId: items.itemId,
@@ -384,7 +388,7 @@ async function eligibleStocks(
         .orderBy(asc(sql`coalesce(${lots.expirationDate}, '9999-12-31'::date)`), asc(lots.lotId));
 }
 export async function previewPackingOrder(input: PreviewPackingOrderInput, database: Reader = db) {
-    const saved = await snapshot(database, input);
+    const saved = await packingMaterialSnapshot(database, input);
     await packingLocations(database, [input.sourceLocationId]);
     const stocks = await eligibleStocks(
         database,
@@ -445,7 +449,7 @@ export async function createPackingOrder(
                 400,
                 'Select different material source and finished-goods destination locations.',
             );
-        const copied = await snapshot(tx, input, true);
+        const copied = await packingMaterialSnapshot(tx, input, true);
         await packingLocations(tx, [input.sourceLocationId, input.destinationLocationId]);
         const [created] = await tx
             .insert(packingOrders)

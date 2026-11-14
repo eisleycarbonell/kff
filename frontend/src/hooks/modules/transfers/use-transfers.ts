@@ -1,4 +1,5 @@
 "use client"
+import { invalidateInventoryAvailability } from "@/lib/inventory-query-cache"
 
 import { useCallback, useEffect, useRef } from "react"
 import { z } from "zod"
@@ -98,6 +99,7 @@ export function useTransfers() {
     })
     const refresh = useCallback(
         (saved: TransferDetail) => {
+            void invalidateInventoryAvailability(client)
             client.setQueryData<Transfer[]>([...TRANSFERS_QUERY_KEY, userId], (current = []) => {
                 const header = transferSchema.parse(saved)
                 return current.some((row) => row.transferId === saved.transferId)

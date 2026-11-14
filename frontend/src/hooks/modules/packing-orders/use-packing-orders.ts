@@ -1,4 +1,5 @@
 "use client"
+import { invalidateInventoryAvailability } from "@/lib/inventory-query-cache"
 
 import { useCallback, useRef } from "react"
 import { z } from "zod"
@@ -118,6 +119,7 @@ export function usePackingOrders(reservationsPage = false) {
     const loadError = activeQuery.error ?? session.error
     const refresh = useCallback(
         (saved: PackingDetail, completed = false) => {
+            void invalidateInventoryAvailability(client)
             client.setQueryData<PackingOrder[]>(
                 [...PACKING_ORDERS_QUERY_KEY, userId],
                 (current = []) => {

@@ -30,6 +30,7 @@ const statuses = [
 ]
 const labels: Record<string, string> = {
     customerName: "Customer",
+    customerPoNumber: "Customer PO",
     status: "Status",
     orderDate: "Order date",
     requestedDeliveryDate: "Requested delivery",
@@ -39,9 +40,18 @@ function exportOrders(orders: SalesOrder[]) {
     const escape = (value: string) =>
         `"${(/^[=+\-@\t\r]/.test(value) ? "'" : "") + value.replace(/"/g, '""')}"`
     const rows = [
-        ["Order number", "Customer", "Status", "Order date", "Requested delivery", "Order total"],
+        [
+            "Order number",
+            "Customer PO",
+            "Customer",
+            "Status",
+            "Order date",
+            "Requested delivery",
+            "Order total",
+        ],
         ...orders.map((order) => [
             order.salesOrderNumber,
+            order.customerPoNumber ?? "",
             order.customerName,
             order.status,
             order.orderDate,
@@ -50,9 +60,15 @@ function exportOrders(orders: SalesOrder[]) {
         ]),
     ]
     const url = URL.createObjectURL(
-        new Blob(["\uFEFF" + rows.map((row) => row.map(escape).join(",")).join("\r\n")], {
-            type: "text/csv;charset=utf-8;",
-        }),
+        new Blob(
+            [
+                "\uFEFF" +
+                    rows.map((row) => row.map(escape).join(",")).join("\r\n"),
+            ],
+            {
+                type: "text/csv;charset=utf-8;",
+            },
+        ),
     )
     const link = document.createElement("a")
     link.href = url
@@ -83,7 +99,7 @@ export function SalesOrderTableToolbar({
                 <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                     aria-label="Search sales orders"
-                    placeholder="Search orders or customers..."
+                    placeholder="Search orders, customer POs..."
                     value={table.state.globalFilter ?? ""}
                     onChange={(event) => {
                         table.setGlobalFilter(event.target.value)
@@ -95,9 +111,14 @@ export function SalesOrderTableToolbar({
             </div>
             <Select
                 items={statuses}
-                value={(table.getColumn("status")?.getFilterValue() as string) ?? "all"}
+                value={
+                    (table.getColumn("status")?.getFilterValue() as string) ??
+                    "all"
+                }
                 onValueChange={(value) => {
-                    table.getColumn("status")?.setFilterValue(value === "all" ? undefined : value)
+                    table
+                        .getColumn("status")
+                        ?.setFilterValue(value === "all" ? undefined : value)
                     table.resetRowSelection()
                     table.setPageIndex(0)
                 }}
@@ -117,14 +138,21 @@ export function SalesOrderTableToolbar({
                 </SelectContent>
             </Select>
             {hasFilters && (
-                <Button variant="ghost" className="h-10" onClick={onClearFilters}>
+                <Button
+                    variant="ghost"
+                    className="h-10"
+                    onClick={onClearFilters}
+                >
                     <X />
                     Reset
                 </Button>
             )}
             {selected.length > 0 && (
                 <div className="flex items-center gap-2 text-sm">
-                    <span className="font-medium text-primary" aria-live="polite">
+                    <span
+                        className="font-medium text-primary"
+                        aria-live="polite"
+                    >
                         {selected.length} selected
                     </span>
                     <Button
@@ -143,7 +171,9 @@ export function SalesOrderTableToolbar({
                     disabled={!filtered.length}
                     onClick={() =>
                         exportOrders(
-                            (selected.length ? selected : filtered).map((row) => row.original),
+                            (selected.length ? selected : filtered).map(
+                                (row) => row.original,
+                            ),
                         )
                     }
                 >
@@ -151,13 +181,17 @@ export function SalesOrderTableToolbar({
                     {selected.length ? "Export selected" : "Export CSV"}
                 </Button>
                 <DropdownMenu>
-                    <DropdownMenuTrigger render={<Button variant="outline" className="h-10" />}>
+                    <DropdownMenuTrigger
+                        render={<Button variant="outline" className="h-10" />}
+                    >
                         <Settings2 />
                         Columns
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                         <DropdownMenuGroup>
-                            <DropdownMenuLabel>Visible columns</DropdownMenuLabel>
+                            <DropdownMenuLabel>
+                                Visible columns
+                            </DropdownMenuLabel>
                             {table
                                 .getAllLeafColumns()
                                 .filter((column) => column.getCanHide())

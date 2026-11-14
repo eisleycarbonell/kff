@@ -20,7 +20,12 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog"
-import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
+import {
+    Field,
+    FieldError,
+    FieldGroup,
+    FieldLabel,
+} from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import {
@@ -40,7 +45,10 @@ type Props = {
     optionsReady: boolean
     optionsError: Error | null
     retryOptions: () => void
-    onSave: (values: SalesOrderFormValues, order: SalesOrder | null) => Promise<boolean>
+    onSave: (
+        values: SalesOrderFormValues,
+        order: SalesOrder | null,
+    ) => Promise<boolean>
     isSaving: boolean
     saveError: string | null
 }
@@ -51,7 +59,10 @@ function FormContent({
     onOpenChange,
     isSaving,
     saveError,
-}: Pick<Props, "order" | "options" | "onSave" | "onOpenChange" | "isSaving" | "saveError">) {
+}: Pick<
+    Props,
+    "order" | "options" | "onSave" | "onOpenChange" | "isSaving" | "saveError"
+>) {
     const id = useId()
     const nextKey = useRef(0)
     const [values, setValues] = useState<
@@ -62,6 +73,7 @@ function FormContent({
         const today = new Date()
         return {
             salesOrderNumber: order?.salesOrderNumber ?? "",
+            customerPoNumber: order?.customerPoNumber ?? "",
             customerId: order?.customerId ?? null,
             orderDate:
                 order?.orderDate ??
@@ -89,28 +101,37 @@ function FormContent({
     })
     const [errors, setErrors] = useState<SalesOrderFormErrors>({})
     const customerItems = options.customers
-        .filter((customer) => customer.isActive || customer.customerId === values.customerId)
+        .filter(
+            (customer) =>
+                customer.isActive || customer.customerId === values.customerId,
+        )
         .map((customer) => ({
             value: customer.customerId,
             label: customer.name + (customer.isActive ? "" : " (inactive)"),
             disabled: !customer.isActive,
         }))
     const itemItems = options.items
-        .filter((item) => item.isActive || values.lines.some((line) => line.itemId === item.itemId))
+        .filter(
+            (item) =>
+                item.isActive ||
+                values.lines.some((line) => line.itemId === item.itemId),
+        )
         .map((item) => ({
             value: item.itemId,
             label: `${item.sku} - ${item.name}${item.isActive ? "" : " (inactive)"}`,
             disabled: !item.isActive,
         }))
     const preview = previewSalesTotal(values.lines)
-    function updateHeader<Key extends Exclude<keyof SalesOrderFormValues, "lines">>(
-        key: Key,
-        value: SalesOrderFormValues[Key],
-    ) {
+    function updateHeader<
+        Key extends Exclude<keyof SalesOrderFormValues, "lines">,
+    >(key: Key, value: SalesOrderFormValues[Key]) {
         setValues((current) => ({ ...current, [key]: value }))
         setErrors((current) => ({ ...current, [key]: "" }))
     }
-    function updateLine(index: number, updates: Partial<SalesOrderFormValues["lines"][number]>) {
+    function updateLine(
+        index: number,
+        updates: Partial<SalesOrderFormValues["lines"][number]>,
+    ) {
         setValues((current) => ({
             ...current,
             lines: current.lines.map((line, position) =>
@@ -119,7 +140,9 @@ function FormContent({
         }))
         setErrors((current) =>
             Object.fromEntries(
-                Object.entries(current).filter(([key]) => !key.startsWith(`lines.${index}.`)),
+                Object.entries(current).filter(
+                    ([key]) => !key.startsWith(`lines.${index}.`),
+                ),
             ),
         )
     }
@@ -136,17 +159,24 @@ function FormContent({
         }
         const writable: SalesOrderFormValues = {
             ...values,
-            lines: values.lines.map(({ itemId, uomId, qtyOrdered, unitPrice }) => ({
-                itemId,
-                uomId,
-                qtyOrdered,
-                unitPrice,
-            })),
+            lines: values.lines.map(
+                ({ itemId, uomId, qtyOrdered, unitPrice }) => ({
+                    itemId,
+                    uomId,
+                    qtyOrdered,
+                    unitPrice,
+                }),
+            ),
         }
         if (await onSave(writable, order)) onOpenChange(false)
     }
     return (
-        <form onSubmit={submit} className="space-y-5" aria-busy={isSaving} noValidate>
+        <form
+            onSubmit={submit}
+            className="space-y-5"
+            aria-busy={isSaving}
+            noValidate
+        >
             {saveError && (
                 <Alert variant="destructive">
                     <AlertTitle>Unable to save order</AlertTitle>
@@ -156,27 +186,61 @@ function FormContent({
             <FieldGroup className="gap-4">
                 <div className="grid gap-4 sm:grid-cols-2">
                     <Field data-invalid={Boolean(errors.salesOrderNumber)}>
-                        <FieldLabel htmlFor={`${id}-number`}>Sales order number</FieldLabel>
+                        <FieldLabel htmlFor={`${id}-number`}>
+                            Sales order number
+                        </FieldLabel>
                         <Input
                             id={`${id}-number`}
                             name="salesOrderNumber"
                             maxLength={30}
                             value={values.salesOrderNumber}
                             onChange={(event) =>
-                                updateHeader("salesOrderNumber", event.target.value)
+                                updateHeader(
+                                    "salesOrderNumber",
+                                    event.target.value,
+                                )
                             }
                             disabled={isSaving}
                             aria-invalid={Boolean(errors.salesOrderNumber)}
                             aria-describedby={`${id}-number-error`}
                         />
-                        <FieldError id={`${id}-number-error`}>{errors.salesOrderNumber}</FieldError>
+                        <FieldError id={`${id}-number-error`}>
+                            {errors.salesOrderNumber}
+                        </FieldError>
+                    </Field>
+                    <Field data-invalid={Boolean(errors.customerPoNumber)}>
+                        <FieldLabel htmlFor={id + "-customer-po"}>
+                            Customer PO number (optional)
+                        </FieldLabel>
+                        <Input
+                            id={id + "-customer-po"}
+                            name="customerPoNumber"
+                            maxLength={100}
+                            value={values.customerPoNumber}
+                            disabled={isSaving}
+                            onChange={(event) =>
+                                updateHeader(
+                                    "customerPoNumber",
+                                    event.target.value,
+                                )
+                            }
+                            aria-invalid={Boolean(errors.customerPoNumber)}
+                            aria-describedby={id + "-customer-po-error"}
+                        />
+                        <FieldError id={id + "-customer-po-error"}>
+                            {errors.customerPoNumber}
+                        </FieldError>
                     </Field>
                     <Field data-invalid={Boolean(errors.customerId)}>
-                        <FieldLabel htmlFor={`${id}-customer`}>Customer</FieldLabel>
+                        <FieldLabel htmlFor={`${id}-customer`}>
+                            Customer
+                        </FieldLabel>
                         <Select
                             items={customerItems}
                             value={values.customerId}
-                            onValueChange={(value) => updateHeader("customerId", value)}
+                            onValueChange={(value) =>
+                                updateHeader("customerId", value)
+                            }
                             disabled={isSaving}
                         >
                             <SelectTrigger
@@ -200,38 +264,53 @@ function FormContent({
                                 ))}
                             </SelectContent>
                         </Select>
-                        <FieldError id={`${id}-customer-error`}>{errors.customerId}</FieldError>
+                        <FieldError id={`${id}-customer-error`}>
+                            {errors.customerId}
+                        </FieldError>
                     </Field>
                     {(
                         [
                             ["orderDate", "Order date"],
-                            ["requestedDeliveryDate", "Requested delivery date (optional)"],
+                            [
+                                "requestedDeliveryDate",
+                                "Requested delivery date (optional)",
+                            ],
                         ] as const
                     ).map(([key, label]) => (
                         <Field key={key} data-invalid={Boolean(errors[key])}>
-                            <FieldLabel htmlFor={`${id}-${key}`}>{label}</FieldLabel>
+                            <FieldLabel htmlFor={`${id}-${key}`}>
+                                {label}
+                            </FieldLabel>
                             <Input
                                 id={`${id}-${key}`}
                                 name={key}
                                 type="date"
                                 value={values[key]}
-                                onChange={(event) => updateHeader(key, event.target.value)}
+                                onChange={(event) =>
+                                    updateHeader(key, event.target.value)
+                                }
                                 disabled={isSaving}
                                 aria-invalid={Boolean(errors[key])}
                                 aria-describedby={`${id}-${key}-error`}
                             />
-                            <FieldError id={`${id}-${key}-error`}>{errors[key]}</FieldError>
+                            <FieldError id={`${id}-${key}-error`}>
+                                {errors[key]}
+                            </FieldError>
                         </Field>
                     ))}
                 </div>
                 <Field>
-                    <FieldLabel htmlFor={`${id}-notes`}>Notes (optional)</FieldLabel>
+                    <FieldLabel htmlFor={`${id}-notes`}>
+                        Notes (optional)
+                    </FieldLabel>
                     <Textarea
                         id={`${id}-notes`}
                         name="notes"
                         maxLength={5000}
                         value={values.notes}
-                        onChange={(event) => updateHeader("notes", event.target.value)}
+                        onChange={(event) =>
+                            updateHeader("notes", event.target.value)
+                        }
                         disabled={isSaving}
                     />
                     <FieldError>{errors.notes}</FieldError>
@@ -267,28 +346,45 @@ function FormContent({
                     </Button>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                    Quantities use each product�s primary unit. Confirmation opens the order for
-                    delivery planning.
+                    Record the customer’s PO, select finished products, then
+                    save to check finished stock and material shortages before
+                    purchasing and packing.
                 </p>
                 <FieldError>{errors.lines}</FieldError>
                 {values.lines.map((line, index) => {
-                    const item = options.items.find((candidate) => candidate.itemId === line.itemId)
+                    const item = options.items.find(
+                        (candidate) => candidate.itemId === line.itemId,
+                    )
                     return (
-                        <fieldset key={line.uiKey} className="rounded-lg border p-4">
-                            <legend className="px-1 text-sm font-medium">Line {index + 1}</legend>
+                        <fieldset
+                            key={line.uiKey}
+                            className="rounded-lg border p-4"
+                        >
+                            <legend className="px-1 text-sm font-medium">
+                                Line {index + 1}
+                            </legend>
                             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_auto]">
-                                <Field data-invalid={Boolean(errors[`lines.${index}.itemId`])}>
-                                    <FieldLabel htmlFor={`${id}-item-${index}`}>Product</FieldLabel>
+                                <Field
+                                    data-invalid={Boolean(
+                                        errors[`lines.${index}.itemId`],
+                                    )}
+                                >
+                                    <FieldLabel htmlFor={`${id}-item-${index}`}>
+                                        Product
+                                    </FieldLabel>
                                     <Select
                                         items={itemItems}
                                         value={line.itemId}
                                         onValueChange={(value) => {
                                             const selected = options.items.find(
-                                                (candidate) => candidate.itemId === value,
+                                                (candidate) =>
+                                                    candidate.itemId === value,
                                             )
                                             updateLine(index, {
                                                 itemId: value,
-                                                uomId: selected?.primaryUomId ?? null,
+                                                uomId:
+                                                    selected?.primaryUomId ??
+                                                    null,
                                             })
                                         }}
                                         disabled={isSaving}
@@ -297,7 +393,9 @@ function FormContent({
                                             id={`${id}-item-${index}`}
                                             name={`lines.${index}.itemId`}
                                             className="w-full"
-                                            aria-invalid={Boolean(errors[`lines.${index}.itemId`])}
+                                            aria-invalid={Boolean(
+                                                errors[`lines.${index}.itemId`],
+                                            )}
                                             aria-describedby={`${id}-item-error-${index}`}
                                         >
                                             <SelectValue placeholder="Select product" />
@@ -314,13 +412,22 @@ function FormContent({
                                             ))}
                                         </SelectContent>
                                     </Select>
-                                    <FieldError id={`${id}-item-error-${index}`}>
+                                    <FieldError
+                                        id={`${id}-item-error-${index}`}
+                                    >
                                         {errors[`lines.${index}.itemId`]}
                                     </FieldError>
                                 </Field>
-                                <Field data-invalid={Boolean(errors[`lines.${index}.qtyOrdered`])}>
+                                <Field
+                                    data-invalid={Boolean(
+                                        errors[`lines.${index}.qtyOrdered`],
+                                    )}
+                                >
                                     <FieldLabel htmlFor={`${id}-qty-${index}`}>
-                                        Quantity{item ? ` (${item.primaryUomName})` : ""}
+                                        Quantity
+                                        {item
+                                            ? ` (${item.primaryUomName})`
+                                            : ""}
                                     </FieldLabel>
                                     <Input
                                         id={`${id}-qty-${index}`}
@@ -328,18 +435,28 @@ function FormContent({
                                         inputMode="decimal"
                                         value={line.qtyOrdered}
                                         onChange={(event) =>
-                                            updateLine(index, { qtyOrdered: event.target.value })
+                                            updateLine(index, {
+                                                qtyOrdered: event.target.value,
+                                            })
                                         }
                                         disabled={isSaving}
-                                        aria-invalid={Boolean(errors[`lines.${index}.qtyOrdered`])}
+                                        aria-invalid={Boolean(
+                                            errors[`lines.${index}.qtyOrdered`],
+                                        )}
                                         aria-describedby={`${id}-qty-error-${index}`}
                                     />
                                     <FieldError id={`${id}-qty-error-${index}`}>
                                         {errors[`lines.${index}.qtyOrdered`]}
                                     </FieldError>
                                 </Field>
-                                <Field data-invalid={Boolean(errors[`lines.${index}.unitPrice`])}>
-                                    <FieldLabel htmlFor={`${id}-price-${index}`}>
+                                <Field
+                                    data-invalid={Boolean(
+                                        errors[`lines.${index}.unitPrice`],
+                                    )}
+                                >
+                                    <FieldLabel
+                                        htmlFor={`${id}-price-${index}`}
+                                    >
                                         Unit price
                                     </FieldLabel>
                                     <Input
@@ -348,13 +465,19 @@ function FormContent({
                                         inputMode="decimal"
                                         value={line.unitPrice}
                                         onChange={(event) =>
-                                            updateLine(index, { unitPrice: event.target.value })
+                                            updateLine(index, {
+                                                unitPrice: event.target.value,
+                                            })
                                         }
                                         disabled={isSaving}
-                                        aria-invalid={Boolean(errors[`lines.${index}.unitPrice`])}
+                                        aria-invalid={Boolean(
+                                            errors[`lines.${index}.unitPrice`],
+                                        )}
                                         aria-describedby={`${id}-price-error-${index}`}
                                     />
-                                    <FieldError id={`${id}-price-error-${index}`}>
+                                    <FieldError
+                                        id={`${id}-price-error-${index}`}
+                                    >
                                         {errors[`lines.${index}.unitPrice`]}
                                     </FieldError>
                                 </Field>
@@ -364,12 +487,15 @@ function FormContent({
                                     size="icon-sm"
                                     className="sm:mt-6"
                                     aria-label={`Remove line ${index + 1}`}
-                                    disabled={isSaving || values.lines.length === 1}
+                                    disabled={
+                                        isSaving || values.lines.length === 1
+                                    }
                                     onClick={() => {
                                         setValues((current) => ({
                                             ...current,
                                             lines: current.lines.filter(
-                                                (_, position) => position !== index,
+                                                (_, position) =>
+                                                    position !== index,
                                             ),
                                         }))
                                         setErrors({})
@@ -385,7 +511,9 @@ function FormContent({
             <p className="text-right text-sm text-muted-foreground">
                 Order total preview:{" "}
                 <span className="font-semibold text-foreground tabular-nums">
-                    {preview === null ? "Enter quantities and prices" : formatSalesDecimal(preview)}
+                    {preview === null
+                        ? "Enter quantities and prices"
+                        : formatSalesDecimal(preview)}
                 </span>
             </p>
             <DialogFooter>
@@ -398,7 +526,11 @@ function FormContent({
                     Cancel
                 </Button>
                 <Button type="submit" disabled={isSaving}>
-                    {isSaving ? "Saving..." : order ? "Save changes" : "Create sales order"}
+                    {isSaving
+                        ? "Saving..."
+                        : order
+                          ? "Save changes"
+                          : "Create sales order"}
                 </Button>
             </DialogFooter>
         </form>
@@ -418,7 +550,9 @@ export function SalesOrderForm(props: Props) {
             >
                 <DialogHeader>
                     <DialogTitle>
-                        {props.order ? "Edit sales order" : "Create sales order"}
+                        {props.order
+                            ? "Edit sales order"
+                            : "Create sales order"}
                     </DialogTitle>
                     <DialogDescription>
                         Record the customer and finished products to deliver.
@@ -438,7 +572,10 @@ export function SalesOrderForm(props: Props) {
                         </AlertTitle>
                         <AlertDescription>
                             {props.optionsError?.message}
-                            <Button variant="outline" onClick={props.retryOptions}>
+                            <Button
+                                variant="outline"
+                                onClick={props.retryOptions}
+                            >
                                 Retry options
                             </Button>
                         </AlertDescription>

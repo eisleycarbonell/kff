@@ -74,12 +74,19 @@ type Props = {
 const labels: Record<string, string> = {
     itemSku: "SKU",
     itemName: "Product",
-    brandName: "Brand",
+    labelItemName: "Labels",
     primaryUomName: "Output unit",
     materials: "Materials",
     updatedAt: "Updated",
 }
-export const PackingFormulaTable = memo(function PackingFormulaTable({ formulas, canManage, busy, onAdd, onEdit, onRemove }: Props) {
+export const PackingFormulaTable = memo(function PackingFormulaTable({
+    formulas,
+    canManage,
+    busy,
+    onAdd,
+    onEdit,
+    onRemove,
+}: Props) {
     const columns = useMemo(
         () =>
             helper.columns([
@@ -94,14 +101,18 @@ export const PackingFormulaTable = memo(function PackingFormulaTable({ formulas,
                                 table.getIsSomePageRowsSelected() &&
                                 !table.getIsAllPageRowsSelected()
                             }
-                            onCheckedChange={(checked) => table.toggleAllPageRowsSelected(checked)}
+                            onCheckedChange={(checked) =>
+                                table.toggleAllPageRowsSelected(checked)
+                            }
                         />
                     ),
                     cell: ({ row }) => (
                         <Checkbox
                             aria-label={`Select ${row.original.itemName}`}
                             checked={row.getIsSelected()}
-                            onCheckedChange={(checked) => row.toggleSelected(checked)}
+                            onCheckedChange={(checked) =>
+                                row.toggleSelected(checked)
+                            }
                         />
                     ),
                 }),
@@ -111,21 +122,28 @@ export const PackingFormulaTable = memo(function PackingFormulaTable({ formulas,
                     enableHiding: false,
                     cell: ({ row }) => (
                         <div>
-                            <p className="font-medium">{row.original.itemName}</p>
+                            <p className="font-medium">
+                                {row.original.itemName}
+                            </p>
                             <p className="text-xs text-muted-foreground">
                                 {row.original.itemSku}
-                                {!row.original.isActive ? " · Inactive product" : ""}
+                                {!row.original.isActive
+                                    ? " · Inactive product"
+                                    : ""}
                             </p>
                         </div>
                     ),
                 }),
                 helper.accessor("itemSku", { header: "SKU", sortFn: "text" }),
-                helper.accessor((row) => row.brandName ?? "", {
-                    id: "brandName",
-                    header: "Brand",
+                helper.accessor((row) => row.labelItemName ?? "", {
+                    id: "labelItemName",
+                    header: "Labels",
                     sortFn: "text",
                 }),
-                helper.accessor("primaryUomName", { header: "Per 1", sortFn: "text" }),
+                helper.accessor("primaryUomName", {
+                    header: "Per 1",
+                    sortFn: "text",
+                }),
                 helper.accessor(
                     (row) =>
                         row.components
@@ -145,8 +163,11 @@ export const PackingFormulaTable = memo(function PackingFormulaTable({ formulas,
                                 <ul className="mt-2 space-y-1 text-sm">
                                     {row.original.components.map((entry) => (
                                         <li key={entry.bomId}>
-                                            {entry.quantity} {entry.uomName} · {entry.componentName}
-                                            {!entry.componentIsActive ? " (inactive)" : ""}
+                                            {entry.quantity} {entry.uomName} ·{" "}
+                                            {entry.componentName}
+                                            {!entry.componentIsActive
+                                                ? " (inactive)"
+                                                : ""}
                                         </li>
                                     ))}
                                 </ul>
@@ -157,7 +178,8 @@ export const PackingFormulaTable = memo(function PackingFormulaTable({ formulas,
                 helper.accessor("updatedAt", {
                     header: "Updated",
                     sortFn: "text",
-                    cell: ({ cell }) => new Date(cell.getValue()).toLocaleDateString(),
+                    cell: ({ cell }) =>
+                        new Date(cell.getValue()).toLocaleDateString(),
                 }),
                 helper.display({
                     id: "actions",
@@ -181,7 +203,9 @@ export const PackingFormulaTable = memo(function PackingFormulaTable({ formulas,
                                 <DropdownMenuContent align="end">
                                     <DropdownMenuGroup>
                                         <DropdownMenuItem
-                                            disabled={busy || !row.original.isActive}
+                                            disabled={
+                                                busy || !row.original.isActive
+                                            }
                                             onClick={() => onEdit(row.original)}
                                         >
                                             <Pencil />
@@ -190,7 +214,9 @@ export const PackingFormulaTable = memo(function PackingFormulaTable({ formulas,
                                         <DropdownMenuItem
                                             variant="destructive"
                                             disabled={busy}
-                                            onClick={() => onRemove(row.original)}
+                                            onClick={() =>
+                                                onRemove(row.original)
+                                            }
                                         >
                                             <Trash2 />
                                             Remove formula
@@ -219,16 +245,21 @@ export const PackingFormulaTable = memo(function PackingFormulaTable({ formulas,
     const filtered = table.getFilteredRowModel().rows
     function exportRows() {
         downloadCsv("kff-packing-formulas.csv", [
-            ["SKU", "Product", "Brand", "Output unit", "Materials"],
-            ...(selected.length ? selected : filtered).map(({ original: row }) => [
-                row.itemSku,
-                row.itemName,
-                row.brandName ?? "",
-                row.primaryUomName,
-                row.components
-                    .map((entry) => `${entry.quantity} ${entry.uomName} ${entry.componentSku}`)
-                    .join("; "),
-            ]),
+            ["SKU", "Product", "Labels", "Output unit", "Materials"],
+            ...(selected.length ? selected : filtered).map(
+                ({ original: row }) => [
+                    row.itemSku,
+                    row.itemName,
+                    row.labelItemName ?? "",
+                    row.primaryUomName,
+                    row.components
+                        .map(
+                            (entry) =>
+                                `${entry.quantity} ${entry.uomName} ${entry.componentSku}`,
+                        )
+                        .join("; "),
+                ],
+            ),
         ])
     }
     return (
@@ -237,7 +268,7 @@ export const PackingFormulaTable = memo(function PackingFormulaTable({ formulas,
                 <Input
                     className="h-10 w-full sm:w-72"
                     aria-label="Search packing formulas"
-                    placeholder="Search products, brands, materials..."
+                    placeholder="Search products, labels, materials..."
                     value={table.state.globalFilter ?? ""}
                     onChange={(e) => {
                         table.setGlobalFilter(e.target.value)
@@ -260,7 +291,10 @@ export const PackingFormulaTable = memo(function PackingFormulaTable({ formulas,
                     </Button>
                 )}
                 {selected.length > 0 && (
-                    <Button variant="ghost" onClick={() => table.resetRowSelection()}>
+                    <Button
+                        variant="ghost"
+                        onClick={() => table.resetRowSelection()}
+                    >
                         {selected.length} selected · Clear selection
                     </Button>
                 )}
@@ -275,13 +309,19 @@ export const PackingFormulaTable = memo(function PackingFormulaTable({ formulas,
                         {selected.length ? "Export selected" : "Export CSV"}
                     </Button>
                     <DropdownMenu>
-                        <DropdownMenuTrigger render={<Button variant="outline" className="h-10" />}>
+                        <DropdownMenuTrigger
+                            render={
+                                <Button variant="outline" className="h-10" />
+                            }
+                        >
                             <Settings2 />
                             Columns
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                             <DropdownMenuGroup>
-                                <DropdownMenuLabel>Visible columns</DropdownMenuLabel>
+                                <DropdownMenuLabel>
+                                    Visible columns
+                                </DropdownMenuLabel>
                                 {table
                                     .getAllLeafColumns()
                                     .filter((column) => column.getCanHide())
@@ -312,9 +352,11 @@ export const PackingFormulaTable = memo(function PackingFormulaTable({ formulas,
                                     className="px-4"
                                     aria-sort={
                                         header.column.getCanSort()
-                                            ? header.column.getIsSorted() === "asc"
+                                            ? header.column.getIsSorted() ===
+                                              "asc"
                                                 ? "ascending"
-                                                : header.column.getIsSorted() === "desc"
+                                                : header.column.getIsSorted() ===
+                                                    "desc"
                                                   ? "descending"
                                                   : "none"
                                             : undefined
@@ -341,11 +383,16 @@ export const PackingFormulaTable = memo(function PackingFormulaTable({ formulas,
                     {table.getRowModel().rows.map((row) => (
                         <TableRow
                             key={row.id}
-                            data-state={row.getIsSelected() ? "selected" : undefined}
+                            data-state={
+                                row.getIsSelected() ? "selected" : undefined
+                            }
                             className="hover:bg-primary/5 data-[state=selected]:bg-primary/10"
                         >
                             {row.getVisibleCells().map((cell) => (
-                                <TableCell key={cell.id} className="px-4 py-4 align-top">
+                                <TableCell
+                                    key={cell.id}
+                                    className="px-4 py-4 align-top"
+                                >
                                     <table.FlexRender cell={cell} />
                                 </TableCell>
                             ))}
@@ -363,7 +410,11 @@ export const PackingFormulaTable = memo(function PackingFormulaTable({ formulas,
                                         : "No packing formulas yet."}
                                 </p>
                                 {canManage && !table.state.globalFilter && (
-                                    <Button className="mt-3" disabled={busy} onClick={onAdd}>
+                                    <Button
+                                        className="mt-3"
+                                        disabled={busy}
+                                        onClick={onAdd}
+                                    >
                                         Create formula
                                     </Button>
                                 )}
@@ -374,7 +425,8 @@ export const PackingFormulaTable = memo(function PackingFormulaTable({ formulas,
             </Table>
             <div className="flex flex-wrap items-center justify-between gap-3 border-t p-4 text-sm">
                 <span>
-                    {filtered.length} formulas · Page {table.state.pagination.pageIndex + 1} of{" "}
+                    {filtered.length} formulas · Page{" "}
+                    {table.state.pagination.pageIndex + 1} of{" "}
                     {Math.max(1, table.getPageCount())}
                 </span>
                 <div className="flex gap-2">

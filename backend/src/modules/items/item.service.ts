@@ -1,8 +1,8 @@
 import { asc, eq, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import { db } from '../../db/index.ts';
 import {
     items,
-    brands,
     uoms,
     uomClasses,
     supplierItems,
@@ -24,9 +24,11 @@ import {
 } from '../../db/schema.ts';
 import { AppError } from '../../errors/app-error.ts';
 import type { CreateItemInput, UpdateItemInput } from './item.schema.ts';
+const label = alias(items, 'item_label');
 
 // Indexed existence checks protect stored quantities and material relationships.
 const isInUse = sql<boolean>`(
+    exists (select 1 from items label_owner where label_owner.label_item_id = ${items.itemId}) or
     exists (select 1 from ${reorderPolicies} where ${reorderPolicies.itemId} = ${items.itemId}) or
     exists (select 1 from ${formulaRevisions} where ${formulaRevisions.itemId} = ${items.itemId}) or
     exists (select 1 from ${formulaRevisionMaterials} where ${formulaRevisionMaterials.componentItemId} = ${items.itemId}) or
@@ -48,9 +50,9 @@ const itemFields = {
     itemId: items.itemId,
     sku: items.sku,
     name: items.name,
-    brandId: items.brandId,
-    brandCode: brands.code,
-    brandName: brands.name,
+    labelItemId: items.labelItemId,
+    labelItemSku: label.sku,
+    labelItemName: label.name,
     itemType: items.itemType,
     primaryUomId: items.primaryUomId,
     primaryUomName: uoms.name,
@@ -80,7 +82,7 @@ const itemQuery = (database: Reader = db) =>
     database
         .select(itemFields)
         .from(items)
-        .leftJoin(brands, eq(items.brandId, brands.brandId))
+        .leftJoin(label, eq(items.labelItemId, label.itemId))
         .innerJoin(uoms, eq(items.primaryUomId, uoms.uomId))
         .innerJoin(uomClasses, eq(uoms.uomClassId, uomClasses.uomClassId));
 
@@ -121,7 +123,7 @@ export async function createItem(
 ) {
     return database.transaction(async (tx) => {
         await requireUom(tx, input.primaryUomId);
-        await requireActiveBrand(tx, input.brandId);
+        await requireLabel(tx, input.labelItemId, input.itemType);
         const [created] = await tx
             .insert(items)
             .values({ ...input, createdBy: actorId, updatedBy: actorId })
@@ -142,8 +144,14 @@ export async function updateItem(
         // FOR UPDATE also serializes concurrent FK references while changing the primary UOM/type.
         const [current] = await tx.select().from(items).where(eq(items.itemId, id)).for('update');
         if (!current) return null;
-        if (input.brandId !== undefined && input.brandId !== current.brandId)
-            await requireActiveBrand(tx, input.brandId);
+        const labelId = input.labelItemId === undefined ? current.labelItemId : input.labelItemId;
+        const type = input.itemType ?? current.itemType;
+        if (labelId !== null && type !== 'Finished Good')
+            throw new AppError(409, 'Only finished goods can select a product label.');
+        if (input.labelItemId !== undefined && input.labelItemId !== current.labelItemId) {
+            if (input.labelItemId === id) throw new AppError(400, 'An item cannot label itself.');
+            await requireLabel(tx, input.labelItemId, type);
+        }
         const changesIdentity =
             (input.primaryUomId !== undefined && input.primaryUomId !== current.primaryUomId) ||
             (input.itemType !== undefined && input.itemType !== current.itemType);
@@ -164,12 +172,19 @@ export async function updateItem(
     });
 }
 
-async function requireActiveBrand(database: Reader, brandId: number | null | undefined) {
-    if (brandId == null) return;
-    const [brand] = await database
-        .select({ isActive: brands.isActive })
-        .from(brands)
-        .where(eq(brands.brandId, brandId))
+async function requireLabel(
+    database: Reader,
+    labelItemId: number | null | undefined,
+    itemType: string,
+) {
+    if (labelItemId == null) return;
+    if (itemType !== 'Finished Good')
+        throw new AppError(400, 'Only finished goods can select a product label.');
+    const [label] = await database
+        .select({ isActive: items.isActive, itemType: items.itemType })
+        .from(items)
+        .where(eq(items.itemId, labelItemId))
         .for('share');
-    if (!brand?.isActive) throw new AppError(409, 'Select an active brand.');
+    if (!label?.isActive || label.itemType !== 'Packaging - Label')
+        throw new AppError(409, 'Select an active Packaging - Label item.');
 }

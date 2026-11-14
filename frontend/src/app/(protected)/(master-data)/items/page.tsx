@@ -155,9 +155,6 @@ export default function ItemsPage() {
           item={catalog.editingItem}
           items={catalog.items}
           uoms={catalog.uoms}
-          brands={catalog.brands}
-          brandsError={catalog.brandsError}
-          retryBrands={catalog.retryBrands}
           onSave={catalog.handleSave}
           isSaving={catalog.isSaving}
         />

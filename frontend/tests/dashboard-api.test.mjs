@@ -237,3 +237,19 @@ test("formatDate handles ISO strings and YYYY-MM-DD cleanly", () => {
     assert.equal(schema.formatDate("2026-10-25T08:00:00Z"), "Oct 25, 2026")
     assert.equal(schema.formatDate(null), "—")
 })
+
+
+test("dashboard currency totals preserve cents beyond Number precision and use configured zero currency", () => {
+    assert.equal(schema.formatCurrency("12345678901234567890.1250"), "₱12,345,678,901,234,567,890.13")
+    assert.equal(schema.formatCurrency("9999999999999999.9950"), "₱10,000,000,000,000,000.00")
+    assert.equal(schema.formatCurrency("-12345678901234567890.1250"), "-₱12,345,678,901,234,567,890.13")
+    assert.equal(schema.formatCurrency("-0.0050"), "-₱0.01")
+    assert.equal(schema.formatCurrency(null, "USD"), new Intl.NumberFormat("en-PH", {style:"currency",currency:"USD",minimumFractionDigits:2,maximumFractionDigits:2}).format(0))
+    assert.equal(schema.formatUnitTotals([{primaryUomId:1,primaryUomName:"kg",onHand:"1.0000",reserved:"0.0000",available:"1.0000"},{primaryUomId:2,primaryUomName:"pc",onHand:"2.0000",reserved:"0.0000",available:"2.0000"}], "onHand"), "1 kg · 2 pc")
+})
+test("malformed dashboard decimal values cannot enter the metrics cache", async () => {
+    for (const invalid of ["", "not-stock", "Infinity", "1e9"]) {
+        globalThis.fetch = async () => response({...mockDashboard,summary:{...mockDashboard.summary,totalInventoryValue:invalid}})
+        await assert.rejects(api.getDashboardData(), /invalid dashboard metrics/)
+    }
+})

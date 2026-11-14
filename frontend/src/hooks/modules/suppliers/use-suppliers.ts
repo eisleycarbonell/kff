@@ -1,4 +1,5 @@
 "use client";
+import { invalidateInventoryAvailability } from "@/lib/inventory-query-cache"
 
 import { useCallback, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -153,6 +154,7 @@ export function useSuppliers() {
   const loadError = suppliersQuery.error ?? session.error;
 
   function cacheSupplier(saved: Supplier) {
+            void invalidateInventoryAvailability(client)
     client.setQueryData<Supplier[]>(queryKey, (current = []) =>
       current.some((supplier) => supplier.supplierId === saved.supplierId)
         ? current.map((supplier) =>
@@ -391,6 +393,7 @@ export function useSupplierItems(supplierId: number | null) {
       return setSupplierItemLink(supplierId, itemId, supplierItemId, isActive);
     },
     onSuccess: async (saved) => {
+      await invalidateInventoryAvailability(client);
       client.setQueryData<SupplierItem[]>(queryKey, (current = []) =>
         current.some((item) => item.supplierItemId === saved.supplierItemId)
           ? current.map((item) =>

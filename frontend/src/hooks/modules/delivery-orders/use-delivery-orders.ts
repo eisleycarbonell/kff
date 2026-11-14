@@ -1,4 +1,5 @@
 "use client"
+import { invalidateInventoryAvailability } from "@/lib/inventory-query-cache"
 
 import { useCallback, useEffect, useRef } from "react"
 import { z } from "zod"
@@ -98,6 +99,7 @@ export function useDeliveryOrders() {
     })
     const refresh = useCallback(
         (saved: DeliveryOrder) => {
+            void invalidateInventoryAvailability(client)
             client.setQueryData<DeliveryOrder[]>(
                 [...DELIVERY_ORDERS_QUERY_KEY, userId],
                 (current = []) =>
@@ -127,6 +129,7 @@ export function useDeliveryOrders() {
                 "packing-preview",
                 "dashboard",
                 "lots",
+                "lot-detail",
             ])
                 void client.invalidateQueries({ queryKey: [key] })
         },

@@ -1,13 +1,14 @@
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { db } from '../../db/index.ts';
-import { billOfMaterials, brands, items, uoms } from '../../db/schema.ts';
+import { billOfMaterials, items, uoms } from '../../db/schema.ts';
 import { AppError } from '../../errors/app-error.ts';
 import type { CreateFormulaInput, UpdateFormulaInput } from './packing-formula.schema.ts';
 
 type Reader = Pick<typeof db, 'select'>;
 
 const component = alias(items, 'formula_component');
+const label = alias(items, 'formula_label');
 const outputUnit = alias(uoms, 'formula_output_unit');
 
 export async function listFormulas(database: Reader = db, itemId?: number) {
@@ -18,7 +19,7 @@ export async function listFormulas(database: Reader = db, itemId?: number) {
             itemSku: items.sku,
             itemName: items.name,
             isActive: items.isActive,
-            brandName: brands.name,
+            labelItemName: label.name,
             primaryUomId: items.primaryUomId,
             primaryUomName: outputUnit.name,
             bomId: billOfMaterials.bomId,
@@ -37,7 +38,7 @@ export async function listFormulas(database: Reader = db, itemId?: number) {
         })
         .from(billOfMaterials)
         .innerJoin(items, eq(items.itemId, billOfMaterials.parentItemId))
-        .leftJoin(brands, eq(brands.brandId, items.brandId))
+        .leftJoin(label, eq(label.itemId, items.labelItemId))
         .innerJoin(component, eq(component.itemId, billOfMaterials.componentItemId))
         .innerJoin(uoms, eq(uoms.uomId, billOfMaterials.uomId))
         .innerJoin(outputUnit, eq(outputUnit.uomId, items.primaryUomId))
@@ -51,7 +52,7 @@ export async function listFormulas(database: Reader = db, itemId?: number) {
         | 'itemSku'
         | 'itemName'
         | 'isActive'
-        | 'brandName'
+        | 'labelItemName'
         | 'primaryUomId'
         | 'primaryUomName'
         | 'createdBy'
@@ -82,7 +83,7 @@ export async function listFormulas(database: Reader = db, itemId?: number) {
                 itemSku: row.itemSku,
                 itemName: row.itemName,
                 isActive: row.isActive,
-                brandName: row.brandName,
+                labelItemName: row.labelItemName,
                 primaryUomId: row.primaryUomId,
                 primaryUomName: row.primaryUomName,
                 createdBy: row.createdBy,

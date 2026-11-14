@@ -1,6 +1,8 @@
 import { z } from "zod"
-const id = z.int().positive(),
-    text = z.string()
+
+const id = z.int().positive()
+const text = z.string()
+
 export const CATEGORIES = [
     "Material Defect",
     "Packing Damage",
@@ -9,6 +11,7 @@ export const CATEGORIES = [
     "Inventory Adjustment",
     "Other",
 ] as const
+
 export const recordSchema = z.object({
     reasonId: id,
     codeName: text,
@@ -16,26 +19,17 @@ export const recordSchema = z.object({
     description: text.nullable(),
     isActive: z.boolean(),
 })
+
 export const inputSchema = z.object({
-    codeName: text.trim().min(1).max(50),
+    codeName: text.trim().min(1, "Enter a reason code.").max(50, "Reason code must be 50 characters or fewer."),
     category: z.enum(CATEGORIES),
-    description: text.trim().max(500).nullable(),
+    description: text
+        .trim()
+        .max(2000, "Description must be 2000 characters or fewer.")
+        .transform((value) => value || null)
+        .nullable(),
     isActive: z.boolean(),
 })
-export const optionsSchema = z.object({
-    items: z.array(
-        z.object({
-            itemId: id,
-            sku: text,
-            name: text,
-            isActive: z.boolean(),
-            primaryUomId: id,
-            primaryUomName: text,
-            uomClassId: id,
-        }),
-    ),
-    uoms: z.array(z.object({ uomId: id, name: text, uomClassId: id })),
-})
+
 export type RecordDto = z.output<typeof recordSchema>
 export type InputDto = z.output<typeof inputSchema>
-export type Options = z.output<typeof optionsSchema>

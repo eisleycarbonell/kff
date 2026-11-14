@@ -5,14 +5,16 @@ registerHooks({
     resolve(specifier, context, nextResolve) {
         return nextResolve(
             specifier.startsWith("@/")
-                ? new URL(`../src/${specifier.slice(2)}.ts`, import.meta.url).href
+                ? new URL(`../src/${specifier.slice(2)}.ts`, import.meta.url)
+                      .href
                 : specifier,
             context,
         )
     },
 })
 process.env.NEXT_PUBLIC_API_BASE_URL = "https://reports.example.test/api"
-const api = await import("../src/hooks/modules/inventory-reports/use-inventory-reports.ts")
+const api =
+    await import("../src/hooks/modules/inventory-reports/use-inventory-reports.ts")
 const schema =
     await import("../src/components/modules/inventory-reports/inventory-report.schema.ts")
 const { buildInventoryReport } =
@@ -78,18 +80,27 @@ test("filter options validate IDs and forward abort signals", async () => {
     const options = {
         items: [{ itemId: 1, sku: "RM", name: "Material" }],
         locations: [{ locationId: 2, code: "WH", name: "Warehouse" }],
-        brands: [],
+        labels: [],
     }
     globalThis.fetch = async (url, init) => {
-        assert.equal(url, "https://reports.example.test/api/reports/inventory/options")
+        assert.equal(
+            url,
+            "https://reports.example.test/api/reports/inventory/options",
+        )
         assert.equal(init.signal, signal)
         assert.equal(init.credentials, "include")
         return Response.json({ success: true, data: options })
     }
     assert.deepEqual(await api.getInventoryReportOptions(signal), options)
     globalThis.fetch = async () =>
-        Response.json({ success: true, data: { ...options, items: [{ itemId: "1" }] } })
-    await assert.rejects(api.getInventoryReportOptions(), /invalid filter options/)
+        Response.json({
+            success: true,
+            data: { ...options, items: [{ itemId: "1" }] },
+        })
+    await assert.rejects(
+        api.getInventoryReportOptions(),
+        /invalid filter options/,
+    )
 })
 test("wrong reports, malformed quantities, unsafe HTTP failures and cancellation never become cached report data", async () => {
     globalThis.fetch = async () =>
@@ -100,13 +111,17 @@ test("wrong reports, malformed quantities, unsafe HTTP failures and cancellation
     )
     const invalid = report()
     invalid.totals = [{ primaryUomId: 1, primaryUomName: "kg", qtyOnHand: 1 }]
-    globalThis.fetch = async () => Response.json({ success: true, data: invalid })
+    globalThis.fetch = async () =>
+        Response.json({ success: true, data: invalid })
     await assert.rejects(
         api.getInventoryReport({ report: "stock-by-location" }),
         /invalid inventory report/,
     )
     globalThis.fetch = async () =>
-        Response.json({ success: false, error: { message: "Sign in required" } }, { status: 401 })
+        Response.json(
+            { success: false, error: { message: "Sign in required" } },
+            { status: 401 },
+        )
     await assert.rejects(
         api.getInventoryReport({ report: "movement" }),
         (error) => error.status === 401 && error.message === "Sign in required",
@@ -115,18 +130,24 @@ test("wrong reports, malformed quantities, unsafe HTTP failures and cancellation
     globalThis.fetch = async () => {
         throw abort
     }
-    await assert.rejects(api.getInventoryReport({ report: "movement" }), (error) => error === abort)
+    await assert.rejects(
+        api.getInventoryReport({ report: "movement" }),
+        (error) => error === abort,
+    )
 })
 test("large decimal totals and export retain exact strings and full report/filter context", () => {
-    assert.equal(schema.decimalUnits("1000000000000.0001"), BigInt("10000000000000001"))
+    assert.equal(
+        schema.decimalUnits("1000000000000.0001"),
+        BigInt("10000000000000001"),
+    )
     const row = {
         rowId: "item:1",
         itemId: 1,
         sku: "ZERO",
         itemName: "Zero stock",
         itemType: "Raw Material - Bulk",
-        brandId: null,
-        brandName: null,
+        labelItemId: null,
+        labelItemName: null,
         primaryUomId: 1,
         primaryUomName: "kg",
         isActive: true,

@@ -17,7 +17,7 @@ import {
     tableFeatures,
     type ReactTable,
 } from "@tanstack/react-table"
-import { Check, Ellipsis, Eye, Pencil, X } from "lucide-react"
+import { ClipboardList, Check, Ellipsis, Eye, Pencil, X } from "lucide-react"
 import {
     compareSalesDecimals,
     formatSalesDecimal,
@@ -51,7 +51,10 @@ export const salesOrderTableFeatures = tableFeatures({
     rowSelectionFeature,
     columnVisibilityFeature,
 })
-export type SalesOrderTableInstance = ReactTable<typeof salesOrderTableFeatures, SalesOrder>
+export type SalesOrderTableInstance = ReactTable<
+    typeof salesOrderTableFeatures,
+    SalesOrder
+>
 const helper = createColumnHelper<typeof salesOrderTableFeatures, SalesOrder>()
 export function SalesOrderStatus({ status }: { status: SalesOrder["status"] }) {
     return (
@@ -71,6 +74,7 @@ export function SalesOrderStatus({ status }: { status: SalesOrder["status"] }) {
 }
 export type SalesOrderActions = {
     canManage: boolean
+    onPlan: (order: SalesOrder) => void
     onView: (order: SalesOrder) => void
     onEdit: (order: SalesOrder) => void
     onAction: (order: SalesOrder, action: "confirm" | "cancel") => void
@@ -78,6 +82,7 @@ export type SalesOrderActions = {
 export function createSalesOrderColumns({
     canManage,
     onView,
+    onPlan,
     onEdit,
     onAction,
 }: SalesOrderActions) {
@@ -90,9 +95,12 @@ export function createSalesOrderColumns({
                     aria-label="Select all orders on this page"
                     checked={table.getIsAllPageRowsSelected()}
                     indeterminate={
-                        table.getIsSomePageRowsSelected() && !table.getIsAllPageRowsSelected()
+                        table.getIsSomePageRowsSelected() &&
+                        !table.getIsAllPageRowsSelected()
                     }
-                    onCheckedChange={(checked) => table.toggleAllPageRowsSelected(checked)}
+                    onCheckedChange={(checked) =>
+                        table.toggleAllPageRowsSelected(checked)
+                    }
                 />
             ),
             cell: ({ row }) => (
@@ -115,6 +123,12 @@ export function createSalesOrderColumns({
                     {row.original.salesOrderNumber}
                 </button>
             ),
+        }),
+        helper.accessor((order) => order.customerPoNumber ?? "", {
+            id: "customerPoNumber",
+            header: "Customer PO",
+            sortFn: "text",
+            cell: ({ getValue }) => getValue() || "—",
         }),
         helper.accessor("customerName", {
             header: "Customer",
@@ -141,9 +155,15 @@ export function createSalesOrderColumns({
         helper.accessor("totalAmount", {
             header: "Order total",
             enableGlobalFilter: false,
-            sortFn: (a, b) => compareSalesDecimals(a.original.totalAmount, b.original.totalAmount),
+            sortFn: (a, b) =>
+                compareSalesDecimals(
+                    a.original.totalAmount,
+                    b.original.totalAmount,
+                ),
             cell: ({ getValue }) => (
-                <span className="tabular-nums">{formatSalesDecimal(getValue())}</span>
+                <span className="tabular-nums">
+                    {formatSalesDecimal(getValue())}
+                </span>
             ),
         }),
         helper.display({
@@ -157,7 +177,8 @@ export function createSalesOrderColumns({
                     (draft || order.status === "Confirmed") &&
                     order.lines.every(
                         (line) =>
-                            compareSalesDecimals(line.qtyDelivered, "0") === 0 &&
+                            compareSalesDecimals(line.qtyDelivered, "0") ===
+                                0 &&
                             compareSalesDecimals(line.qtyAllocated, "0") === 0,
                     )
                 return (
@@ -175,19 +196,33 @@ export function createSalesOrderColumns({
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                             <DropdownMenuGroup>
-                                <DropdownMenuLabel>Sales order</DropdownMenuLabel>
+                                <DropdownMenuLabel>
+                                    Sales order
+                                </DropdownMenuLabel>
                                 <DropdownMenuItem onClick={() => onView(order)}>
                                     <Eye />
                                     View details
                                 </DropdownMenuItem>
+                                {order.status !== "Cancelled" && (
+                                    <DropdownMenuItem
+                                        onClick={() => onPlan(order)}
+                                    >
+                                        <ClipboardList />
+                                        Check material plan
+                                    </DropdownMenuItem>
+                                )}
                                 {canManage && draft && (
                                     <>
-                                        <DropdownMenuItem onClick={() => onEdit(order)}>
+                                        <DropdownMenuItem
+                                            onClick={() => onEdit(order)}
+                                        >
                                             <Pencil />
                                             Edit draft
                                         </DropdownMenuItem>
                                         <DropdownMenuItem
-                                            onClick={() => onAction(order, "confirm")}
+                                            onClick={() =>
+                                                onAction(order, "confirm")
+                                            }
                                         >
                                             <Check />
                                             Confirm order
@@ -197,7 +232,9 @@ export function createSalesOrderColumns({
                                 {canManage && cancellable && (
                                     <DropdownMenuItem
                                         variant="destructive"
-                                        onClick={() => onAction(order, "cancel")}
+                                        onClick={() =>
+                                            onAction(order, "cancel")
+                                        }
                                     >
                                         <X />
                                         Cancel order

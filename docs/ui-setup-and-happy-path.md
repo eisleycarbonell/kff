@@ -1,15 +1,21 @@
 # KFF UI setup and happy-path guide
 
-Updated on 12 November 2026 for generated PO-number prefill with optional custom references.
+Updated on 14 November 2026 for customer-PO material planning and item labels.
 
 This guide explains what to enter, where to click, and what to check when setting up master data and completing one successful purchase-to-customer cycle. It follows the [canonical system flow](system-flow.md). All quantities, prices, names and codes below are training examples.
+
+For the customer-first workflow, start with the [module demo guide](module-demo-guide.md#customer-po-to-purchasing-packing-and-delivery).
+Record the customer PO in Sales Orders, inspect Material plan, buy material
+shortages and receive them, then return here for the detailed packing/delivery
+checkpoints. The original replenishment-first exercise below remains useful
+for learning each inventory action in isolation.
 
 ## 1. Before you start
 
 Ask your system administrator to provide the application address, a working database and an initial administrator account. Creating the database and the first account is outside the UI. In local development, the usual application address is `http://localhost:3000/`; use your organization's supplied address otherwise.
 
-**Brands and packing formulas can now be set up through the UI.** The database
-and first administrator account must already be prepared. Brand creation needs
+**Label materials and packing formulas can be set up through the UI.** The database
+and first administrator account must already be prepared. Item/label creation needs
 Inventory permission; formula preparation needs Packing permission. Formula
 release requires a different reviewer with Packing and User Management
 permissions. Count Sessions, QC Decisions and Stock Dispositions are removed
@@ -69,7 +75,7 @@ Sales and delivery reuse Inventory and Transfers permissions. There are no separ
 6. Enter first name, last name, email and a password meeting the form's requirements; select the intended **Role**. Enter optional details as appropriate and click **Create user**.
 7. Have the operator sign in and confirm the expected pages/actions are available.
 
-**Checkpoint:** at least one active account retains **Users & roles**. You can skip creating roles/users when the supplied training administrator will perform every step.
+**Checkpoint:** at least one active account retains **Users & roles**. You can skip creating roles/users when suitable operator and independent reviewer accounts already exist, or an already released formula will be used.
 
 ## 3. Set up units of measure
 
@@ -110,15 +116,13 @@ Sales and delivery reuse Inventory and Transfers permissions. There are no separ
 
 **Menu:** Master Data > Items / Products (`/items`). **Permission:** Inventory.
 
-First open **Master Data > Brands** (`/brands`) and click **Add brand**. Enter
-**Brand code** `HP-KFF`, **Brand name** `HP KFF Spices`, keep **Active brand**
-checked and click **Create brand**. Return to Items / Products.
+Create the label material before the finished product so it can be selected.
 
 1. Click **Add item**.
 2. Enter **SKU**, **Item / product name**, **Item type**, **Primary unit of measure** and **Reference cost** using the table.
 3. Keep **Active item** checked. New received and packed lots start Approved in
    the simplified workflow; no separate QC request is required.
-4. For the finished good, select **Brand** `HP-KFF` and enter **Net weight (g)** as `100`. Leave Brand as **No brand** for component items. Other optional fields can remain empty for the exercise.
+4. For the finished good, select **Labels** `HP-LBL-GARLIC` and enter **Net weight (g)** as `100`. Component items have no finished-product label assignment. Other optional fields can remain empty for the exercise.
 5. Click **Create item**. Repeat until all five items exist.
 
 | SKU | Item / product name | Item type | Primary UOM | Reference cost |
@@ -169,7 +173,7 @@ reactivating it, link the relevant items again.
 **Menu:** Master Data > Customers (`/customers`). **Permission:** Inventory.
 
 1. Click **Add customer**.
-2. Enter **Customer name** as `HP Sample Grocery`.
+2. Enter **Customer name** as `HP Neighborhood Grocery`.
 3. Add contact person, phone, email and delivery address when available. In a training environment, optional fields can remain empty.
 4. Keep **Active customer** checked and click **Create customer**.
 
@@ -396,7 +400,7 @@ when stock, location and expiry checks pass.
 **Menu:** Sales & Delivery > Sales Orders (`/sales-orders`). **Permission:** Inventory.
 
 1. Click **Create sales order**.
-2. Enter **Sales order number** `HP-SO-001`, choose **Customer** `HP Sample Grocery`, and enter the operation date as **Order date**.
+2. Enter **Sales order number** `HP-SO-001`, choose **Customer** `HP Neighborhood Grocery`, and enter the operation date as **Order date**. Enter the customer's reference `HP-CUST-PO-001` in **Customer PO number**.
 3. Select product `HP-FG-GARLIC-100G`, enter **Quantity** `150` pc and **Unit price** `25`. The example order value is `3750`.
 4. Optional requested delivery date must be on or after the order date. Click **Create sales order**.
 5. Verify **Draft**, then choose **Confirm order** and confirm **Confirm order** in the dialog.
@@ -563,7 +567,7 @@ payment, return or dispatched-delivery reversal workflow in the current scope.
 - [Units and locations](uom-locations-modules.md)
 - [Items](items-module.md), [suppliers](suppliers-module.md) and [customers](customers-module.md)
 - [Purchase orders](purchase-orders-module.md) and [receiving/lots](receiving-lots-modules.md)
-- [Brands and Packing Formulas](brands-packing-formulas-modules.md)
+- [Labels and Packing Formulas](brands-packing-formulas-modules.md)
 - [Packing orders and reservations](packing-orders-module.md)
 - [Internal transfers](stock-transfers-module.md)
 - [Sales and delivery orders](sales-delivery-modules.md)

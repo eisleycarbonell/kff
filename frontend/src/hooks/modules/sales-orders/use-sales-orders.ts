@@ -11,6 +11,8 @@ import { useSession, SESSION_QUERY_KEY } from "@/hooks/use-session"
 import {
     salesOrderSchema,
     salesOrderOptionsSchema,
+    salesMaterialPlanSchema,
+    type SalesMaterialPlan,
     toSalesOrderInput,
     type SalesOrder,
     type SalesOrderOptions,
@@ -22,19 +24,35 @@ import {
 const PATH = "/sales-orders"
 function parse<T>(schema: z.ZodType<T>, data: unknown): T {
     const result = schema.safeParse(data)
-    if (!result.success) throw new Error("The sales order API returned an invalid record.")
+    if (!result.success)
+        throw new Error("The sales order API returned an invalid record.")
     return result.data
 }
-export async function getSalesOrders(signal?: AbortSignal): Promise<SalesOrder[]> {
+export async function getSalesOrders(
+    signal?: AbortSignal,
+): Promise<SalesOrder[]> {
     return parse(salesOrderSchema.array(), await apiRequest(PATH, { signal }))
 }
-export async function getSalesOrder(id: number, signal?: AbortSignal): Promise<SalesOrder> {
-    return parse(salesOrderSchema, await apiRequest(`${PATH}/${id}`, { signal }))
+export async function getSalesOrder(
+    id: number,
+    signal?: AbortSignal,
+): Promise<SalesOrder> {
+    return parse(
+        salesOrderSchema,
+        await apiRequest(`${PATH}/${id}`, { signal }),
+    )
 }
-export async function getSalesOrderOptions(signal?: AbortSignal): Promise<SalesOrderOptions> {
-    return parse(salesOrderOptionsSchema, await apiRequest(`${PATH}/options`, { signal }))
+export async function getSalesOrderOptions(
+    signal?: AbortSignal,
+): Promise<SalesOrderOptions> {
+    return parse(
+        salesOrderOptionsSchema,
+        await apiRequest(`${PATH}/options`, { signal }),
+    )
 }
-export async function createSalesOrder(input: CreateSalesOrderInput): Promise<SalesOrder> {
+export async function createSalesOrder(
+    input: CreateSalesOrderInput,
+): Promise<SalesOrder> {
     return parse(
         salesOrderSchema,
         await apiRequest(PATH, { method: "POST", body: JSON.stringify(input) }),
@@ -55,20 +73,53 @@ export async function updateSalesOrder(
 export async function confirmSalesOrder(id: number): Promise<SalesOrder> {
     return parse(
         salesOrderSchema,
-        await apiRequest(`${PATH}/${id}/confirm`, { method: "POST", body: "{}" }),
+        await apiRequest(`${PATH}/${id}/confirm`, {
+            method: "POST",
+            body: "{}",
+        }),
     )
 }
 export async function cancelSalesOrder(id: number): Promise<SalesOrder> {
     return parse(
         salesOrderSchema,
-        await apiRequest(`${PATH}/${id}/cancel`, { method: "POST", body: "{}" }),
+        await apiRequest(`${PATH}/${id}/cancel`, {
+            method: "POST",
+            body: "{}",
+        }),
+    )
+}
+export async function getSalesMaterialPlan(
+    id: number,
+    sourceLocationId: number,
+    signal?: AbortSignal,
+): Promise<SalesMaterialPlan> {
+    return parse(
+        salesMaterialPlanSchema,
+        await apiRequest(
+            PATH +
+                "/" +
+                id +
+                "/material-plan?" +
+                new URLSearchParams({
+                    sourceLocationId: String(sourceLocationId),
+                }),
+            { signal },
+        ),
     )
 }
 export const SALES_ORDERS_QUERY_KEY = ["sales-orders"] as const
 const EMPTY_ORDERS: SalesOrder[] = []
-const EMPTY_OPTIONS: SalesOrderOptions = { customers: [], items: [] }
+const EMPTY_OPTIONS: SalesOrderOptions = {
+    customers: [],
+    items: [],
+    sourceLocations: [],
+}
 type ActionTarget = { order: SalesOrder; action: "confirm" | "cancel" }
-const useDialogs = createDialogStore<SalesOrder, ActionTarget>()
+const useDialogs = createDialogStore<
+    SalesOrder,
+    ActionTarget,
+    { materialPlanOrderId: number | null; planSourceLocationId: number | null }
+>({ materialPlanOrderId: null, planSourceLocationId: null })
 export function useSalesOrders() {
     const client = useQueryClient()
     const session = useSession()
@@ -80,15 +131,55 @@ export function useSalesOrders() {
         enabled: Boolean(session.data),
         queryFn: ({ signal }) => getSalesOrders(signal),
     })
-    const { formOpen, formRequested, editing: editingOrder, detailId: viewingOrderId,
-        target: actionSelection, openForm, setFormOpen, setDetailId: setViewingOrderId,
-        setTarget: setActionSelection } = useDialogs()
+    const {
+        formOpen,
+        formRequested,
+        editing: editingOrder,
+        detailId: viewingOrderId,
+        target: actionSelection,
+        openForm,
+        setFormOpen,
+        setDetailId: setViewingOrderId,
+        setTarget: setActionSelection,
+        materialPlanOrderId,
+        planSourceLocationId,
+        patch,
+    } = useDialogs()
     const writePending = useRef(false)
     const optionsQuery = useQuery({
         queryKey: ["sales-order-options", session.data?.userId],
-        enabled: Boolean(session.data) && canManage && formOpen,
+        enabled:
+            Boolean(session.data) &&
+            ((canManage && formOpen) || materialPlanOrderId !== null),
         queryFn: ({ signal }) => getSalesOrderOptions(signal),
     })
+    const materialPlanQuery = useQuery({
+        queryKey: [
+            "sales-order-material-plan",
+            materialPlanOrderId,
+            planSourceLocationId,
+            session.data?.userId,
+        ],
+        enabled:
+            Boolean(session.data) &&
+            materialPlanOrderId !== null &&
+            planSourceLocationId !== null,
+        queryFn: ({ signal }) =>
+            getSalesMaterialPlan(
+                materialPlanOrderId!,
+                planSourceLocationId!,
+                signal,
+            ),
+        staleTime: 0,
+    })
+    const openMaterialPlan = useCallback(
+        (order: SalesOrder) =>
+            patch({
+                materialPlanOrderId: order.salesOrderId,
+                planSourceLocationId: null,
+            }),
+        [patch],
+    )
     const sync = (saved: SalesOrder) => {
         client.setQueryData<SalesOrder[]>(queryKey, (current = []) =>
             current.some((order) => order.salesOrderId === saved.salesOrderId)
@@ -102,6 +193,7 @@ export function useSalesOrders() {
             ["delivery-orders"],
             ["delivery-order-options"],
             ["dashboard"],
+            ["sales-order-material-plan"],
         ])
             void client.invalidateQueries({ queryKey: key })
     }
@@ -118,9 +210,12 @@ export function useSalesOrders() {
             values: SalesOrderFormValues
             order: SalesOrder | null
         }) => {
-            if (!canManage) throw new Error("Your role cannot manage sales orders.")
+            if (!canManage)
+                throw new Error("Your role cannot manage sales orders.")
             const input = toSalesOrderInput(values)
-            return order ? updateSalesOrder(order.salesOrderId, input) : createSalesOrder(input)
+            return order
+                ? updateSalesOrder(order.salesOrderId, input)
+                : createSalesOrder(input)
         },
         onSuccess: (saved) => {
             sync(saved)
@@ -129,8 +224,15 @@ export function useSalesOrders() {
         onError: (error) => reportError(error, "Unable to save sales order"),
     })
     const action = useMutation({
-        mutationFn: ({ order, action }: { order: SalesOrder; action: "confirm" | "cancel" }) => {
-            if (!canManage) throw new Error("Your role cannot manage sales orders.")
+        mutationFn: ({
+            order,
+            action,
+        }: {
+            order: SalesOrder
+            action: "confirm" | "cancel"
+        }) => {
+            if (!canManage)
+                throw new Error("Your role cannot manage sales orders.")
             return action === "confirm"
                 ? confirmSalesOrder(order.salesOrderId)
                 : cancelSalesOrder(order.salesOrderId)
@@ -145,8 +247,16 @@ export function useSalesOrders() {
         },
         onError: (error) => reportError(error, "Unable to change sales order"),
     })
-    const { reset: resetSave, mutateAsync: saveOrder, isPending: isSaving } = save
-    const { reset: resetAction, mutateAsync: runAction, isPending: isActionPending } = action
+    const {
+        reset: resetSave,
+        mutateAsync: saveOrder,
+        isPending: isSaving,
+    } = save
+    const {
+        reset: resetAction,
+        mutateAsync: runAction,
+        isPending: isActionPending,
+    } = action
     const openAdd = useCallback(() => {
         if (!canManage || writePending.current) return
         resetSave()
@@ -155,12 +265,15 @@ export function useSalesOrders() {
     const openEdit = useCallback(
         (order: SalesOrder) => {
             if (!canManage || writePending.current) return
-        resetSave()
+            resetSave()
             openForm(order)
         },
         [canManage, resetSave, openForm],
     )
-    const openView = useCallback((order: SalesOrder) => setViewingOrderId(order.salesOrderId), [setViewingOrderId])
+    const openView = useCallback(
+        (order: SalesOrder) => setViewingOrderId(order.salesOrderId),
+        [setViewingOrderId],
+    )
     const openAction = useCallback(
         (order: SalesOrder, action: "confirm" | "cancel") => {
             if (!canManage || writePending.current) return
@@ -187,6 +300,17 @@ export function useSalesOrders() {
     const loadError = ordersQuery.error ?? session.error
     const loadStatus = getLoadStatus(session, [ordersQuery])
     return {
+        materialPlanOrderId,
+        planSourceLocationId,
+        openMaterialPlan,
+        closeMaterialPlan: () =>
+            patch({ materialPlanOrderId: null, planSourceLocationId: null }),
+        setPlanSourceLocationId: (id: number | null) =>
+            patch({ planSourceLocationId: id }),
+        materialPlan: materialPlanQuery.data,
+        materialPlanError: materialPlanQuery.error,
+        materialPlanLoading: materialPlanQuery.isFetching,
+        retryMaterialPlan: () => void materialPlanQuery.refetch(),
         orders: ordersQuery.data ?? EMPTY_ORDERS,
         options: optionsQuery.data ?? EMPTY_OPTIONS,
         optionsReady: optionsQuery.data !== undefined,
@@ -214,9 +338,13 @@ export function useSalesOrders() {
         handleAction: async () => {
             if (writePending.current || !actionSelection) return
             writePending.current = true
-            try { await runAction(actionSelection) }
-            catch { /* Keep failed workflow confirmation open. */ }
-            finally { writePending.current = false }
+            try {
+                await runAction(actionSelection)
+            } catch {
+                /* Keep failed workflow confirmation open. */
+            } finally {
+                writePending.current = false
+            }
         },
         retry: () => {
             void session.refetch()

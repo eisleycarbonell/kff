@@ -2,7 +2,8 @@
 
 import dynamic from "next/dynamic"
 import Link from "next/link"
-import { Plus, Truck } from "lucide-react"
+import { ClipboardList, Plus, Truck } from "lucide-react"
+import { SalesMaterialPlanDialog } from "@/components/modules/sales-orders/sales-material-plan-dialog"
 import { SalesOrderStatistics } from "@/components/modules/sales-orders/sales-order-statistics"
 import { SalesOrderTable } from "@/components/modules/sales-orders/sales-order-table"
 import { SalesOrderStatus } from "@/components/modules/sales-orders/sales-order-table-columns"
@@ -54,7 +55,7 @@ export default function SalesOrdersPage() {
             />
             <PageHeader
                 title="Sales Orders"
-                description="Confirm customer orders and track finished product fulfillment."
+                description="Record customer POs, check material shortages, then pack and deliver finished products."
                 actions={
                     feature.canManage && (
                         <Button
@@ -87,19 +88,27 @@ export default function SalesOrdersPage() {
                     </AlertTitle>
                     <AlertDescription>
                         <p>{feature.loadError.message}</p>
-                        {feature.loadStatus === "ready" && <p>Showing the last loaded records.</p>}
+                        {feature.loadStatus === "ready" && (
+                            <p>Showing the last loaded records.</p>
+                        )}
                         <Button
                             variant="outline"
                             onClick={feature.retry}
                             disabled={feature.isFetching}
                         >
-                            {feature.isFetching ? "Retrying..." : "Retry loading orders"}
+                            {feature.isFetching
+                                ? "Retrying..."
+                                : "Retry loading orders"}
                         </Button>
                     </AlertDescription>
                 </Alert>
             )}
             {feature.loadStatus === "loading" && (
-                <div className="space-y-4" aria-busy="true" aria-label="Loading sales orders">
+                <div
+                    className="space-y-4"
+                    aria-busy="true"
+                    aria-label="Loading sales orders"
+                >
                     <div className="grid gap-4 sm:grid-cols-3">
                         {[0, 1, 2].map((value) => (
                             <Skeleton key={value} className="h-28 rounded-xl" />
@@ -114,8 +123,8 @@ export default function SalesOrdersPage() {
                         <Alert>
                             <AlertTitle>View access</AlertTitle>
                             <AlertDescription>
-                                You can view and export orders. Inventory managers can create and
-                                confirm sales orders.
+                                You can view and export orders. Inventory
+                                managers can create and confirm sales orders.
                             </AlertDescription>
                         </Alert>
                     )}
@@ -125,6 +134,7 @@ export default function SalesOrdersPage() {
                         canManage={feature.canManage}
                         onAdd={feature.openAdd}
                         onView={feature.openView}
+                        onPlan={feature.openMaterialPlan}
                         onEdit={feature.openEdit}
                         onAction={feature.openAction}
                     />
@@ -144,10 +154,25 @@ export default function SalesOrdersPage() {
                     saveError={feature.saveError}
                 />
             )}
+            <SalesMaterialPlanDialog
+                open={feature.materialPlanOrderId !== null}
+                onClose={feature.closeMaterialPlan}
+                sourceLocationId={feature.planSourceLocationId}
+                onSourceChange={feature.setPlanSourceLocationId}
+                options={feature.options}
+                optionsReady={feature.optionsReady}
+                optionsError={feature.optionsError}
+                retryOptions={feature.retryOptions}
+                plan={feature.materialPlan}
+                error={feature.materialPlanError}
+                loading={feature.materialPlanLoading}
+                refresh={feature.retryMaterialPlan}
+            />
             <AlertDialog
                 open={feature.canManage && feature.actionSelection !== null}
                 onOpenChange={(open) => {
-                    if (!open && !feature.isActionPending) feature.setActionSelection(null)
+                    if (!open && !feature.isActionPending)
+                        feature.setActionSelection(null)
                 }}
             >
                 <AlertDialogContent>
@@ -211,19 +236,37 @@ export default function SalesOrdersPage() {
                         <>
                             <dl className="grid gap-4 text-sm sm:grid-cols-3">
                                 <div>
-                                    <dt className="text-muted-foreground">Status</dt>
+                                    <dt className="text-muted-foreground">
+                                        Customer PO
+                                    </dt>
                                     <dd className="mt-1">
-                                        <SalesOrderStatus status={viewed.status} />
+                                        {viewed.customerPoNumber ??
+                                            "Not provided"}
                                     </dd>
                                 </div>
                                 <div>
-                                    <dt className="text-muted-foreground">Order date</dt>
+                                    <dt className="text-muted-foreground">
+                                        Status
+                                    </dt>
+                                    <dd className="mt-1">
+                                        <SalesOrderStatus
+                                            status={viewed.status}
+                                        />
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt className="text-muted-foreground">
+                                        Order date
+                                    </dt>
                                     <dd className="mt-1">{viewed.orderDate}</dd>
                                 </div>
                                 <div>
-                                    <dt className="text-muted-foreground">Requested delivery</dt>
+                                    <dt className="text-muted-foreground">
+                                        Requested delivery
+                                    </dt>
                                     <dd className="mt-1">
-                                        {viewed.requestedDeliveryDate ?? "Not scheduled"}
+                                        {viewed.requestedDeliveryDate ??
+                                            "Not scheduled"}
                                     </dd>
                                 </div>
                             </dl>
@@ -240,7 +283,9 @@ export default function SalesOrdersPage() {
                                         <TableHead>Ordered</TableHead>
                                         <TableHead>Delivered</TableHead>
                                         <TableHead>Remaining</TableHead>
-                                        <TableHead>Allocated to deliveries</TableHead>
+                                        <TableHead>
+                                            Allocated to deliveries
+                                        </TableHead>
                                         <TableHead>Unit price</TableHead>
                                         <TableHead>Line total</TableHead>
                                     </TableRow>
@@ -249,12 +294,16 @@ export default function SalesOrdersPage() {
                                     {viewed.lines.map((line) => (
                                         <TableRow key={line.salesOrderLineId}>
                                             <TableCell>
-                                                <p className="font-medium">{line.itemName}</p>
+                                                <p className="font-medium">
+                                                    {line.itemName}
+                                                </p>
                                                 <p className="text-xs text-muted-foreground">
                                                     {line.itemSku}
                                                 </p>
                                             </TableCell>
-                                            <TableCell>{line.uomName}</TableCell>
+                                            <TableCell>
+                                                {line.uomName}
+                                            </TableCell>
                                             {[
                                                 line.qtyOrdered,
                                                 line.qtyDelivered,
@@ -263,7 +312,10 @@ export default function SalesOrdersPage() {
                                                 line.unitPrice,
                                                 line.lineTotal,
                                             ].map((value, index) => (
-                                                <TableCell key={index} className="tabular-nums">
+                                                <TableCell
+                                                    key={index}
+                                                    className="tabular-nums"
+                                                >
                                                     {formatSalesDecimal(value)}
                                                 </TableCell>
                                             ))}
@@ -272,15 +324,29 @@ export default function SalesOrdersPage() {
                                 </TableBody>
                             </Table>
                             <p className="text-right font-medium tabular-nums">
-                                Order total: {formatSalesDecimal(viewed.totalAmount)}
+                                Order total:{" "}
+                                {formatSalesDecimal(viewed.totalAmount)}
                             </p>
                             <p className="text-sm text-muted-foreground">
-                                Allocated quantities belong to draft or in-transit delivery orders.
-                                Remaining quantities decrease when customer delivery is completed.
+                                Allocated quantities belong to draft or
+                                in-transit delivery orders. Remaining quantities
+                                decrease when customer delivery is completed.
                             </p>
                         </>
                     )}
                     <DialogFooter>
+                        {viewed && viewed.status !== "Cancelled" && (
+                            <Button
+                                variant="outline"
+                                onClick={() => {
+                                    feature.setViewingOrderId(null)
+                                    feature.openMaterialPlan(viewed)
+                                }}
+                            >
+                                <ClipboardList />
+                                Check material plan
+                            </Button>
+                        )}
                         <Button
                             variant="outline"
                             render={<Link href="/delivery-orders" />}
@@ -289,7 +355,9 @@ export default function SalesOrdersPage() {
                             <Truck />
                             Delivery orders
                         </Button>
-                        <Button onClick={() => feature.setViewingOrderId(null)}>Close</Button>
+                        <Button onClick={() => feature.setViewingOrderId(null)}>
+                            Close
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

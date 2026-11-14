@@ -27,7 +27,7 @@ const fixtureSql = [
         auditColumns +
         ')',
     'create table items (' +
-        'brand_id integer, ' +
+        'brand_id integer, label_item_id integer, ' +
         'item_id integer primary key, sku varchar(50) not null unique, name varchar(120) not null, ' +
         'item_type text not null, primary_uom_id integer not null references uoms, ' +
         'net_weight_g numeric(12,4), shelf_life_days integer, requires_qc boolean not null default false, ' +
