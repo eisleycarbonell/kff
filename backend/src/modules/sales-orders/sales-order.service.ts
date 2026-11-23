@@ -21,7 +21,9 @@ import {
     suppliers,
 } from '../../db/schema.ts';
 import { AppError } from '../../errors/app-error.ts';
+import { getSettings } from '../company-settings/company-setting.service.ts';
 import { quantityUnits, quantityString } from '../inventory-stocks/inventory-stock.rules.ts';
+import { normalizeVatRate, vatBasisPoints } from '../purchase-orders/purchase-order.rules.ts';
 import type { CreateSalesOrderInput, UpdateSalesOrderInput } from './sales-order.schema.ts';
 
 type Reader = Pick<typeof db, 'select'>;
@@ -57,6 +59,7 @@ const lineFields = {
     qtyOrdered: salesOrderLines.qtyOrdered,
     qtyDelivered: salesOrderLines.qtyDelivered,
     unitPrice: salesOrderLines.unitPrice,
+    vatRatePercent: salesOrderLines.vatRatePercent,
     qtyAllocated: sql<string>`coalesce((select sum(${deliveryOrderLines.qtyDelivered}) from ${deliveryOrderLines} inner join ${deliveryOrders} on ${deliveryOrderLines.deliveryOrderId}=${deliveryOrders.deliveryOrderId} where ${deliveryOrderLines.salesOrderLineId}=${salesOrderLines.salesOrderLineId} and ${deliveryOrders.status} in ('Draft','In Transit')),0)::numeric(14,4)::text`,
 };
 export function salesLineAmounts(line: {
@@ -70,6 +73,24 @@ export function salesLineAmounts(line: {
         lineTotal: quantityString((ordered * quantityUnits(line.unitPrice) + 5000n) / 10000n),
     };
 }
+export function salesLineTaxAmounts(line: {
+    qtyOrdered: string;
+    qtyDelivered: string;
+    unitPrice: string;
+    vatRatePercent?: string;
+}) {
+    const ordered = quantityUnits(line.qtyOrdered);
+    const bp = vatBasisPoints(line.vatRatePercent);
+    const netUnits = (ordered * quantityUnits(line.unitPrice) + 5000n) / 10000n;
+    const vatUnits = (netUnits * bp + 5000n) / 10000n;
+    return {
+        qtyRemaining: quantityString(ordered - quantityUnits(line.qtyDelivered)),
+        vatRatePercent: `${bp / 100n}.${(bp % 100n).toString().padStart(2, '0')}`,
+        netAmount: quantityString(netUnits),
+        vatAmount: quantityString(vatUnits),
+        lineTotal: quantityString(netUnits + vatUnits),
+    };
+}
 async function linesFor(ids: number[], database: Reader) {
     if (!ids.length) return [];
     const rows = await database
@@ -79,26 +100,48 @@ async function linesFor(ids: number[], database: Reader) {
         .innerJoin(uoms, eq(salesOrderLines.uomId, uoms.uomId))
         .where(inArray(salesOrderLines.salesOrderId, ids))
         .orderBy(asc(salesOrderLines.salesOrderLineId));
-    return rows.map((row) => ({ ...row, ...salesLineAmounts(row) }));
+    return rows.map((row) => ({ ...row, ...salesLineTaxAmounts(row) }));
 }
-export async function listSalesOrders(database: Reader = db) {
-    const headers = await query(database).orderBy(
-        desc(salesOrders.orderDate),
-        desc(salesOrders.salesOrderId),
-    );
+function summarizeSalesTotals(
+    lines: { netAmount: string; vatAmount: string; lineTotal: string }[],
+) {
+    return {
+        netAmount: quantityString(
+            lines.reduce((total, line) => total + quantityUnits(line.netAmount), 0n),
+        ),
+        vatAmount: quantityString(
+            lines.reduce((total, line) => total + quantityUnits(line.vatAmount), 0n),
+        ),
+        totalAmount: quantityString(
+            lines.reduce((total, line) => total + quantityUnits(line.lineTotal), 0n),
+        ),
+    };
+}
+export async function listSalesOrders(
+    database: Reader = db,
+    statuses?: readonly (typeof salesOrders.$inferSelect)['status'][],
+) {
+    const baseQuery = query(database);
+    const headers = await (
+        statuses?.length ? baseQuery.where(inArray(salesOrders.status, [...statuses])) : baseQuery
+    ).orderBy(desc(salesOrders.orderDate), desc(salesOrders.salesOrderId));
     const lines = await linesFor(
         headers.map((header) => header.salesOrderId),
         database,
     );
+    const linesByOrderId = new Map<number, typeof lines>();
+    for (const line of lines) {
+        const list = linesByOrderId.get(line.salesOrderId) ?? [];
+        list.push(line);
+        linesByOrderId.set(line.salesOrderId, list);
+    }
     return headers.map((header) => {
-        const matching = lines.filter((line) => line.salesOrderId === header.salesOrderId);
+        const matching = linesByOrderId.get(header.salesOrderId) ?? [];
         return {
             ...header,
             lines: matching,
             lineCount: matching.length,
-            totalAmount: quantityString(
-                matching.reduce((total, line) => total + quantityUnits(line.lineTotal), 0n),
-            ),
+            ...summarizeSalesTotals(matching),
         };
     });
 }
@@ -110,13 +153,11 @@ export async function getSalesOrder(id: number, database: Reader = db) {
         ...header,
         lines,
         lineCount: lines.length,
-        totalAmount: quantityString(
-            lines.reduce((total, line) => total + quantityUnits(line.lineTotal), 0n),
-        ),
+        ...summarizeSalesTotals(lines),
     };
 }
 export async function getSalesOrderOptions() {
-    const [customerRows, itemRows, sourceLocations] = await Promise.all([
+    const [customerRows, itemRows, sourceLocations, settings] = await Promise.all([
         db
             .select({
                 customerId: customers.customerId,
@@ -133,6 +174,8 @@ export async function getSalesOrderOptions() {
                 primaryUomId: items.primaryUomId,
                 primaryUomName: uoms.name,
                 isActive: items.isActive,
+                isVatable: items.isVatable,
+                unitCost: items.unitCost,
             })
             .from(items)
             .innerJoin(uoms, eq(items.primaryUomId, uoms.uomId))
@@ -148,8 +191,14 @@ export async function getSalesOrderOptions() {
             .from(locations)
             .where(inArray(locations.locationType, ['Warehouse', 'Packing']))
             .orderBy(asc(locations.name)),
+        getSettings(db),
     ]);
-    return { customers: customerRows, items: itemRows, sourceLocations };
+    return {
+        customers: customerRows,
+        items: itemRows,
+        sourceLocations,
+        defaultVatRatePercent: settings.vatRatePercent,
+    };
 }
 export async function lockSalesOrder(database: Reader, id: number) {
     const [header] = await database
@@ -188,6 +237,7 @@ async function validateDefinitions(
         )
             throw new AppError(409, 'Sales require active finished goods in their primary UOM.');
     }
+    return new Map(products.map((item) => [item.itemId, item.isVatable]));
 }
 function datesValid(orderDate: string, deliveryDate: string | null | undefined) {
     if (deliveryDate && deliveryDate < orderDate)
@@ -198,10 +248,18 @@ async function saveLines(
     id: number,
     lines: CreateSalesOrderInput['lines'],
     actorId: number,
+    vatableByItem: Map<number, boolean>,
+    defaultVatRate: string,
 ) {
     await database.insert(salesOrderLines).values(
         lines.map((line) => ({
             ...line,
+            vatRatePercent:
+                line.vatRatePercent !== undefined
+                    ? normalizeVatRate(line.vatRatePercent)
+                    : vatableByItem.get(line.itemId)
+                      ? defaultVatRate
+                      : '0.00',
             salesOrderId: id,
             createdBy: actorId,
             updatedBy: actorId,
@@ -219,7 +277,8 @@ export async function createSalesOrder(
     database: typeof db = db,
 ) {
     return database.transaction(async (tx) => {
-        await validateDefinitions(tx, input.customerId, input.lines);
+        const vatableByItem = await validateDefinitions(tx, input.customerId, input.lines);
+        const settings = await getSettings(tx);
         datesValid(input.orderDate, input.requestedDeliveryDate);
         const { lines, ...header } = input;
         const [created] = await tx
@@ -227,7 +286,7 @@ export async function createSalesOrder(
             .values({ ...header, createdBy: actorId, updatedBy: actorId })
             .returning({ id: salesOrders.salesOrderId });
         if (!created) throw new Error('The sales order could not be created.');
-        await saveLines(tx, created.id, lines, actorId);
+        await saveLines(tx, created.id, lines, actorId, vatableByItem, settings.vatRatePercent);
         return saved(tx, created.id);
     });
 }
@@ -248,7 +307,7 @@ export async function updateSalesOrder(
             .where(eq(salesOrderLines.salesOrderId, id))
             .orderBy(asc(salesOrderLines.salesOrderLineId))
             .for('update');
-        await validateDefinitions(
+        const vatableByItem = await validateDefinitions(
             tx,
             input.customerId ?? header.customerId,
             input.lines ?? currentLines,
@@ -265,8 +324,9 @@ export async function updateSalesOrder(
             .set({ ...changes, updatedBy: actorId, updatedAt: new Date() })
             .where(eq(salesOrders.salesOrderId, id));
         if (lines) {
+            const settings = await getSettings(tx);
             await tx.delete(salesOrderLines).where(eq(salesOrderLines.salesOrderId, id));
-            await saveLines(tx, id, lines, actorId);
+            await saveLines(tx, id, lines, actorId, vatableByItem, settings.vatRatePercent);
         }
         return saved(tx, id);
     });

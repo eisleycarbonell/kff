@@ -9,6 +9,7 @@ import {
     DeliveryOrderActionDialog,
     DeliveryOrderDetailDialog,
 } from "@/components/modules/delivery-orders/delivery-order-dialogs"
+import { BulkImportActions } from "@/components/shared/bulk-import-actions"
 import { PageHeader } from "@/components/shared/page-header"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -35,14 +36,20 @@ export default function DeliveryOrdersPage() {
                 description="Allocate finished-product lots, dispatch shipments and confirm customer receipt."
                 actions={
                     feature.canManage && (
-                        <Button
-                            className="h-10 gap-2 px-4"
-                            onClick={feature.openAdd}
-                            disabled={feature.loadStatus !== "ready"}
-                        >
-                            <Plus />
-                            Create delivery order
-                        </Button>
+                        <>
+                            <BulkImportActions
+                                moduleKey="delivery-orders"
+                                disabled={feature.loadStatus !== "ready"}
+                            />
+                            <Button
+                                className="h-10 gap-2 px-4"
+                                onClick={feature.openAdd}
+                                disabled={feature.loadStatus !== "ready"}
+                            >
+                                <Plus />
+                                Create delivery order
+                            </Button>
+                        </>
                     )
                 }
             />

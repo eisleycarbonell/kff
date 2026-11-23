@@ -112,31 +112,31 @@ remain illustrative rather than fixed master data or promised feature coverage.
 | Module | Current implementation | Implementation contract |
 | --- | --- | --- |
 | Dashboard | Operational inventory, purchasing, packing and transfer summaries | Dashboard page and API |
-| Items / Products | Catalog, finished-product label-material assignments and reference protection | [Items](items-module.md) |
+| Items / Products | Catalog, finished-product label-material assignments, per-item VATability (`isVatable`), and reference protection | [Items](items-module.md) |
 | Suppliers | Supplier contacts and shared item links | [Suppliers](suppliers-module.md) |
 | Customers | Contact master data linked to sales orders | [Customers](customers-module.md) |
 | Units and Locations | Master-data management and usage protection | [UOM and Locations](uom-locations-modules.md) |
-| Purchase Orders | Draft, send, partial receipt, completion and cancellation | [Purchase Orders](purchase-orders-module.md) |
-| Receiving and Lots | Purchase receiving, lot provenance and QC metadata | [Receiving and Lots](receiving-lots-modules.md) |
+| Purchase Orders | Draft, send, partial receipt, completion, cancellation, per-line VAT rate snapshots (`vatRatePercent`), and Net / Input VAT / Gross totals | [Purchase Orders](purchase-orders-module.md) |
+| Receiving and Lots | Purchase receiving (storing Ex-VAT `lots.unitCost`), lot provenance and QC metadata | [Receiving and Lots](receiving-lots-modules.md) |
 | Inventory, Movements and Adjustments | Balances, append-only ledger and direct physical-count corrections | [Inventory Stocks](inventory-stocks-module.md) |
 | Packing Orders and Material Reservations | BOM snapshots, planning, reservations, start and completion | [Packing Orders](packing-orders-module.md) |
 | Stock Transfers and Branch/Store Stock | Dispatch through In Transit, partial receiving and shared location inventory | [Stock Transfers](stock-transfers-module.md) |
-| Sales Orders and Delivery Orders | Customer PO references, BOM material shortage planning, demand allocation, lot dispatch and completed fulfillment | [Sales and Delivery](sales-delivery-modules.md) |
+| Sales Orders and Delivery Orders | Customer PO references, BOM material shortage planning, per-line VAT rate snapshots, demand allocation, lot dispatch and completed fulfillment | [Sales and Delivery](sales-delivery-modules.md) |
 | Users, Roles and Authentication | Accounts, sessions and the five supported permission settings | [Users and Roles](roles-users-module.md) |
-| Packing Formula / BOM maintenance | Published BOM inspection; numbered, dated revision releases with independent review | [Labels and Packing Formulas](brands-packing-formulas-modules.md) |
+| Packing Formula / BOM maintenance | Direct BOM creation, editing, copying, batch calculator, and removal at `/bom` | [Labels and Packing Formulas](brands-packing-formulas-modules.md) |
 | Inventory Reports | Stock by Location, Stock by Lot, Low Stock, Near Expiry and Inventory Movement with filters, exact unit totals and CSV export | [Inventory Reports](inventory-reports-module.md) |
-| Company Settings | Company/contact details, fixed currency after pricing history, alert defaults and optimistic version checks | [Controls and Reports](inventory-controls-and-reports.md) |
+| Company Settings | Company/contact details, fixed currency after pricing history, default VAT rate (`vatRatePercent`), alert defaults and optimistic version checks | [Controls and Reports](inventory-controls-and-reports.md) |
+| Accounting | Ex-VAT inventory valuation, COGS, Gross Profit, AP/AR, creditable Input VAT (`1150`), Output VAT Payable (`2200`), Net VAT Payable, and balanced Trial Balance (`/accounting`) | [Controls and Reports](inventory-controls-and-reports.md) |
 | Packaging, Reorder Levels and Reason Codes | Item-specific conversions/barcodes, saved thresholds and active reasons | [Controls and Reports](inventory-controls-and-reports.md) |
 | Scrap & Disposal | Independently reviewed permanent stock removal | [Controls and Reports](inventory-controls-and-reports.md) |
-| Former Count Sessions, QC Decisions and Stock Dispositions | Removed from the active workflow; retained records remain historical and cannot be advanced | [Controls and Reports](inventory-controls-and-reports.md) |
-| Formula Revisions | Numbered replacement/retirement and effective-date release approval | [Controls and Reports](inventory-controls-and-reports.md) |
+| Former Count Sessions, QC Decisions, Stock Dispositions, and Formula Revisions | Removed from the active workflow; historical records remain read-only and `/formula-revisions` redirects to `/bom` | [Controls and Reports](inventory-controls-and-reports.md) |
 | Operational Reports | Packing variance/consumption, purchasing exposure, transfer transit and lot genealogy | [Controls and Reports](inventory-controls-and-reports.md) |
 
 [Inventory Controls and Reports](inventory-controls-and-reports.md) defines the
 modules, APIs, access and review lifecycle. Stock Adjustments remains the direct
-physical-count correction workflow. Historical BOMs remain a legacy published
-baseline; migration does not fabricate prior approvals. [Sample-data setup](test-data.md)
-describes six role/account assignments and empty-database import behavior.
+physical-count correction workflow. Direct Packing Formulas (`/bom`) replaces
+Formula Revisions; historical revision requests remain read-only history. [Sample-data setup](test-data.md)
+describes role/account assignments and empty-database import behavior.
 
 ## Module purposes and connections
 
@@ -158,8 +158,7 @@ relevant notes. This in-app help follows the same rules and
 | Item Packaging | Define an item's units per box/case and optional barcode/weight | Overrides generic compatible UOM conversion for that item in receiving and packing requirements |
 | Locations | Define warehouses, packing areas, branches, stores and In Transit | Receiving, packing, transfers and deliveries write stock against these locations |
 | Customers | Maintain customer contact and delivery-address details | Sales Orders select a customer; customers are not company inventory locations |
-| Packing Formulas | Inspect the published materials required per finished unit | Formula Revisions publishes the BOM; a new Packing Order copies it |
-| Formula Revisions | Prepare and independently release a replacement or retirement of a formula | Changes future packing requirements; historical orders keep their saved snapshot |
+| Packing Formulas | Create, edit, copy from an existing formula, calculate from batch size, or remove the materials required per finished unit | Published directly at `/bom`; a new Packing Order copies it while existing orders keep their snapshot |
 | Reorder Levels | Set item-specific low-stock thresholds | Used by Dashboard and Low Stock reports; does not automatically purchase anything |
 | Reason Codes | Maintain active explanations for adjustments and disposal | Required by Stock Adjustments or Scrap & Disposal, as appropriate |
 | Purchase Orders | Record the selected supplier, material quantities, purchase units and agreed prices | Uses active supplier-item links; a Sent PO becomes available in Receiving |
@@ -427,13 +426,14 @@ active adjustment/disposal reasons; `/reorder-policies` saves item thresholds.
 
 A BOM defines the materials required to produce one finished product.
 
-The current `/bom` page inspects published requirements. Packing managers prepare
-numbered Replace/Retire requests at `/formula-revisions`. A different reviewer
-with packing and user-management permissions releases a revision on or after its
-effective date. Releases atomically publish/remove the current BOM; new orders
-copy it and record its revision ID. Existing orders retain their own material
-snapshot and reservations. Item-specific pack ratios override global compatible
-UOM factors. See [Controls and Reports](inventory-controls-and-reports.md) and
+Packing managers (`canManagePacking`) create, update, copy, and remove packing
+formulas directly at `/bom`, with a per-row batch calculator and automatic inclusion
+of a finished product's assigned `labelItemId`. Formula Revisions are retired
+(`/formula-revisions` redirects to `/bom` and `Formula` control writes return `409`),
+while historical revision records stay readable. Changes take effect immediately
+for new orders; existing orders retain their own material snapshot and
+reservations. Item-specific pack ratios override global compatible UOM factors.
+See [Controls and Reports](inventory-controls-and-reports.md) and
 [Labels and Packing Formulas](brands-packing-formulas-modules.md).
 
 Example:
@@ -616,7 +616,13 @@ uom
 qtyOrdered
 qtyReceived
 unitPrice
+vatRatePercent
 ```
+
+Each line snapshots a VAT rate (`0.00`–`100.00`, defaulting from Company Settings when
+the item has `isVatable = true`, or `0.00` when VAT-exempt; editable per line). Purchase
+receiving stores the Ex-VAT `unitPrice` as `lots.unitCost` so recoverable Input VAT does not
+inflate inventory valuation or COGS.
 
 Partial receiving is supported.
 
@@ -1523,8 +1529,11 @@ Packing, purchasing, transfer and lot-genealogy reports are implemented at
 `/reports/packing`, `/reports/purchasing`, `/reports/transfers` and
 `/reports/genealogy`. Dashboard quantities are grouped by primary UOM; open lists
 filter status before limits and shortage alerts include never-stocked items.
-Historical stock reconstruction, scheduled reports, multicurrency conversion
-and accounting remain outside this implementation. See
+Historical stock reconstruction, scheduled reports, and general invoice/payment
+settlement remain outside this implementation, while operational Accounting at
+`/accounting` computes Ex-VAT inventory valuation, COGS, AP/AR, creditable Input VAT
+(`1150`), Output VAT Payable (`2200`), Net VAT Payable (`Output VAT - Input VAT`), and a
+balanced General Ledger Trial Balance. See
 [Controls and Reports](inventory-controls-and-reports.md).
 
 ---
@@ -1588,13 +1597,15 @@ Never rely only on frontend permission checks.
 
 ### Independent operational review
 
-Preparing Scrap & Disposal requires `canManageInventory`; preparing
-Formula Revisions requires `canManagePacking`. Approval/rejection additionally
+Preparing and approving Scrap & Disposal uses independent operational review:
+preparing requires `canManageInventory`, and approval/rejection additionally
 requires `canManageUsers` and a different user from the creator/submitter.
-Company settings writes require `canManageUsers`. Stock Adjustments and direct
-lot-status corrections require Inventory permission without a separate review
-request. Retired Count/QC/Disposition requests cannot advance through review.
-The backend enforces these rules; UI visibility mirrors them.
+Packing Formulas at `/bom` are edited directly by users with `canManagePacking`
+without a separate revision approval step. Company settings writes require
+`canManageUsers`. Stock Adjustments and direct lot-status corrections require
+Inventory permission without a separate review request. Retired
+Count/QC/Disposition/Formula requests cannot advance through review. The
+backend enforces these rules; UI visibility mirrors them.
 
 ---
 
@@ -1652,7 +1663,6 @@ Sales & Delivery
 Master Data
 ├── Items / Products
 ├── Packing Formulas
-├── Formula Revisions
 ├── Item Packaging
 ├── Reorder Levels
 ├── Reason Codes
@@ -1689,7 +1699,8 @@ The tree above reflects the active sidebar. Count Sessions, QC Decisions and
 Stock Dispositions are removed. Their former page routes redirect to Inventory
 Stock; `/inventory/counts` redirects to Stock Adjustments. Their stored history
 remains readable through authenticated history APIs, without new or continuing
-requests. Company Settings is an implemented settings page.
+requests. Company Settings is an implemented settings page, and Accounting (`/accounting`)
+is an implemented accounting and VAT ledger module.
 
 ---
 
@@ -1719,7 +1730,7 @@ performs each action; preparing and releasing a formula uses different people.
 | 3 | Items / Products; Inventory | Create raw spice, pouch, label, seal and finished-product records; set primary UOMs | One catalog record per material/product, ready for supplier links and formulas |
 | 4 | Suppliers and Items supplier links; Purchasing | Create suppliers in Suppliers; use Link items in Suppliers or the supplier dialog in Items to link materials | Only the selected supplier's active linked materials appear on its PO; both screens manage the same links; units and prices are entered on the PO |
 | 5 | Item Packaging / Reason Codes / Reorder Levels; Inventory | Set any needed item pack ratios, correction/disposal reasons and reorder overrides | Optional business configuration is ready before referenced operations |
-| 6 | Formula Revisions; Packing then independent reviewer | Prepare the finished product's per-unit formula, submit and release it | Packing Formulas shows the published BOM; future orders can snapshot it |
+| 6 | Packing Formulas (`/bom`); Packing (`canManagePacking`) | Define the finished product's per-unit ingredients, packaging, and label directly (copying an existing formula or using batch calc as needed) | BOM is immediately published at `/bom`; future orders snapshot it |
 | 7 | Purchase Orders; Purchasing | Keep the prefilled generated PO number or replace it with a unique reference; select supplier, choose its linked materials, enter quantities/units/prices and save | Draft has a unique PO number fixed after saving; allocating a number alone creates no order or stock |
 | 8 | Purchase Orders; Purchasing | Review and mark the draft Sent | Outstanding PO lines become available in Receiving |
 | 9 | Receiving; Inventory | After arrival select PO/line, destination, received quantity and unique lot reference; save | Purchased lot links to its PO line; Receive increases warehouse stock and PO received quantity |

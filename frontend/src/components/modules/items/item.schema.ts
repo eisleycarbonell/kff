@@ -25,6 +25,7 @@ export const itemInputSchema = z.strictObject({
   shelfLifeDays: id.nullable(),
   requiresQc: z.boolean(),
   unitCost: decimal(10),
+  isVatable: z.boolean().optional(),
   isActive: z.boolean(),
 });
 export const itemSupplierLinkSchema = z.object({

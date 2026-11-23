@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dialog"
 import { Field, FieldLabel, FieldError } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { NumericInput } from "@/components/shared/numeric-input"
 
 type Props = {
     selection: { order: PackingOrder; action: PackingAction } | null
@@ -132,14 +133,15 @@ function ActionContent({
                             <FieldLabel htmlFor={`${id}-quantity`}>
                                 Actual output ({order.primaryUomName})
                             </FieldLabel>
-                            <Input
+                            <NumericInput
                                 id={`${id}-quantity`}
                                 name="actualQty"
-                                inputMode="decimal"
+                                maxWholeDigits={10}
+                                maxDecimalPlaces={4}
                                 value={values.actualQty}
                                 required
                                 disabled={pending}
-                                onChange={(e) => update("actualQty", e.target.value)}
+                                onValueChange={(next) => update("actualQty", next)}
                                 aria-invalid={Boolean(errors.actualQty)}
                                 aria-describedby={
                                     errors.actualQty ? `${id}-quantity-error` : undefined

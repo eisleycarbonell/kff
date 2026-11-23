@@ -9,5 +9,6 @@ export function createAuthRouter(service: AuthService, authenticate: RequestHand
     router.post('/login', validateRequest(loginRequestSchema), controller.login);
     router.post('/logout', controller.logout);
     router.get('/session', authenticate, controller.session);
+    router.get('/socket-token', authenticate, controller.socketToken);
     return router;
 }

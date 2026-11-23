@@ -52,10 +52,18 @@ The expected delivery date is an optional ISO calendar date and cannot precede
 the order timestamp's UTC date. Clearing an optional value sends null; omitted
 PATCH fields remain unchanged.
 
-Each line contains an item, purchase UOM, ordered quantity, and unit price.
+Each line contains an item, purchase UOM, ordered quantity, Net (Ex-VAT) unit price,
+and an optional VAT rate (`vatRatePercent`, 0–100%). When `vatRatePercent` is omitted on
+create/update, the backend snapshots `company_settings.vatRatePercent` if `item.isVatable`
+is true, or `'0.00'` if the item is VAT-exempt. Users can inspect or override the VAT rate
+per line in the order form without changing catalog defaults.
 The same item/UOM pair can appear only once in an order. Ordered quantities must
 be positive; unit prices may be zero. Both use exact decimal strings matching
 `numeric(14,4)`, with at most 10 whole digits and 4 decimal places.
+
+Purchase receiving (`lots.unitCost`) uses the Ex-VAT unit price so recoverable Input VAT
+does not inflate raw/packaging inventory valuation or finished COGS; Accounting tracks
+Input VAT separately in Account `1150` against gross supplier payable (`2100`).
 
 New and edited orders require an active supplier and active raw materials,
 packaging materials, or labels. Each purchase unit must belong to its item's

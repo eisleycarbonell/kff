@@ -12,6 +12,7 @@ import {
     inventoryTransactions,
 } from '../../db/schema.ts';
 import { AppError } from '../../errors/app-error.ts';
+import { getSettings } from '../company-settings/company-setting.service.ts';
 import type {
     CreatePurchaseOrderInput,
     UpdatePurchaseOrderInput,
@@ -24,9 +25,10 @@ import {
     assertPurchaseOrderLineDefinitions,
     assertSupplierMaterials,
     generatedPurchaseOrderNumber,
+    normalizeVatRate,
     PURCHASE_ORDER_TRIM_CHARACTERS,
-    purchaseOrderAmounts,
-    purchaseOrderLineAmounts,
+    purchaseOrderLineTaxBreakdown,
+    purchaseOrderTaxSummary,
 } from './purchase-order.rules.ts';
 
 type Reader = Pick<typeof db, 'select'>;
@@ -63,6 +65,7 @@ const lineFields = {
     qtyOrdered: purchaseOrderLines.qtyOrdered,
     qtyReceived: purchaseOrderLines.qtyReceived,
     unitPrice: purchaseOrderLines.unitPrice,
+    vatRatePercent: purchaseOrderLines.vatRatePercent,
     createdBy: purchaseOrderLines.createdBy,
     createdAt: purchaseOrderLines.createdAt,
     updatedBy: purchaseOrderLines.updatedBy,
@@ -82,7 +85,7 @@ async function orderLines(id: number, database: Reader) {
         .innerJoin(primaryUom, eq(items.primaryUomId, primaryUom.uomId))
         .where(eq(purchaseOrderLines.poId, id))
         .orderBy(asc(purchaseOrderLines.poLineId));
-    return rows.map((line) => ({ ...line, ...purchaseOrderLineAmounts(line) }));
+    return rows.map((line) => ({ ...line, ...purchaseOrderLineTaxBreakdown(line) }));
 }
 export async function listPurchaseOrders() {
     const rows = await headers(db).orderBy(
@@ -96,6 +99,7 @@ export async function listPurchaseOrders() {
             qtyOrdered: purchaseOrderLines.qtyOrdered,
             qtyReceived: purchaseOrderLines.qtyReceived,
             unitPrice: purchaseOrderLines.unitPrice,
+            vatRatePercent: purchaseOrderLines.vatRatePercent,
         })
         .from(purchaseOrderLines)
         .where(
@@ -112,17 +116,17 @@ export async function listPurchaseOrders() {
     }
     return rows.map((row) => {
         const matching = groupedLines.get(row.poId) ?? [];
-        return { ...row, lineCount: matching.length, ...purchaseOrderAmounts(matching) };
+        return { ...row, lineCount: matching.length, ...purchaseOrderTaxSummary(matching) };
     });
 }
 export async function getPurchaseOrder(id: number, database: Reader = db) {
     const [header] = await headers(database).where(eq(purchaseOrders.poId, id)).limit(1);
     if (!header) return null;
     const lines = await orderLines(id, database);
-    return { ...header, lineCount: lines.length, ...purchaseOrderAmounts(lines), lines };
+    return { ...header, lineCount: lines.length, ...purchaseOrderTaxSummary(lines), lines };
 }
 export async function getPurchaseOrderOptions() {
-    const [supplierRows, itemRows, unitRows, quotes] = await Promise.all([
+    const [supplierRows, itemRows, unitRows, quotes, settings] = await Promise.all([
         db
             .select({
                 supplierId: suppliers.supplierId,
@@ -138,9 +142,11 @@ export async function getPurchaseOrderOptions() {
                 name: items.name,
                 itemType: items.itemType,
                 isActive: items.isActive,
+                isVatable: items.isVatable,
                 primaryUomId: items.primaryUomId,
                 primaryUomName: uoms.name,
                 uomClassId: uoms.uomClassId,
+                unitCost: items.unitCost,
             })
             .from(items)
             .innerJoin(uoms, eq(items.primaryUomId, uoms.uomId))
@@ -163,8 +169,15 @@ export async function getPurchaseOrderOptions() {
             })
             .from(supplierItems)
             .orderBy(asc(supplierItems.supplierItemId)),
+        getSettings(db),
     ]);
-    return { suppliers: supplierRows, items: itemRows, uoms: unitRows, supplierItems: quotes };
+    return {
+        suppliers: supplierRows,
+        items: itemRows,
+        uoms: unitRows,
+        supplierItems: quotes,
+        defaultVatRatePercent: settings.vatRatePercent,
+    };
 }
 async function lockSuppliers(database: Reader, ids: number[]) {
     const unique = [...new Set(ids)].sort((a, b) => a - b);
@@ -188,6 +201,7 @@ async function lockLineDefinitions(
         .select({
             itemId: items.itemId,
             isActive: items.isActive,
+            isVatable: items.isVatable,
             itemType: items.itemType,
             primaryUomId: items.primaryUomId,
         })
@@ -221,6 +235,7 @@ async function lockLineDefinitions(
         .orderBy(asc(supplierItems.supplierItemId))
         .for('share');
     assertSupplierMaterials(lines, supplierId, offers);
+    return new Map(materials.map((item) => [item.itemId, item.isVatable]));
 }
 async function observeSupplier(id: number, database: Reader = db) {
     const [observed] = await database
@@ -296,7 +311,8 @@ export async function createPurchaseOrder(
         const supplierRows = await lockSuppliers(tx, [input.supplierId]);
         assertActiveSupplier(supplierRows[0]);
         assertDeliveryDate(input.orderDate, input.expectedDeliveryDate);
-        await lockLineDefinitions(tx, input.lines, input.supplierId);
+        const vatableByItem = await lockLineDefinitions(tx, input.lines, input.supplierId);
+        const settings = await getSettings(tx);
         const createdAt = new Date();
         const requestedNumber = input.poNumber?.trim().toUpperCase() || undefined;
         if (requestedNumber) {
@@ -331,6 +347,12 @@ export async function createPurchaseOrder(
         await tx.insert(purchaseOrderLines).values(
             lines.map((line) => ({
                 ...line,
+                vatRatePercent:
+                    line.vatRatePercent !== undefined
+                        ? normalizeVatRate(line.vatRatePercent)
+                        : vatableByItem.get(line.itemId)
+                            ? settings.vatRatePercent
+                            : '0.00',
                 poId: created.id,
                 qtyReceived: '0',
                 createdBy: actorId,
@@ -366,7 +388,11 @@ export async function updatePurchaseOrder(
                 ? current.expectedDeliveryDate
                 : input.expectedDeliveryDate;
         assertDeliveryDate(nextDate, nextExpected);
-        await lockLineDefinitions(tx, input.lines ?? current.lines, targetSupplierId);
+        const vatableByItem = await lockLineDefinitions(
+            tx,
+            input.lines ?? current.lines,
+            targetSupplierId,
+        );
         const { lines, orderDate, ...header } = input;
         await tx
             .update(purchaseOrders)
@@ -378,11 +404,18 @@ export async function updatePurchaseOrder(
             })
             .where(eq(purchaseOrders.poId, id));
         if (lines !== undefined) {
+            const settings = await getSettings(tx);
             // Editable drafts have no received quantities, lot links, or ledger links; referenced history is never removed.
             await tx.delete(purchaseOrderLines).where(eq(purchaseOrderLines.poId, id));
             await tx.insert(purchaseOrderLines).values(
                 lines.map((line) => ({
                     ...line,
+                    vatRatePercent:
+                        line.vatRatePercent !== undefined
+                            ? normalizeVatRate(line.vatRatePercent)
+                            : vatableByItem.get(line.itemId)
+                                ? settings.vatRatePercent
+                                : '0.00',
                     poId: id,
                     qtyReceived: '0',
                     createdBy: actorId,

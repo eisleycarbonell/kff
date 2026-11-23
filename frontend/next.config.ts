@@ -136,6 +136,9 @@ const apiProxyDestination =
   process.env.NODE_ENV === "production" ? resolveApiProxyDestination() : null;
 
 const nextConfig: NextConfig = {
+  experimental: {
+    optimizePackageImports: ["lucide-react", "recharts", "@base-ui/react"],
+  },
   ...(apiProxyDestination
     ? {
       env: {

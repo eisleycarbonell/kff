@@ -22,13 +22,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
+import { ComboboxSelect } from "@/components/shared/combobox-select"
 import {
     Empty,
     EmptyContent,
@@ -174,24 +168,15 @@ export const RoleTable = memo(function RoleTable({
                     of {filtered.length} roles
                 </p>
                 <div className="flex flex-wrap items-center gap-3">
-                    <Select
+                    <ComboboxSelect
+                        aria-label="Rows per page"
                         items={sizes}
                         value={String(pageSize)}
                         onValueChange={(value) => {
                             if (value) table.setPageSize(Number(value))
                         }}
-                    >
-                        <SelectTrigger aria-label="Rows per page" className="w-20">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {sizes.map((item) => (
-                                <SelectItem key={item.value} value={item.value}>
-                                    {item.label}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                        className="w-20"
+                    />
                     <span>
                         Page {pageIndex + 1} of {Math.max(table.getPageCount(), 1)}
                     </span>

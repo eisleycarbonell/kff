@@ -192,7 +192,11 @@ export function DashboardAlerts({
                                             size="sm"
                                             variant="outline"
                                             className="h-6.5 gap-1 px-2 text-[11px]"
-                                            render={<Link href="/purchase-orders" />}
+                                            render={
+                                                <Link
+                                                    href={`/purchase-orders?source=low-stock&itemId=${item.itemId}&sku=${encodeURIComponent(item.itemSku)}`}
+                                                />
+                                            }
                                             nativeButton={false}
                                         >
                                             <Plus className="size-3" />

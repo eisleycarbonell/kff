@@ -33,17 +33,17 @@ export const SupplierStatistics = memo(function SupplierStatistics({ suppliers }
     ]
 
     return (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {statistics.map(({ label, value, description, icon: Icon }) => (
-                <Card key={label} className="border py-5 ring-0 sm:py-6">
-                    <CardContent className="flex items-start gap-4 px-5 sm:px-6">
-                        <Icon className="mt-0.5 size-6 shrink-0 text-primary" aria-hidden="true" />
+                <Card key={label} className="border py-3 ring-0">
+                    <CardContent className="flex items-start gap-3 px-4">
+                        <Icon className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden="true" />
                         <div className="min-w-0">
-                            <p className="text-sm font-medium text-muted-foreground">{label}</p>
-                            <p className="mt-2 text-3xl font-semibold tracking-tight tabular-nums">
+                            <p className="text-xs font-medium text-muted-foreground">{label}</p>
+                            <p className="mt-1 text-xl font-semibold tracking-tight tabular-nums sm:text-2xl">
                                 {value}
                             </p>
-                            <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+                            <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
                         </div>
                     </CardContent>
                 </Card>

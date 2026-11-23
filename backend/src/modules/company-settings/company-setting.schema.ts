@@ -6,6 +6,15 @@ const nullableText = (max: number) =>
         .max(max)
         .transform((value) => value || null)
         .nullable();
+export const vatRatePercentSchema = z
+    .string()
+    .trim()
+    .regex(/^\d{1,3}(?:\.\d{1,2})?$/, 'Enter a valid VAT rate percentage between 0 and 100.')
+    .refine((value) => {
+        const num = Number(value);
+        return Number.isFinite(num) && num >= 0 && num <= 100;
+    }, 'VAT rate must be between 0% and 100%.');
+
 export const settingsInputSchema = z.strictObject({
     expectedVersion: z.int().positive(),
     companyName: z.string().trim().min(1).max(120),
@@ -23,6 +32,7 @@ export const settingsInputSchema = z.strictObject({
             (value) => Intl.supportedValuesOf('currency').includes(value),
             'Select a valid ISO currency code.',
         ),
+    vatRatePercent: vatRatePercentSchema.optional(),
     defaultReorderLevel: z.string().regex(/^\d{1,10}(?:\.\d{1,4})?$/),
     expiryWarningDays: z.int().min(0).max(3650),
 });

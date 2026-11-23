@@ -67,6 +67,7 @@ export const formulaOptionsSchema = z.object({
             sku: z.string(),
             name: z.string(),
             primaryUomName: z.string(),
+            labelItemId: id.nullable().optional(),
             hasFormula: z.boolean(),
         }),
     ),
@@ -75,6 +76,7 @@ export const formulaOptionsSchema = z.object({
             itemId: id,
             sku: z.string(),
             name: z.string(),
+            itemType: z.string().optional(),
             primaryUomId: id,
             uomClassId: id,
         }),
@@ -91,6 +93,27 @@ export const formulaOptionsSchema = z.object({
 export type PackingFormula = z.output<typeof formulaSchema>
 export type FormulaInput = z.output<typeof formulaInputSchema>
 export type FormulaOptions = z.output<typeof formulaOptionsSchema>
+function scaledUnits(value: string): bigint | null {
+    const trimmed = value.trim()
+    if (!/^\d{1,8}(?:\.\d{1,6})?$/.test(trimmed)) return null
+    const [whole, fraction = ""] = trimmed.split(".")
+    return BigInt(whole + fraction.padEnd(6, "0"))
+}
+/** Compute exact per-pack component quantity (<=6 decimals) from a batch amount divided by pack count. */
+export function divideBatchByPacks(batchAmount: string, packCount: string): string | null {
+    const total = scaledUnits(batchAmount)
+    const packs = scaledUnits(packCount)
+    if (total === null || packs === null || total <= BigInt(0) || packs <= BigInt(0)) return null
+    const scale = BigInt(1000000)
+    const numerator = total * scale
+    const quotient = numerator / packs
+    const remainder = numerator % packs
+    const rounded = remainder * BigInt(2) >= packs ? quotient + BigInt(1) : quotient
+    if (rounded <= BigInt(0) || rounded > BigInt("99999999999999")) return null
+    const whole = rounded / scale
+    const fraction = (rounded % scale).toString().padStart(6, "0").replace(/0+$/, "")
+    return fraction ? `${whole}.${fraction}` : String(whole)
+}
 export function validateFormula(
     input: FormulaInput,
     options: FormulaOptions,

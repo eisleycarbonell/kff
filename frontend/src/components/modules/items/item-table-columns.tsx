@@ -17,7 +17,7 @@ import {
   tableFeatures,
   type ReactTable,
 } from "@tanstack/react-table";
-import { Archive, Ellipsis, Pencil } from "lucide-react";
+import { Archive, Ellipsis, FlaskConical, Pencil } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -60,14 +60,18 @@ type Actions = {
   onSuppliers: (item: Item) => void;
   onEdit: (item: Item) => void;
   onDeactivate: (items: Item[]) => void;
+  onFormula?: (item: Item) => void;
   canManage: boolean;
+  canManagePacking?: boolean;
 };
 
 export function createItemColumns({
   onSuppliers,
   onEdit,
   onDeactivate,
+  onFormula,
   canManage,
+  canManagePacking = false,
 }: Actions) {
   return helper.columns([
     helper.accessor((item) => item.labelItemName ?? "", {
@@ -184,6 +188,20 @@ export function createItemColumns({
         </div>
       ),
     }),
+    helper.accessor((item) => ((item.isVatable ?? true) ? "VATable" : "No VAT"), {
+      id: "vat",
+      header: "VAT",
+      sortFn: "text",
+      filterFn: "equalsString",
+      cell: (context) => {
+        const vatable = context.getValue() === "VATable";
+        return (
+          <Badge variant={vatable ? "secondary" : "outline"}>
+            {vatable ? "VATable" : "No VAT"}
+          </Badge>
+        );
+      },
+    }),
     helper.accessor("unitCost", {
       header: "Reference cost",
       sortFn: (a, b, columnId) =>
@@ -263,6 +281,15 @@ export function createItemColumns({
                   <Pencil />
                   Edit item
                 </DropdownMenuItem>
+                {canManagePacking &&
+                  onFormula &&
+                  row.original.itemType === "Finished Good" &&
+                  row.original.isActive && (
+                    <DropdownMenuItem onClick={() => onFormula(row.original)}>
+                      <FlaskConical />
+                      Packing formula
+                    </DropdownMenuItem>
+                  )}
                 {row.original.isActive && (
                   <DropdownMenuItem
                     onClick={() => onDeactivate([row.original])}

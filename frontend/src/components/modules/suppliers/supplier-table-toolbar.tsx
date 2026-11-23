@@ -12,13 +12,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
+import { ComboboxSelect } from "@/components/shared/combobox-select"
 
 const statuses = [
     { value: "all", label: "All statuses" },
@@ -100,7 +94,8 @@ export function SupplierTableToolbar({
                     className="h-10 bg-card pl-10"
                 />
             </div>
-            <Select
+            <ComboboxSelect
+                aria-label="Filter suppliers by status"
                 items={statuses}
                 value={(table.getColumn("status")?.getFilterValue() as string) ?? "all"}
                 onValueChange={(value) => {
@@ -108,21 +103,8 @@ export function SupplierTableToolbar({
                     table.resetRowSelection()
                     table.setPageIndex(0)
                 }}
-            >
-                <SelectTrigger
-                    aria-label="Filter suppliers by status"
-                    className="min-w-36 bg-card data-[size=default]:h-10"
-                >
-                    <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                    {statuses.map((status) => (
-                        <SelectItem key={status.value} value={status.value}>
-                            {status.label}
-                        </SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
+                className="h-10 w-full bg-card sm:w-auto sm:min-w-36"
+            />
             {hasFilters && (
                 <Button variant="ghost" className="h-10" onClick={onClearFilters}>
                     <X />

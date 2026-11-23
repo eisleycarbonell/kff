@@ -331,3 +331,68 @@ test("customer PO references trim, clear to null, and enforce the database lengt
         ).customerPoNumber,
     )
 })
+
+test("summarizeLineStockCoverage calculates live finished availability, stock allocation, and packing gap", () => {
+    const covered = schema.summarizeLineStockCoverage(
+        "200.5000",
+        schema.parseStockUnits4("300.0000"),
+        schema.parseStockUnits4("350.0000"),
+        schema.parseStockUnits4("50.0000"),
+    )
+    assert.deepEqual(covered, {
+        available: "300",
+        onHand: "350",
+        reserved: "50",
+        fromStock: "200.5",
+        toPack: "0",
+        isCovered: true,
+    })
+
+    const shortage = schema.summarizeLineStockCoverage(
+        "500",
+        schema.parseStockUnits4("300.0000"),
+        schema.parseStockUnits4("350.0000"),
+        schema.parseStockUnits4("50.0000"),
+    )
+    assert.deepEqual(shortage, {
+        available: "300",
+        onHand: "350",
+        reserved: "50",
+        fromStock: "300",
+        toPack: "200",
+        isCovered: false,
+    })
+
+    const negativeAvail = schema.summarizeLineStockCoverage(
+        "",
+        schema.parseStockUnits4("-10.0000"),
+        schema.parseStockUnits4("20.0000"),
+        schema.parseStockUnits4("30.0000"),
+    )
+    assert.deepEqual(negativeAvail, {
+        available: "0",
+        onHand: "20",
+        reserved: "30",
+        fromStock: null,
+        toPack: null,
+        isCovered: null,
+    })
+})
+
+test("sales tax preview calculates Net, Output VAT, and Gross across mixed VATable and exempt lines", () => {
+    const summary = schema.previewSalesTaxSummary([
+        { itemId: 3, uomId: 2, qtyOrdered: "10", unitPrice: "100", vatRatePercent: "12.00" },
+        { itemId: 4, uomId: 2, qtyOrdered: "2", unitPrice: "50", vatRatePercent: "0.00" },
+    ])
+    assert.deepEqual(summary, {
+        netAmount: "1100.0000",
+        vatAmount: "120.0000",
+        totalAmount: "1220.0000",
+    })
+    assert.equal(
+        schema.previewSalesTotal([
+            { itemId: 3, uomId: 2, qtyOrdered: "10", unitPrice: "100", vatRatePercent: "12.00" },
+        ]),
+        "1120.0000",
+    )
+})

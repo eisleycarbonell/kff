@@ -9,7 +9,10 @@ export async function verifyToken(token: string) {
     const { payload } = await jwtVerify(token, signingKey(), { algorithms: ['HS256'] });
     return payload;
 }
-export async function generateToken(payload: { id: string }, expiresIn: string | number) {
+export async function generateToken(
+    payload: { id: string; purpose?: 'session' | 'socket' },
+    expiresIn: string | number,
+) {
     return new SignJWT(payload)
         .setProtectedHeader({ alg: 'HS256' })
         .setIssuedAt()

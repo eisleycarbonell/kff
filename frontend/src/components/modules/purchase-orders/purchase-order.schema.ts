@@ -45,7 +45,11 @@ export const purchaseOrderSchema = z.object({
   expectedDeliveryDate: z.iso.date().nullable(),
   notes: z.string().nullable(),
   lineCount: z.int().nonnegative(),
+  netAmount: amount.optional(),
+  vatAmount: amount.optional(),
   totalAmount: amount,
+  receivedNetAmount: amount.optional(),
+  receivedVatAmount: amount.optional(),
   receivedAmount: amount,
   outstandingAmount: amount,
   hasReceipts: z.boolean(),
@@ -68,6 +72,9 @@ export const purchaseOrderLineSchema = z.object({
   qtyReceived: decimal,
   qtyRemaining: decimal,
   unitPrice: decimal,
+  vatRatePercent: z.string().optional(),
+  netAmount: amount.optional(),
+  vatAmount: amount.optional(),
   lineTotal: amount,
   ...auditFields,
 });
@@ -91,6 +98,8 @@ export const purchaseOrderOptionsSchema = z.object({
       primaryUomId: id,
       primaryUomName: z.string(),
       uomClassId: id,
+      unitCost: decimal.optional(),
+      isVatable: z.boolean().optional(),
     }),
   ),
   uoms: z.array(z.object({ uomId: id, name: z.string(), uomClassId: id })),
@@ -107,12 +116,21 @@ export const purchaseOrderOptionsSchema = z.object({
       isActive: z.boolean(),
     }),
   ),
+  defaultVatRatePercent: z.string().optional(),
 });
 export const purchaseOrderLineInputSchema = z.strictObject({
   itemId: id,
   uomId: id,
   qtyOrdered: positiveDecimal,
   unitPrice: decimal,
+  vatRatePercent: z
+    .string()
+    .trim()
+    .regex(
+      /^(?:100(?:\.00?)?|\d{1,2}(?:\.\d{1,2})?)$/,
+      "Enter a VAT percentage between 0 and 100 (up to 2 decimals).",
+    )
+    .optional(),
 });
 export const purchaseOrderInputSchema = z
   .strictObject({
@@ -171,6 +189,7 @@ export type PurchaseOrderLineFormValues = {
   uomId: number | null;
   qtyOrdered: string;
   unitPrice: string;
+  vatRatePercent?: string;
 };
 export type PurchaseOrderFormValues = {
   poNumber: string;
@@ -220,6 +239,9 @@ export function toPurchaseOrderFormValues(
       uomId: line.uomId,
       qtyOrdered: line.qtyOrdered,
       unitPrice: line.unitPrice,
+      ...(line.vatRatePercent !== undefined
+        ? { vatRatePercent: line.vatRatePercent }
+        : {}),
     })),
   };
 }
@@ -239,6 +261,9 @@ function formInput(values: PurchaseOrderFormValues, includePoNumber = true) {
       uomId: line.uomId,
       qtyOrdered: line.qtyOrdered,
       unitPrice: line.unitPrice,
+      ...(line.vatRatePercent !== undefined && line.vatRatePercent.trim() !== ""
+        ? { vatRatePercent: line.vatRatePercent.trim() }
+        : {}),
     })),
   };
 }
@@ -355,6 +380,50 @@ export function calculatePurchaseOrderLineTotal(
   return quantity === null || quantity <= BigInt(0) || price === null
     ? null
     : fixedAmount(quantity * price);
+}
+export function calculatePurchaseOrderLineVatBreakdown(
+  qtyOrdered: string,
+  unitPrice: string,
+  vatRatePercent = "0.00",
+): { netAmount: string; vatAmount: string; lineTotal: string } | null {
+  const net = calculatePurchaseOrderLineTotal(qtyOrdered, unitPrice);
+  const bps = scaledDecimal(vatRatePercent, 2, 3);
+  if (net === null || bps === null || bps > BigInt(10000)) return null;
+  const netUnits = scaledDecimal(net, 8, 30);
+  if (netUnits === null) return null;
+  const vatUnits = (netUnits * bps + BigInt(5000)) / BigInt(10000);
+  return {
+    netAmount: net,
+    vatAmount: fixedAmount(vatUnits),
+    lineTotal: fixedAmount(netUnits + vatUnits),
+  };
+}
+export function calculatePurchaseOrderTaxSummary(
+  lines: Pick<
+    PurchaseOrderLineFormValues,
+    "qtyOrdered" | "unitPrice" | "vatRatePercent"
+  >[],
+): { netAmount: string; vatAmount: string; totalAmount: string } | null {
+  let netTotal = BigInt(0);
+  let vatTotal = BigInt(0);
+  for (const line of lines) {
+    const part = calculatePurchaseOrderLineVatBreakdown(
+      line.qtyOrdered,
+      line.unitPrice,
+      line.vatRatePercent ?? "0.00",
+    );
+    if (!part) return null;
+    const netUnits = scaledDecimal(part.netAmount, 8, 30);
+    const vatUnits = scaledDecimal(part.vatAmount, 8, 30);
+    if (netUnits === null || vatUnits === null) return null;
+    netTotal += netUnits;
+    vatTotal += vatUnits;
+  }
+  return {
+    netAmount: fixedAmount(netTotal),
+    vatAmount: fixedAmount(vatTotal),
+    totalAmount: fixedAmount(netTotal + vatTotal),
+  };
 }
 export function calculatePurchaseOrderTotal(
   lines: Pick<PurchaseOrderLineFormValues, "qtyOrdered" | "unitPrice">[],

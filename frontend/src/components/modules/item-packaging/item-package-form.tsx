@@ -2,6 +2,7 @@
 import { useState, useId, type FormEvent } from "react"
 import { inputSchema, type RecordDto, type InputDto, type Options } from "./item-package.schema"
 import { ChoiceField } from "@/components/shared/choice-field"
+import { NumericInput } from "@/components/shared/numeric-input"
 import {
     Dialog,
     DialogContent,
@@ -41,13 +42,25 @@ function Content(p: Props) {
         return (
             <Field className="min-w-0">
                 <FieldLabel htmlFor={uid + key}>{label}</FieldLabel>
-                <Input
-                    id={uid + key}
-                    value={String(v[key])}
-                    required={required}
-                    className="h-10"
-                    onChange={(e) => set((v) => ({ ...v, [key]: e.target.value }))}
-                />
+                {key === "baseQty" || key === "grossWeightG" ? (
+                    <NumericInput
+                        id={uid + key}
+                        maxWholeDigits={10}
+                        maxDecimalPlaces={4}
+                        value={String(v[key])}
+                        required={required}
+                        className="h-10"
+                        onValueChange={(next) => set((prev) => ({ ...prev, [key]: next }))}
+                    />
+                ) : (
+                    <Input
+                        id={uid + key}
+                        value={String(v[key])}
+                        required={required}
+                        className="h-10"
+                        onChange={(e) => set((prev) => ({ ...prev, [key]: e.target.value }))}
+                    />
+                )}
             </Field>
         )
     }

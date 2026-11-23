@@ -12,6 +12,7 @@ export const sampleRoles = [
             canManagePacking: true,
             canManageTransfers: true,
             canManageUsers: true,
+            canManageAccounting: true,
         },
     },
     {
@@ -37,6 +38,11 @@ export const sampleRoles = [
         name: 'Delivery',
         description: 'Customer deliveries and stock transfers through the Transfers permission.',
         settings: { canManageTransfers: true },
+    },
+    {
+        name: 'Accounting',
+        description: 'Accounting-only access to costing, inventory valuation, COGS, purchasing, and financial ledgers.',
+        settings: { canManageAccounting: true },
     },
     { name: 'Viewer', description: 'Read-only access.', settings: {} },
 ] as const satisfies readonly { name: string; description: string; settings: RoleSettings }[];
@@ -71,6 +77,12 @@ export const sampleAccounts = [
         lastName: 'Ramos',
         email: 'delivery@spice.local',
         roleName: 'Delivery',
+    },
+    {
+        firstName: 'Lucia',
+        lastName: 'Bautista',
+        email: 'accounting@spice.local',
+        roleName: 'Accounting',
     },
     {
         firstName: 'Ana',

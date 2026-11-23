@@ -1,8 +1,9 @@
 # Labels and Packing Formulas
 
 These master-data responsibilities follow the [system flow](system-flow.md).
-Labels are maintained as inventory items at `/items`; published Packing
-Formulas are inspected at `/bom`. Formula Revisions publishes changes.
+Labels are maintained as inventory items at `/items`; Packing Formulas are
+created, updated, copied, and removed directly at `/bom`. Formula Revisions has
+been retired (`/formula-revisions` redirects to `/bom`).
 
 ## Labels in Items / Products
 
@@ -14,9 +15,11 @@ self-referencing foreign key. Public item fields are `labelItemId`,
 assigned; existing inactive assignments can survive unrelated edits. Only a
 Finished Good can carry a label association. Catalog writes require Inventory.
 
-The assignment is descriptive. Add the material with its required quantity to
-the released BOM to purchase, reserve and consume labels. Changing the catalog
-association does not silently change BOMs or historical packing snapshots.
+The association is optional, stored in `items.label_item_id`, and automatically
+pre-included (`1` primary unit) when creating a packing formula in `/bom`.
+Verify the label and quantities in the saved BOM so packing reserves and consumes
+label stock. Changing the catalog association does not silently edit saved BOMs
+or historical packing snapshots.
 
 Brands are removed from the menu and active API composition. The old
 `/brands` page redirects to Items. Legacy brand tables/references are retained
@@ -34,21 +37,19 @@ label material from a former brand name.
 
 Each Finished Good has at most one current formula, stored as its existing
 `bill_of_materials` component rows. The finished product's `itemId` identifies the grouped current BOM.
-[Formula Revisions](inventory-controls-and-reports.md) provides release headers.
 Quantities describe the material required per one primary finished-product unit.
 Product, label, output UOM, material details, component count and audits are
-returned for inspection. Read access is authenticated; writes require
-`canManagePacking`; release review additionally requires `canManageUsers`
-and an independent user.
+returned. Read access is authenticated; direct create, update, and remove writes
+require `canManagePacking` without a separate revision approval step.
 
 | Method | API | Behavior |
 | --- | --- | --- |
 | GET | `/api/packing-formulas` | Complete grouped formulas and components |
-| GET | `/api/packing-formulas/options` | Active finished products, materials and units |
+| GET | `/api/packing-formulas/options` | Active finished products (`labelItemId`), materials (`itemType`), and units |
 | GET | `/api/packing-formulas/:itemId` | Formula or 404 |
-| POST | `/api/packing-formulas` | 409; prepare a Formula Revision |
-| PATCH | `/api/packing-formulas/:itemId` | 409; release a Replace revision |
-| DELETE | `/api/packing-formulas/:itemId` | 409; release a Retire revision |
+| POST | `/api/packing-formulas` | Create a direct packing formula (requires `canManagePacking`) |
+| PATCH | `/api/packing-formulas/:itemId` | Atomically replace formula components (requires `canManagePacking`) |
+| DELETE | `/api/packing-formulas/:itemId` | Remove current formula rows while preserving historical orders |
 
 Each component contains `{componentItemId, quantity, uomId}`. Require 1-100
 distinct active raw materials, packaging hardware or labels. Self-reference and
@@ -67,11 +68,11 @@ material snapshot; editing/removing today's formula does not recalculate them,
 change reservations, or prevent valid historical-order completion. A product
 without a current formula cannot create new packing orders.
 
-Current BOM maintenance uses numbered, dated revisions with independent release
-approval. Existing BOMs are a legacy published baseline. Release is manual on or
-after the effective date; there is no scheduled automatic publication. Failed
-release rolls back the published rows and approval state. See the complete
-[release contract and UI path](inventory-controls-and-reports.md).
+Direct BOM edits at `/bom` validate and replace rows in a single transaction,
+setting `revisionId: null` and preserving existing packing orders untouched.
+`/formula-revisions` redirects to `/bom` and historical `Formula` control requests
+in `review_requests` remain read-only history. See
+[Controls and Reports](inventory-controls-and-reports.md).
 
 All inputs reject unknown fields and client-provided audits. APIs use the shared
 success/error envelopes and safe database-error boundary. Reads missing records

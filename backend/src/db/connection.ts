@@ -13,33 +13,125 @@ const RUNTIME_URL_KEYS = [
     'DATABASE_POSTGRES_URL_NON_POOLING',
 ] as const;
 
+const LOCAL_URL_KEYS = [
+    'LOCAL_DATABASE_URL',
+    ...RUNTIME_URL_KEYS,
+] as const;
+
+const PRODUCTION_URL_KEYS = [
+    'SUPABASE_DB_URL',
+    'DATABASE_URL',
+    'POSTGRES_PRISMA_URL',
+    'DATABASE_POSTGRES_PRISMA_URL',
+    'POSTGRES_URL',
+    'DATABASE_POSTGRES_URL',
+    'SUPABASE_DIRECT_URL',
+    'DIRECT_URL',
+    'POSTGRES_URL_NON_POOLING',
+    'DATABASE_POSTGRES_URL_NON_POOLING',
+] as const;
+
 const DIRECT_URL_KEYS = [
     'DIRECT_URL',
     'POSTGRES_URL_NON_POOLING',
     'DATABASE_POSTGRES_URL_NON_POOLING',
 ] as const;
 
+const LOCAL_DIRECT_URL_KEYS = [
+    'LOCAL_DATABASE_URL',
+    'DIRECT_URL',
+    'DATABASE_URL',
+    'POSTGRES_URL',
+    'DATABASE_POSTGRES_URL',
+    'POSTGRES_URL_NON_POOLING',
+    'DATABASE_POSTGRES_URL_NON_POOLING',
+] as const;
+
+const PRODUCTION_DIRECT_URL_KEYS = [
+    'SUPABASE_DIRECT_URL',
+    ...DIRECT_URL_KEYS,
+] as const;
+
 function firstNonEmptyEnv(
     environment: NodeJS.ProcessEnv,
     keys: readonly string[],
+    predicate: (value: string) => boolean = () => true,
 ): string | undefined {
     for (const key of keys) {
         const value = environment[key]?.trim();
-        if (value) return value;
+        if (value && predicate(value)) return value;
     }
     return undefined;
+}
+
+function isLocalConnectionString(connectionString: string): boolean {
+    if (connectionString.startsWith('/')) return true;
+    try {
+        const parsed = new URL(connectionString);
+        return !parsed.hostname || isLocalHostname(parsed.hostname);
+    } catch {
+        return false;
+    }
+}
+
+function normalizeNodeEnv(environment: NodeJS.ProcessEnv): 'development' | 'production' | 'test' {
+    const normalized = environment.NODE_ENV?.trim().toLowerCase();
+    if (normalized === 'production') return 'production';
+    if (normalized === 'test') return 'test';
+    return 'development';
 }
 
 export function resolveDatabaseUrl(
     environment: NodeJS.ProcessEnv = process.env,
 ): string | undefined {
-    return firstNonEmptyEnv(environment, RUNTIME_URL_KEYS);
+    const nodeEnv = normalizeNodeEnv(environment);
+    if (nodeEnv === 'production') {
+        return (
+            firstNonEmptyEnv(
+                environment,
+                PRODUCTION_URL_KEYS,
+                (value) => !isLocalConnectionString(value),
+            ) ?? firstNonEmptyEnv(environment, PRODUCTION_URL_KEYS)
+        );
+    }
+    if (nodeEnv === 'test') {
+        return firstNonEmptyEnv(environment, RUNTIME_URL_KEYS);
+    }
+    return (
+        firstNonEmptyEnv(environment, LOCAL_URL_KEYS, isLocalConnectionString) ??
+        firstNonEmptyEnv(environment, RUNTIME_URL_KEYS)
+    );
 }
 
 export function resolveDirectDatabaseUrl(
     environment: NodeJS.ProcessEnv = process.env,
 ): string | undefined {
-    return firstNonEmptyEnv(environment, DIRECT_URL_KEYS) ?? resolveDatabaseUrl(environment);
+    const nodeEnv = normalizeNodeEnv(environment);
+    if (nodeEnv === 'production') {
+        return (
+            firstNonEmptyEnv(
+                environment,
+                PRODUCTION_DIRECT_URL_KEYS,
+                (value) => !isLocalConnectionString(value),
+            ) ??
+            resolveDatabaseUrl(environment) ??
+            firstNonEmptyEnv(environment, DIRECT_URL_KEYS)
+        );
+    }
+    if (nodeEnv === 'test') {
+        const explicitDirect = environment.DIRECT_URL?.trim();
+        if (explicitDirect) return explicitDirect;
+        const runtimeUrl = resolveDatabaseUrl(environment);
+        if (runtimeUrl && isLocalConnectionString(runtimeUrl)) {
+            return runtimeUrl;
+        }
+        return firstNonEmptyEnv(environment, DIRECT_URL_KEYS) ?? runtimeUrl;
+    }
+    return (
+        firstNonEmptyEnv(environment, LOCAL_DIRECT_URL_KEYS, isLocalConnectionString) ??
+        firstNonEmptyEnv(environment, DIRECT_URL_KEYS) ??
+        resolveDatabaseUrl(environment)
+    );
 }
 
 /** Format a direct PostgreSQL URL for pg/drizzle-kit CLI tools (avoiding self-signed cert failures on Supabase). */

@@ -92,7 +92,7 @@ The other modules' placeholder pages are not complete implementation examples.
 - **Client UI state**: Zustand (v5) for page dialog/selection state through `lib/create-dialog-store.ts`. Server data never goes into a Zustand store.
 - **Tables**: the installed TanStack Table v9 API: `useTable`, `tableFeatures`, `createColumnHelper`, and `table.FlexRender`, following the users table. Check installed APIs before using examples from another version.
 - **Styling**: Tailwind CSS v4.
-- **UI**: shadcn/ui (`base-nova`, Base UI). Follow the existing `render` prop and controlled-value APIs. Use existing shadcn primitives first; add missing components with `npx shadcn@latest add <component> --yes`.
+- **UI**: shadcn/ui (`base-nova`, Base UI). Follow the existing `render` prop and controlled-value APIs. Use existing shadcn primitives first; add missing components with `npx shadcn@latest add <component> --yes`. Always use the shared `ComboboxSelect` (`components/shared/combobox-select.tsx`) or `Combobox` (`components/ui/combobox.tsx`) on every dropdown (forms, toolbars, filters, and pagination selectors) — never use plain `<Select>` or native `<select>` elements.
 - **Validation**: Zod for runtime DTO parsing, with pure form validation in the feature schema.
 - **Animation and icons**: GSAP with `@gsap/react`; `lucide-react`.
 
@@ -209,8 +209,17 @@ substantial; do not create empty files to match this tree.
   Choose useful metrics for the feature; the number of cards can vary.
 - Keep search, filters, reset, selection actions, CSV export, and column
   visibility controls in one toolbar above the table header. Use the existing
-  responsive wrapping and consistent `h-10` control heights; select triggers
-  use `data-[size=default]:h-10` to override their default height.
+  responsive wrapping and consistent `h-10` control heights; always use
+  `ComboboxSelect` for every dropdown, form selector, filter, and pagination
+  size control (combobox triggers support `className` and `size` overrides cleanly).
+- **Mobile responsiveness (mandatory on every module)**: Design every page,
+  statistics grid, toolbar, table, form, and modal/drawer mobile-first down to
+  320px width. Use `min-w-0`, `flex-wrap`, and `w-full sm:w-*` on inputs, filters,
+  and action groups; rely on `@/components/ui/table` horizontal scroll regions
+  (`overflow-x-auto`) without causing page-level horizontal overflow; size modal
+  and sheet containers with dynamic viewport units (`dvh`) so they scroll safely on
+  mobile keyboards; ensure navigation triggers auto-close the mobile sidebar on route
+  change; and maintain comfortable touch targets on mobile screens.
 - Keep row actions in the row menu and pagination in the table footer. Give
   icon-only controls accessible labels and sortable headers an `aria-sort` state.
 - Use readable primary text and the shared `text-muted-foreground` token for

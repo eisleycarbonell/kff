@@ -3,6 +3,11 @@ export type LoadStatus = "loading" | "error" | "signed-out" | "forbidden" | "rea
 type SessionState = { isPending: boolean; data: unknown }
 type QueryState = { data: unknown; isError: boolean }
 
+/** Redirect to login only when session verification settled as signed-out. */
+export function shouldRedirectToLogin(session: SessionState): boolean {
+    return !session.isPending && session.data === null
+}
+
 /** Keep cached records visible during a failed background refresh. */
 export function getLoadStatus(
     session: SessionState,

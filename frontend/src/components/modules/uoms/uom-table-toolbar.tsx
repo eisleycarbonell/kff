@@ -12,14 +12,7 @@ import {
     DropdownMenuLabel,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import {
-    Select,
-    SelectContent,
-    SelectGroup,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
+import { ComboboxSelect } from "@/components/shared/combobox-select"
 const columnLabels: Record<string, string> = {
     uomClassName: "Class",
     factorToBase: "Factor to base",
@@ -97,8 +90,9 @@ export function UomTableToolbar({ table, classes, hasFilters, onClearFilters }: 
                 />
             </div>
             {filters.map((filter) => (
-                <Select
+                <ComboboxSelect
                     key={filter.id}
+                    aria-label={filter.label}
                     items={filter.items}
                     value={(table.getColumn(filter.id)?.getFilterValue() as string) ?? "all"}
                     onValueChange={(value) => {
@@ -108,23 +102,8 @@ export function UomTableToolbar({ table, classes, hasFilters, onClearFilters }: 
                         table.resetRowSelection()
                         table.setPageIndex(0)
                     }}
-                >
-                    <SelectTrigger
-                        aria-label={filter.label}
-                        className="min-w-32 data-[size=default]:h-10"
-                    >
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectGroup>
-                            {filter.items.map((option) => (
-                                <SelectItem key={option.value} value={option.value}>
-                                    {option.label}
-                                </SelectItem>
-                            ))}
-                        </SelectGroup>
-                    </SelectContent>
-                </Select>
+                    className="h-10 w-full sm:w-auto sm:min-w-32"
+                />
             ))}
             {hasFilters && (
                 <Button variant="ghost" className="h-10" onClick={onClearFilters}>

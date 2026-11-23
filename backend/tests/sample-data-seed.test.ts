@@ -172,7 +172,7 @@ function fixture() {
     };
 }
 
-test('sample import creates every sales/delivery state and assigns the six testing roles', async () => {
+test('sample import creates every sales/delivery state and assigns the seven testing roles', async () => {
     const seeded = fixture();
     assert.deepEqual(await seedSampleData(seeded.options), { status: 'seeded' });
     const { state } = seeded;
@@ -228,10 +228,11 @@ test('sample import creates every sales/delivery state and assigns the six testi
         assert.ok(account, `${email} was created`);
         return state.roles!.find((row) => row.roleId === account.roleId)!;
     };
-    assert.equal(state.roles!.length, 6);
-    assert.equal(state.users!.length, 6);
+    assert.equal(state.roles!.length, 7);
+    assert.equal(state.users!.length, 7);
     assert.deepEqual(roleFor('sales@spice.local').settings, { canManageInventory: true });
     assert.deepEqual(roleFor('delivery@spice.local').settings, { canManageTransfers: true });
+    assert.deepEqual(roleFor('accounting@spice.local').settings, { canManageAccounting: true });
     assert.deepEqual(roleFor('viewer@spice.local').settings, {});
     assert.equal(roleFor(SAMPLE_ADMIN_EMAIL).name, 'Administrator');
     for (const account of state.users!)
@@ -364,6 +365,21 @@ test('sample delivery stock reconciles with traceable transfer/sale entries and 
             assert.ok(entry.authorizedByUserId);
         }
     }
+    assert.equal(state.company_settings![0]!.vatRatePercent, '12.00');
+    assert.ok(
+        state.items!.some((item) => item.isVatable === true) &&
+            state.items!.some((item) => item.isVatable === false),
+        'sample items include both VATable and VAT-exempt items',
+    );
+    assert.ok(
+        state.purchase_order_lines!.some((line) => line.vatRatePercent === '12.00') &&
+            state.purchase_order_lines!.some((line) => line.vatRatePercent === '0.00'),
+        'sample PO lines retain mixed VATable (12%) and VAT-exempt (0%) rates',
+    );
+    assert.ok(
+        state.sales_order_lines!.some((line) => line.vatRatePercent === '12.00'),
+        'sample SO lines retain 12% VAT on VATable finished goods',
+    );
 });
 
 test('sample loading preserves populated databases including existing sales documents', async () => {

@@ -37,40 +37,40 @@ const metrics = [
 export const StockStatistics = memo(function StockStatistics({ stocks }: { stocks: Stock[] }) {
     const totals = useMemo(() => stockTotalsByUom(stocks), [stocks])
     return (
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-3">
             {metrics.map(({ key, label, description, icon: Icon }) => (
-                <Card key={key} className="border ring-0">
-                    <CardHeader>
-                        <CardTitle>{label}</CardTitle>
-                        <CardDescription>{description}</CardDescription>
+                <Card key={key} className="border py-3 ring-0">
+                    <CardHeader className="px-4">
+                        <CardTitle className="text-sm">{label}</CardTitle>
+                        <CardDescription className="text-xs">{description}</CardDescription>
                         <CardAction>
                             <Icon
-                                className="size-6 text-primary"
+                                className="size-5 text-primary"
                                 aria-hidden="true"
                             />
                         </CardAction>
                     </CardHeader>
-                    <CardContent className="flex flex-col gap-2">
+                    <CardContent className="flex flex-col gap-1 px-4">
                         {totals.length ? (
                             totals.map((total) => (
                                 <p
                                     key={total.uomId}
-                                    className="text-2xl font-semibold tracking-tight tabular-nums"
+                                    className="text-lg font-semibold tracking-tight tabular-nums sm:text-xl"
                                 >
                                     {formatStockQuantity(total[key])}{" "}
-                                    <span className="text-sm font-normal text-muted-foreground">
+                                    <span className="text-xs font-normal text-muted-foreground">
                                         {total.uomName}
                                     </span>
                                 </p>
                             ))
                         ) : (
-                            <p className="text-3xl font-semibold tabular-nums">
+                            <p className="text-xl font-semibold tabular-nums sm:text-2xl">
                                 0
                             </p>
                         )}
                     </CardContent>
-                    <CardFooter>
-                        <p className="text-sm text-muted-foreground">
+                    <CardFooter className="px-4 py-2">
+                        <p className="text-xs text-muted-foreground">
                             {stocks.length} stock balances / quantities grouped
                             by unit
                         </p>

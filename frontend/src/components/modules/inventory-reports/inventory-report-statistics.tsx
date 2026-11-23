@@ -4,19 +4,19 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 export const InventoryReportStatistics = memo(function InventoryReportStatistics({ report }: { report: InventoryReport }) {
     const movement = report.report === "movement"
     return (
-        <div className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="space-y-3">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 {[
                     ["Matching rows", report.summary.rowCount],
                     ["Items", report.summary.itemCount],
                     ["Lots", report.summary.lotCount],
                     ["Locations", report.summary.locationCount],
                 ].map(([label, value]) => (
-                    <Card key={label}>
-                        <CardHeader>
-                            <CardTitle className="text-sm text-muted-foreground">{label}</CardTitle>
+                    <Card key={label} className="py-3">
+                        <CardHeader className="px-4">
+                            <CardTitle className="text-xs text-muted-foreground">{label}</CardTitle>
                         </CardHeader>
-                        <CardContent className="text-3xl font-semibold text-primary">
+                        <CardContent className="px-4 text-xl font-semibold text-primary sm:text-2xl">
                             {value}
                         </CardContent>
                     </Card>

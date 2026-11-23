@@ -7,6 +7,7 @@ import {
     DialogTitle,
     DialogDescription,
 } from "@/components/ui/dialog"
+import { NumericInput } from "@/components/shared/numeric-input"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Field, FieldLabel } from "@/components/ui/field"
@@ -96,11 +97,13 @@ function Content(p: Props & { detail: ControlDetail }) {
                                 {r.lotNumber} · {r.sku} · expected {r.expectedQty}{" "}
                                 {r.primaryUomName}
                             </FieldLabel>
-                            <Input
+                            <NumericInput
                                 id={"count-" + r.observationId}
+                                maxWholeDigits={10}
+                                maxDecimalPlaces={4}
                                 value={counts[r.observationId] ?? r.countedQty ?? ""}
-                                onChange={(e) =>
-                                    setCounts((v) => ({ ...v, [r.observationId]: e.target.value }))
+                                onValueChange={(next) =>
+                                    setCounts((v) => ({ ...v, [r.observationId]: next }))
                                 }
                                 disabled={p.busy || !maker || d.status !== "Draft"}
                                 placeholder={"Count in " + r.primaryUomName}

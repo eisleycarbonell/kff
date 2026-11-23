@@ -25,14 +25,7 @@ import type { Uom, UomClass } from "@/components/modules/uoms/uom.schema"
 import { createUomColumns, uomTableFeatures } from "@/components/modules/uoms/uom-table-columns"
 import { UomTableToolbar } from "@/components/modules/uoms/uom-table-toolbar"
 import { Button } from "@/components/ui/button"
-import {
-    Select,
-    SelectContent,
-    SelectGroup,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
+import { ComboboxSelect } from "@/components/shared/combobox-select"
 import {
     Table,
     TableBody,
@@ -209,26 +202,15 @@ export const UomTable = memo(function UomTable({ uoms, classes, canManage, onAdd
                 <div className="flex flex-wrap items-center gap-4">
                     <div className="flex items-center gap-2 text-sm">
                         <span className="text-muted-foreground">Rows per page</span>
-                        <Select
+                        <ComboboxSelect
+                            aria-label="Rows per page"
                             items={pageSizeItems}
                             value={String(pageSize)}
                             onValueChange={(value) => {
                                 if (value) table.setPageSize(Number(value))
                             }}
-                        >
-                            <SelectTrigger aria-label="Rows per page" className="w-16">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectGroup>
-                                    {pageSizeItems.map((uom) => (
-                                        <SelectItem key={uom.value} value={uom.value}>
-                                            {uom.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectGroup>
-                            </SelectContent>
-                        </Select>
+                            className="w-16"
+                        />
                     </div>
                     <span className="text-sm tabular-nums">
                         Page {pageIndex + 1} of {pageCount}

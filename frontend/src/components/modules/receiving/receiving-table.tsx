@@ -20,13 +20,7 @@ import {
 } from "@/components/modules/receiving/receiving-table-columns"
 import { ReceivingTableToolbar } from "@/components/modules/receiving/receiving-table-toolbar"
 import { Button } from "@/components/ui/button"
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
+import { ComboboxSelect } from "@/components/shared/combobox-select"
 import {
     Table,
     TableBody,
@@ -95,16 +89,16 @@ export const ReceivingTable = memo(function ReceivingTable({ receipts, onAdd, ca
                                         header.column.id === "select"
                                             ? "h-12 w-14 pl-5"
                                             : header.column.id === "actions"
-                                              ? "h-12 w-14 pr-5"
-                                              : "h-12 px-3"
+                                                ? "h-12 w-14 pr-5"
+                                                : "h-12 px-3"
                                     }
                                     aria-sort={
                                         header.column.getCanSort()
                                             ? header.column.getIsSorted() === "asc"
                                                 ? "ascending"
                                                 : header.column.getIsSorted() === "desc"
-                                                  ? "descending"
-                                                  : "none"
+                                                    ? "descending"
+                                                    : "none"
                                             : undefined
                                     }
                                 >
@@ -147,8 +141,8 @@ export const ReceivingTable = memo(function ReceivingTable({ receipts, onAdd, ca
                                             cell.column.id === "select"
                                                 ? "pl-5"
                                                 : cell.column.id === "actions"
-                                                  ? "pr-5 text-right"
-                                                  : "px-3 py-4"
+                                                    ? "pr-5 text-right"
+                                                    : "px-3 py-4"
                                         }
                                     >
                                         <table.FlexRender cell={cell} />
@@ -172,8 +166,8 @@ export const ReceivingTable = memo(function ReceivingTable({ receipts, onAdd, ca
                                     {hasFilters
                                         ? "Try a different search or clear your filters."
                                         : canReceive
-                                          ? "Receive a supplier purchase order to create receipt history."
-                                          : "Posted receipts appear here once stock is received."}
+                                            ? "Receive a supplier purchase order to create receipt history."
+                                            : "Posted receipts appear here once stock is received."}
                                 </p>
                                 {(hasFilters || canReceive) && (
                                     <Button
@@ -200,24 +194,15 @@ export const ReceivingTable = memo(function ReceivingTable({ receipts, onAdd, ca
                 <div className="flex flex-wrap items-center gap-4">
                     <div className="flex items-center gap-2 text-sm">
                         <span className="text-muted-foreground">Rows per page</span>
-                        <Select
+                        <ComboboxSelect
+                            aria-label="Rows per page"
                             items={pageSizeItems}
                             value={String(pageSize)}
                             onValueChange={(value) => {
                                 if (value) table.setPageSize(Number(value))
                             }}
-                        >
-                            <SelectTrigger aria-label="Rows per page" className="w-16">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {pageSizeItems.map((item) => (
-                                    <SelectItem key={item.value} value={item.value}>
-                                        {item.label}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                            className="w-16"
+                        />
                     </div>
                     <span className="text-sm tabular-nums">
                         Page {pageIndex + 1} of {pageCount}

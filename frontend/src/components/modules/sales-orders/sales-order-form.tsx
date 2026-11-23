@@ -1,16 +1,21 @@
 "use client"
 
-import { useId, useRef, useState, type FormEvent } from "react"
-import { Plus, Trash2 } from "lucide-react"
+import { useId, useMemo, useRef, useState, type FormEvent } from "react"
+import { Plus, RefreshCw, Trash2 } from "lucide-react"
+import { useQuery } from "@tanstack/react-query"
 import {
     formatSalesDecimal,
-    previewSalesTotal,
+    formatSalesUnits4,
+    parseStockUnits4,
+    previewSalesTaxSummary,
+    summarizeLineStockCoverage,
     validateSalesOrder,
     type SalesOrder,
     type SalesOrderOptions,
     type SalesOrderFormValues,
     type SalesOrderFormErrors,
 } from "@/components/modules/sales-orders/sales-order.schema"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
     Dialog,
@@ -22,20 +27,32 @@ import {
 } from "@/components/ui/dialog"
 import {
     Field,
+    FieldDescription,
     FieldError,
     FieldGroup,
     FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
+import { ComboboxSelect } from "@/components/shared/combobox-select"
+import { NumericInput } from "@/components/shared/numeric-input"
+import { PriceCurrencyInput } from "@/components/shared/price-currency-input"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { useSession } from "@/hooks/use-session"
+import {
+    getInventoryStocks,
+    STOCKS_QUERY_KEY,
+} from "@/hooks/modules/inventory-stocks/use-inventory-stocks"
+import { useCompanySettings } from "@/hooks/modules/company-settings/use-company-settings"
+import {
+    convertCurrencyAmount,
+    getExchangeRateLabel,
+    isForeignCurrency,
+    normalizeCurrencyCode,
+    resolveBaseEntryCurrency,
+    validateExchangeRate,
+    type EntryCurrencyCode,
+} from "@/lib/price-currency"
 
 type Props = {
     open: boolean
@@ -65,9 +82,25 @@ function FormContent({
 >) {
     const id = useId()
     const nextKey = useRef(0)
+    const session = useSession()
+    const { settings } = useCompanySettings()
+    const stocksQuery = useQuery({
+        queryKey: [...STOCKS_QUERY_KEY, session.data?.userId],
+        queryFn: ({ signal }) => getInventoryStocks(signal),
+        enabled: Boolean(session.data),
+        staleTime: 0,
+        refetchOnMount: "always",
+    })
+    const baseCurrency = normalizeCurrencyCode(settings?.currencyCode)
+    const defaultCurrency = resolveBaseEntryCurrency(baseCurrency)
+    const [exchangeRate, setExchangeRate] = useState("")
+    const [exchangeRateError, setExchangeRateError] = useState<string>()
     const [values, setValues] = useState<
         Omit<SalesOrderFormValues, "lines"> & {
-            lines: (SalesOrderFormValues["lines"][number] & { uiKey: string })[]
+            lines: (SalesOrderFormValues["lines"][number] & {
+                uiKey: string
+                priceCurrency: EntryCurrencyCode | null
+            })[]
         }
     >(() => {
         const today = new Date()
@@ -86,7 +119,9 @@ function FormContent({
                       uomId: line.uomId,
                       qtyOrdered: line.qtyOrdered,
                       unitPrice: line.unitPrice,
+                      vatRatePercent: line.vatRatePercent ?? "0.00",
                       uiKey: `initial-${index}`,
+                      priceCurrency: null,
                   }))
                 : [
                       {
@@ -94,12 +129,18 @@ function FormContent({
                           uomId: null,
                           qtyOrdered: "",
                           unitPrice: "",
+                          vatRatePercent: "0.00",
                           uiKey: "initial-0",
+                          priceCurrency: null,
                       },
                   ],
         }
     })
     const [errors, setErrors] = useState<SalesOrderFormErrors>({})
+    const [suppressedSaveError, setSuppressedSaveError] = useState<string | null | undefined>(null)
+    const activeSaveError =
+        saveError && saveError !== suppressedSaveError ? saveError : undefined
+    const orderNumberError = errors.salesOrderNumber || activeSaveError
     const customerItems = options.customers
         .filter(
             (customer) =>
@@ -110,27 +151,95 @@ function FormContent({
             label: customer.name + (customer.isActive ? "" : " (inactive)"),
             disabled: !customer.isActive,
         }))
+    const finishedStockByItem = useMemo(() => {
+        const totals = new Map<
+            number,
+            { onHand: bigint; reserved: bigint; available: bigint }
+        >()
+        const rows = stocksQuery.data
+        if (!rows) return totals
+        const todayIso = new Date().toISOString().slice(0, 10)
+        for (const row of rows) {
+            if (
+                row.itemType !== "Finished Good" ||
+                !row.locationIsActive ||
+                !["Warehouse", "Branch", "Store"].includes(row.locationType) ||
+                row.qcStatus !== "Approved" ||
+                (row.expirationDate !== null && row.expirationDate <= todayIso)
+            ) {
+                continue
+            }
+            const rawAvail = parseStockUnits4(row.qtyAvailable)
+            const avail = rawAvail > BigInt(0) ? rawAvail : BigInt(0)
+            const current = totals.get(row.itemId) ?? {
+                onHand: BigInt(0),
+                reserved: BigInt(0),
+                available: BigInt(0),
+            }
+            totals.set(row.itemId, {
+                onHand: current.onHand + parseStockUnits4(row.qtyOnHand),
+                reserved: current.reserved + parseStockUnits4(row.qtyReserved),
+                available: current.available + avail,
+            })
+        }
+        return totals
+    }, [stocksQuery.data])
+
     const itemItems = options.items
         .filter(
             (item) =>
                 item.isActive ||
                 values.lines.some((line) => line.itemId === item.itemId),
         )
-        .map((item) => ({
-            value: item.itemId,
-            label: `${item.sku} - ${item.name}${item.isActive ? "" : " (inactive)"}`,
-            disabled: !item.isActive,
-        }))
-    const preview = previewSalesTotal(values.lines)
+        .map((item) => {
+            const availUnits = finishedStockByItem.get(item.itemId)?.available
+            const availText =
+                stocksQuery.isSuccess
+                    ? ` · ${formatSalesDecimal(formatSalesUnits4(availUnits ?? BigInt(0)))} ${item.primaryUomName} avail`
+                    : ""
+            return {
+                value: item.itemId,
+                label: `${item.sku} - ${item.name}${availText}${item.isActive ? "" : " (inactive)"}`,
+                disabled: !item.isActive,
+            }
+        })
+    const foreignCurrencies = values.lines
+        .map((line) => line.priceCurrency ?? defaultCurrency)
+        .filter((currency) => isForeignCurrency(currency, baseCurrency))
+    const hasForeignLine = foreignCurrencies.length > 0
+    function resolveLineUnitPrice(
+        line: (typeof values.lines)[number],
+    ): string | null {
+        const lineCurrency = line.priceCurrency ?? defaultCurrency
+        if (!isForeignCurrency(lineCurrency, baseCurrency)) {
+            return line.unitPrice
+        }
+        return convertCurrencyAmount({
+            amount: line.unitPrice,
+            fromCurrency: lineCurrency,
+            baseCurrency,
+            exchangeRate,
+        })
+    }
+    const preview = previewSalesTaxSummary(
+        values.lines.map((line) => ({
+            itemId: line.itemId,
+            uomId: line.uomId,
+            qtyOrdered: line.qtyOrdered,
+            unitPrice: resolveLineUnitPrice(line) ?? "",
+            vatRatePercent: line.vatRatePercent ?? "0.00",
+        })),
+    )
     function updateHeader<
         Key extends Exclude<keyof SalesOrderFormValues, "lines">,
     >(key: Key, value: SalesOrderFormValues[Key]) {
         setValues((current) => ({ ...current, [key]: value }))
         setErrors((current) => ({ ...current, [key]: "" }))
+        if (saveError) setSuppressedSaveError(saveError)
     }
     function updateLine(
         index: number,
-        updates: Partial<SalesOrderFormValues["lines"][number]>,
+        updates: Partial<(typeof values.lines)[number]>,
     ) {
         setValues((current) => ({
             ...current,
@@ -145,28 +254,59 @@ function FormContent({
                 ),
             ),
         )
+        if (saveError) setSuppressedSaveError(saveError)
     }
     async function submit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault()
         if (isSaving) return
-        const nextErrors = validateSalesOrder(values, options)
+        setSuppressedSaveError(null)
+        const rateIssue = hasForeignLine
+            ? validateExchangeRate(exchangeRate)
+            : undefined
+        setExchangeRateError(rateIssue)
+        const convertedByLine = values.lines.map((line) =>
+            resolveLineUnitPrice(line),
+        )
+        const writable: SalesOrderFormValues = {
+            ...values,
+            lines: values.lines.map(
+                (
+                    { itemId, uomId, qtyOrdered, unitPrice, vatRatePercent },
+                    index,
+                ) => ({
+                    itemId,
+                    uomId,
+                    qtyOrdered,
+                    unitPrice: convertedByLine[index] ?? unitPrice,
+                    vatRatePercent: vatRatePercent ?? "0.00",
+                }),
+            ),
+        }
+        const nextErrors = validateSalesOrder(writable, options)
+        if (!rateIssue) {
+            values.lines.forEach((line, index) => {
+                const lineCurrency = line.priceCurrency ?? defaultCurrency
+                if (
+                    isForeignCurrency(lineCurrency, baseCurrency) &&
+                    convertedByLine[index] === null &&
+                    line.unitPrice.trim() !== "" &&
+                    !nextErrors[`lines.${index}.unitPrice`]
+                ) {
+                    nextErrors[`lines.${index}.unitPrice`] =
+                        `Converted amount exceeds 10 whole digits in ${baseCurrency}.`
+                }
+            })
+        }
         setErrors(nextErrors)
+        if (rateIssue) {
+            document.getElementById(`${id}-exchangeRate`)?.focus()
+            return
+        }
         const first = Object.keys(nextErrors)[0]
         if (first) {
             const element = event.currentTarget.elements.namedItem(first)
             if (element instanceof HTMLElement) element.focus()
             return
-        }
-        const writable: SalesOrderFormValues = {
-            ...values,
-            lines: values.lines.map(
-                ({ itemId, uomId, qtyOrdered, unitPrice }) => ({
-                    itemId,
-                    uomId,
-                    qtyOrdered,
-                    unitPrice,
-                }),
-            ),
         }
         if (await onSave(writable, order)) onOpenChange(false)
     }
@@ -177,15 +317,9 @@ function FormContent({
             aria-busy={isSaving}
             noValidate
         >
-            {saveError && (
-                <Alert variant="destructive">
-                    <AlertTitle>Unable to save order</AlertTitle>
-                    <AlertDescription>{saveError}</AlertDescription>
-                </Alert>
-            )}
             <FieldGroup className="gap-4">
                 <div className="grid gap-4 sm:grid-cols-2">
-                    <Field data-invalid={Boolean(errors.salesOrderNumber)}>
+                    <Field data-invalid={Boolean(orderNumberError)}>
                         <FieldLabel htmlFor={`${id}-number`}>
                             Sales order number
                         </FieldLabel>
@@ -201,11 +335,11 @@ function FormContent({
                                 )
                             }
                             disabled={isSaving}
-                            aria-invalid={Boolean(errors.salesOrderNumber)}
+                            aria-invalid={Boolean(orderNumberError)}
                             aria-describedby={`${id}-number-error`}
                         />
                         <FieldError id={`${id}-number-error`}>
-                            {errors.salesOrderNumber}
+                            {orderNumberError}
                         </FieldError>
                     </Field>
                     <Field data-invalid={Boolean(errors.customerPoNumber)}>
@@ -235,35 +369,20 @@ function FormContent({
                         <FieldLabel htmlFor={`${id}-customer`}>
                             Customer
                         </FieldLabel>
-                        <Select
+                        <ComboboxSelect
+                            id={`${id}-customer`}
+                            name="customerId"
                             items={customerItems}
                             value={values.customerId}
                             onValueChange={(value) =>
                                 updateHeader("customerId", value)
                             }
                             disabled={isSaving}
-                        >
-                            <SelectTrigger
-                                id={`${id}-customer`}
-                                name="customerId"
-                                className="w-full"
-                                aria-invalid={Boolean(errors.customerId)}
-                                aria-describedby={`${id}-customer-error`}
-                            >
-                                <SelectValue placeholder="Select customer" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {customerItems.map((item) => (
-                                    <SelectItem
-                                        key={item.value}
-                                        value={item.value}
-                                        disabled={item.disabled}
-                                    >
-                                        {item.label}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                            placeholder="Select customer"
+                            aria-invalid={Boolean(errors.customerId)}
+                            aria-describedby={`${id}-customer-error`}
+                            className="w-full"
+                        />
                         <FieldError id={`${id}-customer-error`}>
                             {errors.customerId}
                         </FieldError>
@@ -317,44 +436,101 @@ function FormContent({
                 </Field>
             </FieldGroup>
             <div className="space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                     <h3 className="font-medium">Finished products</h3>
-                    <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        disabled={isSaving || values.lines.length >= 100}
-                        onClick={() => {
-                            const uiKey = `added-${nextKey.current++}`
-                            setValues((current) => ({
-                                ...current,
-                                lines: [
-                                    ...current.lines,
-                                    {
-                                        itemId: null,
-                                        uomId: null,
-                                        qtyOrdered: "",
-                                        unitPrice: "",
-                                        uiKey,
-                                    },
-                                ],
-                            }))
-                        }}
-                    >
-                        <Plus />
-                        Add line
-                    </Button>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={isSaving || stocksQuery.isFetching}
+                            onClick={() => void stocksQuery.refetch()}
+                        >
+                            <RefreshCw
+                                className={
+                                    stocksQuery.isFetching
+                                        ? "animate-spin"
+                                        : undefined
+                                }
+                            />
+                            {stocksQuery.isFetching
+                                ? "Checking stock..."
+                                : "Refresh stock"}
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={isSaving || values.lines.length >= 100}
+                            onClick={() => {
+                                const uiKey = `added-${nextKey.current++}`
+                                setValues((current) => ({
+                                    ...current,
+                                    lines: [
+                                        ...current.lines,
+                                        {
+                                            itemId: null,
+                                            uomId: null,
+                                            qtyOrdered: "",
+                                            unitPrice: "",
+                                            vatRatePercent: "0.00",
+                                            uiKey,
+                                            priceCurrency: null,
+                                        },
+                                    ],
+                                }))
+                            }}
+                        >
+                            <Plus />
+                            Add line
+                        </Button>
+                    </div>
                 </div>
                 <p className="text-sm text-muted-foreground">
                     Record the customer’s PO, select finished products, then
                     save to check finished stock and material shortages before
                     purchasing and packing.
                 </p>
+                {hasForeignLine && (
+                    <Field
+                        className="max-w-xs"
+                        data-invalid={Boolean(exchangeRateError)}
+                        data-disabled={isSaving}
+                    >
+                        <FieldLabel htmlFor={`${id}-exchangeRate`}>
+                            {getExchangeRateLabel(baseCurrency, foreignCurrencies)}
+                        </FieldLabel>
+                        <NumericInput
+                            id={`${id}-exchangeRate`}
+                            name="exchangeRate"
+                            maxWholeDigits={10}
+                            maxDecimalPlaces={4}
+                            placeholder="58.00"
+                            value={exchangeRate}
+                            disabled={isSaving}
+                            onValueChange={(next) => {
+                                setExchangeRate(next)
+                                setExchangeRateError(undefined)
+                            }}
+                            aria-invalid={Boolean(exchangeRateError)}
+                            aria-describedby={`${id}-exchangeRate-error`}
+                        />
+                        <FieldDescription>
+                            Converts non-{baseCurrency} line prices to{" "}
+                            {baseCurrency}.
+                        </FieldDescription>
+                        <FieldError id={`${id}-exchangeRate-error`}>
+                            {exchangeRateError}
+                        </FieldError>
+                    </Field>
+                )}
                 <FieldError>{errors.lines}</FieldError>
                 {values.lines.map((line, index) => {
                     const item = options.items.find(
                         (candidate) => candidate.itemId === line.itemId,
                     )
+                    const lineCurrency = line.priceCurrency ?? defaultCurrency
+                    const resolvedLinePrice = resolveLineUnitPrice(line)
                     return (
                         <fieldset
                             key={line.uiKey}
@@ -363,7 +539,7 @@ function FormContent({
                             <legend className="px-1 text-sm font-medium">
                                 Line {index + 1}
                             </legend>
-                            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_auto]">
+                            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1.4fr_1.1fr_auto]">
                                 <Field
                                     data-invalid={Boolean(
                                         errors[`lines.${index}.itemId`],
@@ -372,7 +548,9 @@ function FormContent({
                                     <FieldLabel htmlFor={`${id}-item-${index}`}>
                                         Product
                                     </FieldLabel>
-                                    <Select
+                                    <ComboboxSelect
+                                        id={`${id}-item-${index}`}
+                                        name={`lines.${index}.itemId`}
                                         items={itemItems}
                                         value={line.itemId}
                                         onValueChange={(value) => {
@@ -380,38 +558,43 @@ function FormContent({
                                                 (candidate) =>
                                                     candidate.itemId === value,
                                             )
+                                            const masterPrice =
+                                                selected?.unitCost &&
+                                                /[1-9]/.test(selected.unitCost)
+                                                    ? selected.unitCost
+                                                    : ""
                                             updateLine(index, {
                                                 itemId: value,
                                                 uomId:
                                                     selected?.primaryUomId ??
                                                     null,
+                                                vatRatePercent: selected
+                                                    ? (selected.isVatable ?? true)
+                                                        ? (options.defaultVatRatePercent ??
+                                                          "12.00")
+                                                        : "0.00"
+                                                    : "0.00",
+                                                ...(masterPrice
+                                                    ? {
+                                                          unitPrice: masterPrice,
+                                                          priceCurrency: null,
+                                                      }
+                                                    : line.itemId !== value
+                                                      ? {
+                                                            unitPrice: "",
+                                                            priceCurrency: null,
+                                                        }
+                                                      : {}),
                                             })
                                         }}
                                         disabled={isSaving}
-                                    >
-                                        <SelectTrigger
-                                            id={`${id}-item-${index}`}
-                                            name={`lines.${index}.itemId`}
-                                            className="w-full"
-                                            aria-invalid={Boolean(
-                                                errors[`lines.${index}.itemId`],
-                                            )}
-                                            aria-describedby={`${id}-item-error-${index}`}
-                                        >
-                                            <SelectValue placeholder="Select product" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {itemItems.map((entry) => (
-                                                <SelectItem
-                                                    key={entry.value}
-                                                    value={entry.value}
-                                                    disabled={entry.disabled}
-                                                >
-                                                    {entry.label}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                        placeholder="Select product"
+                                        aria-invalid={Boolean(
+                                            errors[`lines.${index}.itemId`],
+                                        )}
+                                        aria-describedby={`${id}-item-error-${index}`}
+                                        className="w-full"
+                                    />
                                     <FieldError
                                         id={`${id}-item-error-${index}`}
                                     >
@@ -429,14 +612,15 @@ function FormContent({
                                             ? ` (${item.primaryUomName})`
                                             : ""}
                                     </FieldLabel>
-                                    <Input
+                                    <NumericInput
                                         id={`${id}-qty-${index}`}
                                         name={`lines.${index}.qtyOrdered`}
-                                        inputMode="decimal"
+                                        maxWholeDigits={10}
+                                        maxDecimalPlaces={4}
                                         value={line.qtyOrdered}
-                                        onChange={(event) =>
+                                        onValueChange={(next) =>
                                             updateLine(index, {
-                                                qtyOrdered: event.target.value,
+                                                qtyOrdered: next,
                                             })
                                         }
                                         disabled={isSaving}
@@ -459,17 +643,46 @@ function FormContent({
                                     >
                                         Unit price
                                     </FieldLabel>
-                                    <Input
+                                    <PriceCurrencyInput
                                         id={`${id}-price-${index}`}
                                         name={`lines.${index}.unitPrice`}
-                                        inputMode="decimal"
                                         value={line.unitPrice}
-                                        onChange={(event) =>
+                                        currency={lineCurrency}
+                                        baseCurrency={baseCurrency}
+                                        convertedValue={resolvedLinePrice}
+                                        onValueChange={(nextValue) =>
                                             updateLine(index, {
-                                                unitPrice: event.target.value,
+                                                unitPrice: nextValue,
                                             })
                                         }
+                                        onCurrencyChange={(nextCurrency) => {
+                                            updateLine(index, {
+                                                priceCurrency: nextCurrency,
+                                            })
+                                            if (
+                                                !isForeignCurrency(
+                                                    nextCurrency,
+                                                    baseCurrency,
+                                                )
+                                            ) {
+                                                const stillForeign =
+                                                    values.lines.some(
+                                                        (other, pos) =>
+                                                            pos !== index &&
+                                                            isForeignCurrency(
+                                                                other.priceCurrency ??
+                                                                    defaultCurrency,
+                                                                baseCurrency,
+                                                            ),
+                                                    )
+                                                if (!stillForeign)
+                                                    setExchangeRateError(
+                                                        undefined,
+                                                    )
+                                            }
+                                        }}
                                         disabled={isSaving}
+                                        currencyAriaLabel={`Line ${index + 1} price currency`}
                                         aria-invalid={Boolean(
                                             errors[`lines.${index}.unitPrice`],
                                         )}
@@ -480,6 +693,57 @@ function FormContent({
                                     >
                                         {errors[`lines.${index}.unitPrice`]}
                                     </FieldError>
+                                </Field>
+                                <Field>
+                                    <FieldLabel htmlFor={`${id}-vat-${index}`}>
+                                        VAT
+                                    </FieldLabel>
+                                    <ComboboxSelect
+                                        id={`${id}-vat-${index}`}
+                                        items={(() => {
+                                            const stdRate =
+                                                options.defaultVatRatePercent ??
+                                                "12.00"
+                                            const curRate =
+                                                line.vatRatePercent ?? "0.00"
+                                            const baseOpts = [
+                                                {
+                                                    value: "0.00",
+                                                    label: "No VAT (0%)",
+                                                },
+                                                ...(Number(stdRate) > 0
+                                                    ? [
+                                                          {
+                                                              value: stdRate,
+                                                              label: `VATable (${stdRate}%)`,
+                                                          },
+                                                      ]
+                                                    : []),
+                                            ]
+                                            return baseOpts.some(
+                                                (opt) => opt.value === curRate,
+                                            )
+                                                ? baseOpts
+                                                : [
+                                                      ...baseOpts,
+                                                      {
+                                                          value: curRate,
+                                                          label: `Custom VAT (${curRate}%)`,
+                                                      },
+                                                  ]
+                                        })()}
+                                        value={line.vatRatePercent ?? "0.00"}
+                                        onValueChange={(val) => {
+                                            if (val) {
+                                                updateLine(index, {
+                                                    vatRatePercent: val,
+                                                })
+                                            }
+                                        }}
+                                        disabled={isSaving}
+                                        searchable={false}
+                                        className="h-9 w-full"
+                                    />
                                 </Field>
                                 <Button
                                     type="button"
@@ -504,6 +768,109 @@ function FormContent({
                                     <Trash2 />
                                 </Button>
                             </div>
+                            {line.itemId !== null && item && (
+                                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/30 px-3 py-2 text-xs">
+                                    {stocksQuery.isError ? (
+                                        <>
+                                            <span className="text-muted-foreground">
+                                                Unable to check live finished
+                                                stock.
+                                            </span>
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="xs"
+                                                disabled={
+                                                    stocksQuery.isFetching
+                                                }
+                                                onClick={() =>
+                                                    void stocksQuery.refetch()
+                                                }
+                                            >
+                                                Retry stock check
+                                            </Button>
+                                        </>
+                                    ) : stocksQuery.isPending ? (
+                                        <span className="text-muted-foreground">
+                                            Checking live finished stock...
+                                        </span>
+                                    ) : (
+                                        (() => {
+                                            const stockTotals =
+                                                finishedStockByItem.get(
+                                                    item.itemId,
+                                                ) ?? {
+                                                    onHand: BigInt(0),
+                                                    reserved: BigInt(0),
+                                                    available: BigInt(0),
+                                                }
+                                            const coverage =
+                                                summarizeLineStockCoverage(
+                                                    line.qtyOrdered,
+                                                    stockTotals.available,
+                                                    stockTotals.onHand,
+                                                    stockTotals.reserved,
+                                                )
+                                            return (
+                                                <>
+                                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground">
+                                                        <span>
+                                                            Live stock:{" "}
+                                                            <strong className="text-foreground tabular-nums">
+                                                                {
+                                                                    coverage.available
+                                                                }{" "}
+                                                                {
+                                                                    item.primaryUomName
+                                                                }{" "}
+                                                                available
+                                                            </strong>
+                                                        </span>
+                                                        <span className="tabular-nums">
+                                                            On hand:{" "}
+                                                            {coverage.onHand}{" "}
+                                                            {
+                                                                item.primaryUomName
+                                                            }
+                                                        </span>
+                                                        <span className="tabular-nums">
+                                                            Reserved:{" "}
+                                                            {coverage.reserved}{" "}
+                                                            {
+                                                                item.primaryUomName
+                                                            }
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                        {coverage.isCovered ===
+                                                        true ? (
+                                                            <Badge variant="secondary">
+                                                                Covered by stock
+                                                            </Badge>
+                                                        ) : coverage.isCovered ===
+                                                          false ? (
+                                                            <Badge variant="destructive">
+                                                                Need to pack:{" "}
+                                                                {
+                                                                    coverage.toPack
+                                                                }{" "}
+                                                                {
+                                                                    item.primaryUomName
+                                                                }
+                                                            </Badge>
+                                                        ) : (
+                                                            <Badge variant="outline">
+                                                                Enter qty to
+                                                                check
+                                                            </Badge>
+                                                        )}
+                                                    </div>
+                                                </>
+                                            )
+                                        })()
+                                    )}
+                                </div>
+                            )}
                         </fieldset>
                     )
                 })}
@@ -513,7 +880,7 @@ function FormContent({
                 <span className="font-semibold text-foreground tabular-nums">
                     {preview === null
                         ? "Enter quantities and prices"
-                        : formatSalesDecimal(preview)}
+                        : `Net ${formatSalesDecimal(preview.netAmount)} + VAT ${formatSalesDecimal(preview.vatAmount)} = ${formatSalesDecimal(preview.totalAmount)}`}
                 </span>
             </p>
             <DialogFooter>

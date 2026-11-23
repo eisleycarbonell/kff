@@ -1,4 +1,4 @@
-﻿import type { QueryClient } from "@tanstack/react-query"
+import type { QueryClient } from "@tanstack/react-query"
 
 /** Availability and eligibility feed several operational forms, not only the stock list. */
 export function invalidateInventoryAvailability(client: QueryClient) {
@@ -12,6 +12,7 @@ export function invalidateInventoryAvailability(client: QueryClient) {
             "delivery-order-options",
             "sales-order-options",
             "sales-order-material-plan",
+            "accounting",
         ].map((prefix) => client.invalidateQueries({ queryKey: [prefix] })),
     )
 }

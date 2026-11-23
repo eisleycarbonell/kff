@@ -17,7 +17,7 @@ import {
     type ReactTable,
 } from "@tanstack/react-table"
 import { Ellipsis, Pencil, Trash2 } from "lucide-react"
-import { PERMISSIONS, type Role } from "@/components/modules/roles/role.schema"
+import { NOTIFICATION_TAGS, PERMISSIONS, type Role } from "@/components/modules/roles/role.schema"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -90,21 +90,41 @@ export function createRoleColumns(onEdit: (role: Role) => void, onDelete: (role:
                     .join(", "),
             {
                 id: "permissions",
-                header: "Permissions",
-                cell: ({ row }) => (
-                    <div className="flex max-w-96 flex-wrap gap-1">
-                        {PERMISSIONS.filter(({ key }) => row.original.settings[key]).map(
-                            ({ key, label }) => (
-                                <Badge key={key} variant="secondary">
-                                    {label}
-                                </Badge>
-                            ),
-                        )}
-                        {!PERMISSIONS.some(({ key }) => row.original.settings[key]) && (
-                            <Badge variant="outline">View only</Badge>
-                        )}
-                    </div>
-                ),
+                header: "Permissions & Notifications",
+                cell: ({ row }) => {
+                    const activePermissions = PERMISSIONS.filter(
+                        ({ key }) => row.original.settings[key],
+                    )
+                    const activeTags = NOTIFICATION_TAGS.filter(
+                        ({ key }) => row.original.settings[key],
+                    )
+                    return (
+                        <div className="space-y-1.5">
+                            <div className="flex max-w-96 flex-wrap gap-1">
+                                {activePermissions.map(({ key, label }) => (
+                                    <Badge key={key} variant="secondary">
+                                        {label}
+                                    </Badge>
+                                ))}
+                                {activePermissions.length === 0 && (
+                                    <Badge variant="outline">View only</Badge>
+                                )}
+                            </div>
+                            {activeTags.length > 0 && (
+                                <div className="flex max-w-96 flex-wrap items-center gap-1">
+                                    <span className="text-[11px] text-muted-foreground">
+                                        Alerts:
+                                    </span>
+                                    {activeTags.map(({ key, label }) => (
+                                        <Badge key={key} variant="outline" className="text-[10px]">
+                                            {label}
+                                        </Badge>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )
+                },
             },
         ),
         helper.accessor("activeUserCount", {

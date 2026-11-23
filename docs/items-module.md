@@ -12,6 +12,12 @@ The users module remains the architecture reference.
   control visible columns, export filtered/selected CSV rows, and paginate.
 - Deactivate and reactivate through `isActive`. Deactivation preserves item IDs,
   purchasing/packing relationships, lot history, and ledger references.
+- Track per-item taxability through `isVatable` (`true` for VATable items such
+  as finished goods, packaging, and processed ingredients; `false` for
+  VAT-exempt items such as raw agricultural spices). New items default to `true`;
+  changing an item's VAT setting only pre-fills future orders and never alters
+  saved purchase or sales order snapshots. Filter by VAT status and export the VAT
+  indicator from `/items`.
 - Primary UOM options come from `uoms` and `uom_classes`, including their class.
 - Items referenced by suppliers, BOMs, packaging configurations, purchasing,
   packing, lots, stock, reservations, transfers, sales orders, or ledger entries
@@ -77,7 +83,7 @@ This prevents public account creation from bypassing catalog permissions.
 ## Fields and validation
 
 Writable fields are `sku`, `name`, `itemType`, `primaryUomId`, `unitCost`,
-`netWeightG`, `shelfLifeDays`, `requiresQc`, `isActive`, and optional nullable `labelItemId`.
+`netWeightG`, `shelfLifeDays`, `requiresQc`, `isVatable`, `isActive`, and optional nullable `labelItemId`.
 
 - SKU: trimmed, uppercase, required, maximum 50 characters; database uniqueness
   remains authoritative. Name is trimmed, required, and limited to 120 characters.

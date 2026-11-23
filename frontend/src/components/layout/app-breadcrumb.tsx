@@ -21,7 +21,6 @@ type BreadcrumbConfig = {
 // Route labels aligned with the sidebar.
 const routeConfig: Record<string, BreadcrumbConfig> = {
     "/inventory/scrap": { label: "Scrap & Disposal", group: "Inventory" },
-    "/formula-revisions": { label: "Formula Revisions", group: "Master Data" },
     "/item-packaging": { label: "Item Packaging", group: "Master Data" },
     "/reorder-policies": { label: "Reorder Levels", group: "Master Data" },
     "/reason-codes": { label: "Reason Codes", group: "Master Data" },
@@ -135,6 +134,32 @@ const routeConfig: Record<string, BreadcrumbConfig> = {
         label: "Transfer Report",
     },
 
+    // Accounting
+    "/accounting": {
+        label: "Overview & P&L",
+        group: "Accounting",
+    },
+    "/accounting/general-ledger": {
+        label: "General Ledger",
+        group: "Accounting",
+    },
+    "/accounting/valuation": {
+        label: "Inventory Valuation",
+        group: "Accounting",
+    },
+    "/accounting/production-costing": {
+        label: "Production Costing",
+        group: "Accounting",
+    },
+    "/accounting/receivables-margins": {
+        label: "Receivables & Margin",
+        group: "Accounting",
+    },
+    "/accounting/payables": {
+        label: "Payables & POs",
+        group: "Accounting",
+    },
+
     // Administration
     "/users": {
         label: "Users",
@@ -205,8 +230,12 @@ export function AppBreadcrumb() {
         if (parent.label === group || parent.label === currentRoute?.label)
             return
 
-        // Inventory's nested pages are sibling modules, not children of Inventory Stock.
-        if (href === "/inventory" && currentRoute?.group === "Inventory") return
+        // Inventory and Accounting nested pages are sibling sub-modules, not children of Overview.
+        if (
+            (href === "/inventory" && currentRoute?.group === "Inventory") ||
+            (href === "/accounting" && currentRoute?.group === "Accounting")
+        )
+            return
 
         // Avoid showing a parent from another sidebar group.
         if (parent.group && parent.group !== group) return
@@ -225,28 +254,29 @@ export function AppBreadcrumb() {
     })
 
     return (
-        <Breadcrumb>
-            <BreadcrumbList>
+        <Breadcrumb className="min-w-0 overflow-hidden">
+            <BreadcrumbList className="flex-nowrap sm:flex-wrap">
                 {breadcrumbs.map((item, index) => {
                     const isLast = index === breadcrumbs.length - 1
 
                     return (
                         <Fragment key={`${index}-${item.label}`}>
-                            {index > 0 && <BreadcrumbSeparator />}
+                            {index > 0 && <BreadcrumbSeparator className="shrink-0" />}
 
-                            <BreadcrumbItem>
+                            <BreadcrumbItem className="min-w-0">
                                 {isLast ? (
-                                    <BreadcrumbPage>
+                                    <BreadcrumbPage className="max-w-[12rem] truncate sm:max-w-none">
                                         {item.label}
                                     </BreadcrumbPage>
                                 ) : item.href ? (
                                     <BreadcrumbLink
                                         render={<Link href={item.href} />}
+                                        className="truncate"
                                     >
                                         {item.label}
                                     </BreadcrumbLink>
                                 ) : (
-                                    <span className="text-muted-foreground">
+                                    <span className="truncate text-muted-foreground">
                                         {item.label}
                                     </span>
                                 )}

@@ -176,4 +176,9 @@ test("formula form validates compatible units, duplicate materials and precision
             options,
         ),
     )
+    assert.equal(schema.divideBatchByPacks("5", "50"), "0.1")
+    assert.equal(schema.divideBatchByPacks("1", "3"), "0.333333")
+    assert.equal(schema.divideBatchByPacks("100", "1"), "100")
+    assert.equal(schema.divideBatchByPacks("0", "10"), null)
+    assert.equal(schema.divideBatchByPacks("10", "0"), null)
 })

@@ -20,13 +20,7 @@ import {
 } from "@/components/modules/items/item-table-columns";
 import { ItemTableToolbar } from "@/components/modules/items/item-table-toolbar";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { ComboboxSelect } from "@/components/shared/combobox-select";
 import {
   Table,
   TableBody,
@@ -44,7 +38,9 @@ const pageSizeItems = [5, 10, 20, 50].map((size) => ({
 type ItemTableProps = {
   items: Item[];
   canManage: boolean;
+  canManagePacking?: boolean;
   onSuppliers: (item: Item) => void;
+  onFormula?: (item: Item) => void;
   onAdd: () => void;
   onEdit: (item: Item) => void;
   onDeactivate: (items: Item[]) => void;
@@ -53,14 +49,24 @@ type ItemTableProps = {
 export const ItemTable = memo(function ItemTable({
   items,
   canManage,
+  canManagePacking = false,
   onAdd,
   onSuppliers,
+  onFormula,
   onEdit,
   onDeactivate,
 }: ItemTableProps) {
   const columns = useMemo(
-    () => createItemColumns({ onSuppliers, onEdit, onDeactivate, canManage }),
-    [onSuppliers, onEdit, onDeactivate, canManage],
+    () =>
+      createItemColumns({
+        onSuppliers,
+        onEdit,
+        onDeactivate,
+        onFormula,
+        canManage,
+        canManagePacking,
+      }),
+    [onSuppliers, onEdit, onDeactivate, onFormula, canManage, canManagePacking],
   );
   const table = useTable({
     features: itemTableFeatures,
@@ -212,24 +218,15 @@ export const ItemTable = memo(function ItemTable({
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2 text-sm">
             <span className="text-muted-foreground">Rows per page</span>
-            <Select
+            <ComboboxSelect
+              aria-label="Rows per page"
               items={pageSizeItems}
               value={String(pageSize)}
               onValueChange={(value) => {
                 if (value) table.setPageSize(Number(value));
               }}
-            >
-              <SelectTrigger aria-label="Rows per page" className="w-16">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {pageSizeItems.map((item) => (
-                  <SelectItem key={item.value} value={item.value}>
-                    {item.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              className="w-16"
+            />
           </div>
           <span className="text-sm tabular-nums">
             Page {pageIndex + 1} of {pageCount}

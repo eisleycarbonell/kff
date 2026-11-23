@@ -8,6 +8,7 @@ import { Plus, Trash2 } from "lucide-react"
 import { UserStatistics } from "@/components/modules/users/user-statistics"
 import { UserTable } from "@/components/modules/users/user-table"
 import { getUserName } from "@/components/modules/users/user.schema"
+import { BulkImportActions } from "@/components/shared/bulk-import-actions"
 import { PageHeader } from "@/components/shared/page-header"
 import {
     AlertDialog,
@@ -59,14 +60,20 @@ export default function UsersPage() {
                 description="Manage your team, user details, and access roles."
                 actions={
                     canManage && (
-                        <Button
-                            className="h-10 gap-2 px-4"
-                            onClick={openAdd}
-                            disabled={loadStatus !== "ready"}
-                        >
-                            <Plus />
-                            Add user
-                        </Button>
+                        <>
+                            <BulkImportActions
+                                moduleKey="users"
+                                disabled={loadStatus !== "ready"}
+                            />
+                            <Button
+                                className="h-10 gap-2 px-4"
+                                onClick={openAdd}
+                                disabled={loadStatus !== "ready"}
+                            >
+                                <Plus />
+                                Add user
+                            </Button>
+                        </>
                     )
                 }
             />

@@ -1,7 +1,8 @@
 "use client"
 import dynamic from "next/dynamic"
 import Link from "next/link"
-import { ClipboardPenLine, RefreshCw } from "lucide-react"
+import { ClipboardPenLine } from "lucide-react"
+import { BulkImportActions } from "@/components/shared/bulk-import-actions"
 import { PageHeader } from "@/components/shared/page-header"
 import { StockStatistics } from "@/components/modules/inventory-stocks/inventory-stock-statistics"
 import { StockTable } from "@/components/modules/inventory-stocks/inventory-stock-table"
@@ -27,17 +28,12 @@ export default function InventoryPage() {
                 title="Inventory Stock"
                 description="Track on-hand, reserved, and available stock by item, lot, and location."
                 actions={
-                    <div className="flex flex-wrap gap-3">
-                        <Button
-                            variant="outline"
-                            className="h-10"
-                            onClick={inventory.retry}
-                            disabled={inventory.isFetching}
-                        >
-                            <RefreshCw data-icon="inline-start" />
-                            {inventory.isFetching ? "Refreshing..." : "Refresh"}
-                        </Button>
-                        {inventory.canManage && (
+                    inventory.canManage ? (
+                        <>
+                            <BulkImportActions
+                                moduleKey="inventory-adjustments"
+                                disabled={!inventory.canAdjust}
+                            />
                             <Button
                                 className="h-10"
                                 onClick={() => inventory.openAdjustment()}
@@ -46,8 +42,8 @@ export default function InventoryPage() {
                                 <ClipboardPenLine data-icon="inline-start" />
                                 Record adjustment
                             </Button>
-                        )}
-                    </div>
+                        </>
+                    ) : undefined
                 }
             />
             {inventory.loadStatus === "signed-out" && (

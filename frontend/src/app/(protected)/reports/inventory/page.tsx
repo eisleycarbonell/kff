@@ -35,16 +35,6 @@ export default function InventoryReportsPage() {
             <PageHeader
                 title="Inventory Reports"
                 description="Review stock, reservations, expiry and traceable inventory movements."
-                actions={
-                    <Button
-                        className="h-10"
-                        variant="outline"
-                        onClick={feature.refresh}
-                        disabled={feature.isFetching}
-                    >
-                        Refresh report
-                    </Button>
-                }
             />
             <div className="min-w-0 border-b">
                 <div

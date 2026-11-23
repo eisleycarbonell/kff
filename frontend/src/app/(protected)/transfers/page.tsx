@@ -5,6 +5,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useMemo } from "react"
 import { Plus, Truck } from "lucide-react"
+import { BulkImportActions } from "@/components/shared/bulk-import-actions"
 import { PageHeader } from "@/components/shared/page-header"
 import { TransferStatistics } from "@/components/modules/transfers/transfer-statistics"
 import { TransferTable } from "@/components/modules/transfers/transfer-table"
@@ -48,14 +49,17 @@ export default function TransfersPage() {
                 actions={
                     <>
                         {feature.canManage && (
-                            <Button
-                                className="h-10 gap-2 px-4"
-                                disabled={busy}
-                                onClick={feature.openAdd}
-                            >
-                                <Plus />
-                                Create transfer
-                            </Button>
+                            <>
+                                <BulkImportActions moduleKey="transfers" disabled={busy} />
+                                <Button
+                                    className="h-10 gap-2 px-4"
+                                    disabled={busy}
+                                    onClick={feature.openAdd}
+                                >
+                                    <Plus />
+                                    Create transfer
+                                </Button>
+                            </>
                         )}
                     </>
                 }

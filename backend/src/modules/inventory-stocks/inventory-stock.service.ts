@@ -1,5 +1,5 @@
 import { requireActiveLocation } from '../locations/location.service.ts';
-import { and, asc, eq, sql, type SQL } from 'drizzle-orm';
+import { and, asc, eq, isNull, sql, type SQL } from 'drizzle-orm';
 import { db } from '../../db/index.ts';
 import {
     inventoryStock,
@@ -15,16 +15,27 @@ import { AppError } from '../../errors/app-error.ts';
 import type { StockQuery, StockAdjustmentInput } from './inventory-stock.schema.ts';
 import { outstandingReservations, planStockAdjustment } from './inventory-stock.rules.ts';
 
-// Use the active lot/location index; correlated aggregation avoids multiplying
-// balances when a lot has several reservations or stock in several locations.
-const reserved = sql`coalesce((
-    select sum(${inventoryReservations.qtyReserved} - ${inventoryReservations.qtyConsumed})
-    from ${inventoryReservations}
-    where ${inventoryReservations.itemId} = ${inventoryStock.itemId}
-      and ${inventoryReservations.lotId} = ${inventoryStock.lotId}
-      and ${inventoryReservations.locationId} = ${inventoryStock.locationId}
-      and ${inventoryReservations.releasedAt} is null
-), 0)`;
+// Pre-aggregate active reservations once per (item, lot, location) to avoid
+// evaluating correlated subqueries multiple times per stock row.
+const activeRes = db
+    .select({
+        itemId: inventoryReservations.itemId,
+        lotId: inventoryReservations.lotId,
+        locationId: inventoryReservations.locationId,
+        qtyReserved:
+            sql<string>`sum(${inventoryReservations.qtyReserved} - ${inventoryReservations.qtyConsumed})`.as(
+                'qty_reserved',
+            ),
+    })
+    .from(inventoryReservations)
+    .where(isNull(inventoryReservations.releasedAt))
+    .groupBy(
+        inventoryReservations.itemId,
+        inventoryReservations.lotId,
+        inventoryReservations.locationId,
+    )
+    .as('active_res');
+const reserved = sql`coalesce(${activeRes.qtyReserved}, 0)`;
 const fields = {
     stockId: inventoryStock.stockId,
     itemId: inventoryStock.itemId,
@@ -58,7 +69,15 @@ const stockQuery = (database: Reader = db) =>
         .innerJoin(items, eq(inventoryStock.itemId, items.itemId))
         .innerJoin(lots, eq(inventoryStock.lotId, lots.lotId))
         .innerJoin(locations, eq(inventoryStock.locationId, locations.locationId))
-        .innerJoin(uoms, eq(items.primaryUomId, uoms.uomId));
+        .innerJoin(uoms, eq(items.primaryUomId, uoms.uomId))
+        .leftJoin(
+            activeRes,
+            and(
+                eq(activeRes.itemId, inventoryStock.itemId),
+                eq(activeRes.lotId, inventoryStock.lotId),
+                eq(activeRes.locationId, inventoryStock.locationId),
+            ),
+        );
 export async function listStocks(query: StockQuery = {}) {
     const filters: SQL[] = [];
     if (query.itemId) filters.push(eq(inventoryStock.itemId, query.itemId));

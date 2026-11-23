@@ -11,14 +11,7 @@ import {
     DropdownMenuLabel,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import {
-    Select,
-    SelectContent,
-    SelectGroup,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
+import { ComboboxSelect } from "@/components/shared/combobox-select"
 
 const filters = [
     {
@@ -27,6 +20,15 @@ const filters = [
         items: [
             { value: "all", label: "All types" },
             ...ITEM_TYPES.map((value) => ({ value, label: value })),
+        ],
+    },
+    {
+        id: "vat",
+        label: "Filter by VAT",
+        items: [
+            { value: "all", label: "All VAT" },
+            { value: "VATable", label: "VATable" },
+            { value: "No VAT", label: "No VAT (Exempt)" },
         ],
     },
     {
@@ -45,6 +47,7 @@ const columnLabels: Record<string, string> = {
     itemType: "Type",
     primaryUomName: "Primary UOM",
     unitCost: "Reference cost",
+    vat: "VAT",
     status: "Status",
     requiresQc: "Quality check",
     netWeightG: "Net weight (g)",
@@ -63,6 +66,7 @@ export function exportItems(items: Item[]) {
             "Type",
             "Primary UOM",
             "Reference cost",
+            "VAT",
             "Net weight (g)",
             "Shelf life (days)",
             "Requires QC",
@@ -75,6 +79,7 @@ export function exportItems(items: Item[]) {
             item.itemType,
             item.primaryUomName,
             item.unitCost,
+            (item.isVatable ?? true) ? "VATable" : "No VAT",
             item.netWeightG ?? "",
             item.shelfLifeDays?.toString() ?? "",
             item.requiresQc ? "Yes" : "No",
@@ -138,8 +143,9 @@ export function ItemTableToolbar({
                 />
             </div>
             {filters.map((filter) => (
-                <Select
+                <ComboboxSelect
                     key={filter.id}
+                    aria-label={filter.label}
                     items={filter.items}
                     value={
                         (table
@@ -155,23 +161,8 @@ export function ItemTableToolbar({
                         table.resetRowSelection()
                         table.setPageIndex(0)
                     }}
-                >
-                    <SelectTrigger
-                        aria-label={filter.label}
-                        className="min-w-36 data-[size=default]:h-10"
-                    >
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectGroup>
-                            {filter.items.map((item) => (
-                                <SelectItem key={item.value} value={item.value}>
-                                    {item.label}
-                                </SelectItem>
-                            ))}
-                        </SelectGroup>
-                    </SelectContent>
-                </Select>
+                    className="h-10 w-full sm:w-auto sm:min-w-36"
+                />
             ))}
             {hasFilters && (
                 <Button

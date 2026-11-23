@@ -69,7 +69,12 @@ The backend enforces permissions independently of visible frontend actions.
 Sales inputs contain salesOrderNumber, customerPoNumber (optional/nullable, trimmed,
 maximum 100 characters), customerId, orderDate,
 requestedDeliveryDate (optional/nullable), notes (optional/nullable), and lines
-[{itemId, uomId, qtyOrdered, unitPrice}]. Each product appears once.
+[{itemId, uomId, qtyOrdered, unitPrice, vatRatePercent?}]. Each product appears once.
+When `vatRatePercent` is omitted, new lines inherit `company_settings.vatRatePercent`
+for VATable products (`item.isVatable`) or `'0.00'` for VAT-exempt products, snapshotting
+that rate onto `sales_order_lines`. Responses return Ex-VAT `netAmount`, `vatAmount`, and
+Gross `totalAmount`. Accounting separates Net Sales Revenue (`4100`) from Output VAT Payable
+(`2200`) and Gross Customer Billing (`1100`).
 Delivery inputs contain deliveryOrderNumber, salesOrderId, sourceLocationId,
 deliveryDate, notes (optional/nullable), and lines
 [{salesOrderLineId, lotId, qtyDelivered}]. Each lot appears once per delivery;

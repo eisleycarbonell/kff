@@ -2,7 +2,9 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Archive, Plus } from "lucide-react";
+import { BulkImportActions } from "@/components/shared/bulk-import-actions";
 import { PageHeader } from "@/components/shared/page-header";
 import { ItemStatistics } from "@/components/modules/items/item-statistics";
 import { ItemTable } from "@/components/modules/items/item-table";
@@ -35,6 +37,7 @@ const ItemSuppliersDialog = dynamic(() =>
 
 export default function ItemsPage() {
   const catalog = useItems();
+  const router = useRouter();
   return (
     <>
       <title>Items / Products</title>
@@ -47,18 +50,27 @@ export default function ItemsPage() {
         description="Manage your product catalog, units, and item details."
         actions={
           catalog.canManage && (
-            <Button
-              className="h-10 gap-2 px-4"
-              onClick={catalog.openAdd}
-              disabled={!catalog.uoms.length}
-            >
-              <Plus data-icon="inline-start" />
-              Add item
-            </Button>
+            <>
+              <BulkImportActions
+                moduleKey="items"
+                disabled={!catalog.uoms.length}
+              />
+              <Button
+                className="h-10 gap-2 px-4"
+                onClick={catalog.openAdd}
+                disabled={!catalog.uoms.length}
+              >
+                <Plus data-icon="inline-start" />
+                Add item
+              </Button>
+            </>
           )
         }
       />
       <div className="flex flex-wrap gap-3 text-sm">
+        <Link className="text-primary underline" href="/bom">
+          Packing formulas
+        </Link>
         <Link className="text-primary underline" href="/item-packaging">
           Item packaging and barcodes
         </Link>
@@ -134,7 +146,9 @@ export default function ItemsPage() {
           <ItemTable
             items={catalog.items}
             canManage={catalog.canManage && catalog.uoms.length > 0}
+            canManagePacking={catalog.canManagePacking}
             onSuppliers={catalog.openSuppliers}
+            onFormula={(item) => router.push(`/bom?productId=${item.itemId}`)}
             onAdd={catalog.openAdd}
             onEdit={catalog.openEdit}
             onDeactivate={catalog.openDeactivate}
@@ -155,6 +169,8 @@ export default function ItemsPage() {
           item={catalog.editingItem}
           items={catalog.items}
           uoms={catalog.uoms}
+          canManagePacking={catalog.canManagePacking}
+          onOpenFormula={(saved) => router.push(`/bom?productId=${saved.itemId}`)}
           onSave={catalog.handleSave}
           isSaving={catalog.isSaving}
         />

@@ -28,14 +28,7 @@ import {
     EmptyTitle,
 } from "@/components/ui/empty"
 import { Button } from "@/components/ui/button"
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectGroup,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
+import { ComboboxSelect } from "@/components/shared/combobox-select"
 import {
     Table,
     TableBody,
@@ -233,26 +226,15 @@ export const StockTable = memo(function StockTable({
                 <div className="flex flex-wrap items-center gap-4">
                     <div className="flex items-center gap-2 text-sm">
                         <span className="text-muted-foreground">Rows per page</span>
-                        <Select
+                        <ComboboxSelect
+                            aria-label="Rows per page"
                             items={pageSizeItems}
                             value={String(pageSize)}
                             onValueChange={(value) => {
                                 if (value) table.setPageSize(Number(value))
                             }}
-                        >
-                            <SelectTrigger aria-label="Rows per page" className="w-16">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectGroup>
-                                    {pageSizeItems.map((item) => (
-                                        <SelectItem key={item.value} value={item.value}>
-                                            {item.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectGroup>
-                            </SelectContent>
-                        </Select>
+                            className="w-16"
+                        />
                     </div>
                     <span className="text-sm tabular-nums">
                         Page {pageIndex + 1} of {pageCount}

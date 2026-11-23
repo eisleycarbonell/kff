@@ -104,62 +104,82 @@ export async function getTransfer(id: number, database: Reader = db) {
         .orderBy(asc(stockTransferLines.transferLineId));
     return { ...header, lines };
 }
-const activeReserved = sql`coalesce((select sum(${inventoryReservations.qtyReserved}-${inventoryReservations.qtyConsumed})
-    from ${inventoryReservations} where ${inventoryReservations.lotId}=${inventoryStock.lotId}
-    and ${inventoryReservations.locationId}=${inventoryStock.locationId}
-    and ${inventoryReservations.releasedAt} is null),0)`;
 export async function getTransferOptions(database: Reader = db) {
-    const locationRows = await database
+    const activeRes = database
         .select({
-            locationId: locations.locationId,
-            code: locations.code,
-            name: locations.name,
-            locationType: locations.locationType,
+            lotId: inventoryReservations.lotId,
+            locationId: inventoryReservations.locationId,
+            qtyReserved:
+                sql<string>`sum(${inventoryReservations.qtyReserved} - ${inventoryReservations.qtyConsumed})`.as(
+                    'qty_reserved',
+                ),
         })
-        .from(locations)
-        .where(
-            and(
-                eq(locations.isActive, true),
-                inArray(locations.locationType, ['Warehouse', 'Branch', 'Store', 'In Transit']),
-            ),
-        )
-        .orderBy(asc(locations.name), asc(locations.locationId));
-    const stock = await database
-        .select({
-            itemId: items.itemId,
-            itemSku: items.sku,
-            itemName: items.name,
-            lotId: lots.lotId,
-            lotNumber: lots.lotNumber,
-            packingOrderId: lots.packingOrderId,
-            locationId: inventoryStock.locationId,
-            primaryUomId: items.primaryUomId,
-            primaryUomName: uoms.name,
-            qtyOnHand: inventoryStock.qtyOnHand,
-            qtyReserved: sql<string>`${activeReserved}::numeric(14,4)::text`,
-            qtyAvailable: sql<string>`(${inventoryStock.qtyOnHand}-${activeReserved})::numeric(14,4)::text`,
-            expirationDate: lots.expirationDate,
-            qcStatus: lots.qcStatus,
-        })
-        .from(inventoryStock)
-        .innerJoin(items, eq(inventoryStock.itemId, items.itemId))
-        .innerJoin(lots, eq(inventoryStock.lotId, lots.lotId))
-        .innerJoin(locations, eq(inventoryStock.locationId, locations.locationId))
-        .innerJoin(uoms, eq(items.primaryUomId, uoms.uomId))
-        .where(
-            and(
-                eq(items.isActive, true),
-                eq(items.itemType, 'Finished Good'),
-                eq(locations.isActive, true),
-                eq(locations.locationType, 'Warehouse'),
-                eq(lots.qcStatus, 'Approved'),
-                isNotNull(lots.packingOrderId),
-                or(isNull(lots.expirationDate), sql`${lots.expirationDate}>${today()}`),
-                gt(inventoryStock.qtyOnHand, zero),
-                sql`${inventoryStock.qtyOnHand}>${activeReserved}`,
-            ),
-        )
-        .orderBy(asc(items.name), asc(lots.lotNumber), asc(inventoryStock.locationId));
+        .from(inventoryReservations)
+        .where(isNull(inventoryReservations.releasedAt))
+        .groupBy(inventoryReservations.lotId, inventoryReservations.locationId)
+        .as('active_res');
+    const activeReserved = sql`coalesce(${activeRes.qtyReserved}, 0)`;
+
+    const [locationRows, stock] = await Promise.all([
+        database
+            .select({
+                locationId: locations.locationId,
+                code: locations.code,
+                name: locations.name,
+                locationType: locations.locationType,
+            })
+            .from(locations)
+            .where(
+                and(
+                    eq(locations.isActive, true),
+                    inArray(locations.locationType, ['Warehouse', 'Branch', 'Store', 'In Transit']),
+                ),
+            )
+            .orderBy(asc(locations.name), asc(locations.locationId)),
+        database
+            .select({
+                itemId: items.itemId,
+                itemSku: items.sku,
+                itemName: items.name,
+                lotId: lots.lotId,
+                lotNumber: lots.lotNumber,
+                packingOrderId: lots.packingOrderId,
+                locationId: inventoryStock.locationId,
+                primaryUomId: items.primaryUomId,
+                primaryUomName: uoms.name,
+                qtyOnHand: inventoryStock.qtyOnHand,
+                qtyReserved: sql<string>`${activeReserved}::numeric(14,4)::text`,
+                qtyAvailable: sql<string>`(${inventoryStock.qtyOnHand}-${activeReserved})::numeric(14,4)::text`,
+                expirationDate: lots.expirationDate,
+                qcStatus: lots.qcStatus,
+            })
+            .from(inventoryStock)
+            .innerJoin(items, eq(inventoryStock.itemId, items.itemId))
+            .innerJoin(lots, eq(inventoryStock.lotId, lots.lotId))
+            .innerJoin(locations, eq(inventoryStock.locationId, locations.locationId))
+            .innerJoin(uoms, eq(items.primaryUomId, uoms.uomId))
+            .leftJoin(
+                activeRes,
+                and(
+                    eq(activeRes.lotId, inventoryStock.lotId),
+                    eq(activeRes.locationId, inventoryStock.locationId),
+                ),
+            )
+            .where(
+                and(
+                    eq(items.isActive, true),
+                    eq(items.itemType, 'Finished Good'),
+                    eq(locations.isActive, true),
+                    eq(locations.locationType, 'Warehouse'),
+                    eq(lots.qcStatus, 'Approved'),
+                    isNotNull(lots.packingOrderId),
+                    or(isNull(lots.expirationDate), sql`${lots.expirationDate}>${today()}`),
+                    gt(inventoryStock.qtyOnHand, zero),
+                    sql`${inventoryStock.qtyOnHand}>${activeReserved}`,
+                ),
+            )
+            .orderBy(asc(items.name), asc(lots.lotNumber), asc(inventoryStock.locationId)),
+    ]);
     return { locations: locationRows, stock };
 }
 function assertStatus(status: string, expected: string) {
@@ -391,11 +411,17 @@ async function moveStocks(
     context: Awaited<ReturnType<typeof lockStock>>,
 ) {
     const now = new Date();
-    const balancesByKey = new Map(context.balances.map((row) => [`${row.lotId}:${row.locationId}`, row]));
+    const balancesByKey = new Map(
+        context.balances.map((row) => [`${row.lotId}:${row.locationId}`, row]),
+    );
     const reservedByLot = new Map<number, bigint>();
     for (const row of context.reservations)
         if (row.locationId === from)
-            reservedByLot.set(row.lotId, (reservedByLot.get(row.lotId) ?? 0n) + quantityUnits(outstandingReservations([row])));
+            reservedByLot.set(
+                row.lotId,
+                (reservedByLot.get(row.lotId) ?? 0n) +
+                quantityUnits(outstandingReservations([row])),
+            );
     const balances: (typeof inventoryStock.$inferInsert)[] = [];
     const ledger: (typeof inventoryTransactions.$inferInsert)[] = [];
     for (const { line, quantity } of movements) {
@@ -403,21 +429,57 @@ async function moveStocks(
         if (amount <= 0n) throw new AppError(400, 'Movement quantities must be positive.');
         const sourceStock = balancesByKey.get(`${line.lotId}:${from}`);
         const targetStock = balancesByKey.get(`${line.lotId}:${to}`);
-        if (!sourceStock || quantityUnits(sourceStock.qtyOnHand) - (reservedByLot.get(line.lotId) ?? 0n) < amount)
+        if (
+            !sourceStock ||
+            quantityUnits(sourceStock.qtyOnHand) - (reservedByLot.get(line.lotId) ?? 0n) < amount
+        )
             throw new AppError(
                 409,
                 'There is not enough available stock for this movement. Refresh the transfer and stock.',
             );
         const destinationQuantity = quantityUnits(targetStock?.qtyOnHand ?? zero) + amount;
         if (destinationQuantity > maxQuantity)
-            throw new AppError(409, 'This movement would exceed the destination stock quantity limit.');
+            throw new AppError(
+                409,
+                'This movement would exceed the destination stock quantity limit.',
+            );
         balances.push(
-            { itemId: line.itemId, lotId: line.lotId, locationId: from, qtyOnHand: quantityString(quantityUnits(sourceStock.qtyOnHand) - amount), lastUpdated: now },
-            { itemId: line.itemId, lotId: line.lotId, locationId: to, qtyOnHand: quantityString(destinationQuantity), lastUpdated: now },
+            {
+                itemId: line.itemId,
+                lotId: line.lotId,
+                locationId: from,
+                qtyOnHand: quantityString(quantityUnits(sourceStock.qtyOnHand) - amount),
+                lastUpdated: now,
+            },
+            {
+                itemId: line.itemId,
+                lotId: line.lotId,
+                locationId: to,
+                qtyOnHand: quantityString(destinationQuantity),
+                lastUpdated: now,
+            },
         );
         ledger.push(
-            { itemId: line.itemId, lotId: line.lotId, locationId: from, qtyChange: quantityString(-amount), transactionType: 'Transfer', transferLineId: line.transferLineId, referenceId: reference, authorizedByUserId: actorId },
-            { itemId: line.itemId, lotId: line.lotId, locationId: to, qtyChange: quantityString(amount), transactionType: 'Transfer', transferLineId: line.transferLineId, referenceId: reference, authorizedByUserId: actorId },
+            {
+                itemId: line.itemId,
+                lotId: line.lotId,
+                locationId: from,
+                qtyChange: quantityString(-amount),
+                transactionType: 'Transfer',
+                transferLineId: line.transferLineId,
+                referenceId: reference,
+                authorizedByUserId: actorId,
+            },
+            {
+                itemId: line.itemId,
+                lotId: line.lotId,
+                locationId: to,
+                qtyChange: quantityString(amount),
+                transactionType: 'Transfer',
+                transferLineId: line.transferLineId,
+                referenceId: reference,
+                authorizedByUserId: actorId,
+            },
         );
     }
     // Parent lots and existing balances remain locked through commit. Each
@@ -444,20 +506,21 @@ async function updateLineQuantities(
         [...quantities].map(([id, quantity]) => sql`when ${id} then ${quantity}::numeric`),
         sql` `,
     )} end`;
-    await tx.update(stockTransferLines).set({
-        ...(field === 'qtyShipped' ? { qtyShipped: value } : { qtyReceived: value }),
-        updatedBy: actorId,
-        updatedAt: new Date(),
-    }).where(inArray(stockTransferLines.transferLineId, [...quantities.keys()]));
+    await tx
+        .update(stockTransferLines)
+        .set({
+            ...(field === 'qtyShipped' ? { qtyShipped: value } : { qtyReceived: value }),
+            updatedBy: actorId,
+            updatedAt: new Date(),
+        })
+        .where(inArray(stockTransferLines.transferLineId, [...quantities.keys()]));
 }
 function assertActionLines(lines: Line[], supplied: { transferLineId: number }[], all: boolean) {
     const lineIds = new Set(lines.map((line) => line.transferLineId));
     if (
         !supplied.length ||
         new Set(supplied.map((line) => line.transferLineId)).size !== supplied.length ||
-        supplied.some(
-            (line) => !lineIds.has(line.transferLineId),
-        ) ||
+        supplied.some((line) => !lineIds.has(line.transferLineId)) ||
         (all && lines.length !== supplied.length)
     )
         throw new AppError(
@@ -504,14 +567,14 @@ export async function dispatchTransfer(
             return { line, quantity: supplied.qtyShipped };
         });
         await moveStocks(
-                tx,
-                movements,
-                header.sourceLocationId,
-                input.transitLocationId,
-                actorId,
-                header.transferNumber,
-                context,
-            );
+            tx,
+            movements,
+            header.sourceLocationId,
+            input.transitLocationId,
+            actorId,
+            header.transferNumber,
+            context,
+        );
         await updateLineQuantities(tx, shipped, 'qtyShipped', actorId);
         await tx
             .update(stockTransfers)
@@ -549,7 +612,10 @@ async function originalTransit(tx: Reader, lines: Line[]) {
     const dispatchedByLine = new Map<number, bigint>();
     for (const row of rows)
         if (row.lineId !== null)
-            dispatchedByLine.set(row.lineId, (dispatchedByLine.get(row.lineId) ?? 0n) + quantityUnits(row.quantity));
+            dispatchedByLine.set(
+                row.lineId,
+                (dispatchedByLine.get(row.lineId) ?? 0n) + quantityUnits(row.quantity),
+            );
     if (
         locationIds.length !== 1 ||
         lines.some(
@@ -603,14 +669,14 @@ export async function receiveTransfer(
             return { line, quantity: supplied.qtyReceived };
         });
         await moveStocks(
-                tx,
-                movements,
-                transitLocationId,
-                header.destinationLocationId,
-                actorId,
-                header.transferNumber,
-                context,
-            );
+            tx,
+            movements,
+            transitLocationId,
+            header.destinationLocationId,
+            actorId,
+            header.transferNumber,
+            context,
+        );
         await updateLineQuantities(tx, received, 'qtyReceived', actorId);
         const complete = lines.every(
             (line) =>

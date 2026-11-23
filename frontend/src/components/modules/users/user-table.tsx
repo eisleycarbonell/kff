@@ -17,13 +17,7 @@ import type { User, UserRole } from "@/components/modules/users/user.schema"
 import { createUserColumns, userTableFeatures } from "@/components/modules/users/user-table-columns"
 import { UserTableToolbar } from "@/components/modules/users/user-table-toolbar"
 import { Button } from "@/components/ui/button"
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
+import { ComboboxSelect } from "@/components/shared/combobox-select"
 import {
     Table,
     TableBody,
@@ -190,24 +184,15 @@ export const UserTable = memo(function UserTable({ users, roles, onAdd, onEdit, 
                 <div className="flex flex-wrap items-center gap-4">
                     <div className="flex items-center gap-2 text-sm">
                         <span className="text-muted-foreground">Rows per page</span>
-                        <Select
+                        <ComboboxSelect
+                            aria-label="Rows per page"
                             items={pageSizeItems}
                             value={String(pageSize)}
                             onValueChange={(value) => {
                                 if (value) table.setPageSize(Number(value))
                             }}
-                        >
-                            <SelectTrigger aria-label="Rows per page" className="w-16">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {pageSizeItems.map((item) => (
-                                    <SelectItem key={item.value} value={item.value}>
-                                        {item.label}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                            className="w-16"
+                        />
                     </div>
                     <span className="text-sm tabular-nums">
                         Page {pageIndex + 1} of {pageCount}

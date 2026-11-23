@@ -28,6 +28,7 @@ const fields = {
     shelfLifeDays: id.nullable().optional(),
     requiresQc: z.boolean(),
     unitCost: decimalSchema(10),
+    isVatable: z.boolean(),
     isActive: z.boolean(),
 };
 
@@ -35,6 +36,7 @@ export const createItemSchema = z.strictObject({
     ...fields,
     requiresQc: fields.requiresQc.default(false),
     unitCost: fields.unitCost.default('0'),
+    isVatable: fields.isVatable.default(true),
     isActive: fields.isActive.default(true),
 });
 export const updateItemSchema = z

@@ -11,6 +11,7 @@ import {
     pgEnum,
     check,
     index,
+    primaryKey,
     unique,
     uniqueIndex,
     foreignKey,
@@ -45,6 +46,14 @@ export type RoleSettings = {
     canManagePacking?: boolean;
     canManageTransfers?: boolean;
     canManageUsers?: boolean;
+    canManageAccounting?: boolean;
+    notifyInventory?: boolean;
+    notifyPurchasing?: boolean;
+    notifyPacking?: boolean;
+    notifyTransfers?: boolean;
+    notifySales?: boolean;
+    notifyAccounting?: boolean;
+    notifyUsers?: boolean;
 };
 
 // =========================================================================
@@ -172,6 +181,50 @@ export const users = pgTable(
     ],
 );
 
+export const notifications = pgTable(
+    'notifications',
+    {
+        notificationId: integer('notification_id').primaryKey().generatedByDefaultAsIdentity(),
+        title: text('title').notNull(),
+        message: text('message').notNull(),
+        module: text('module').notNull(),
+        action: text('action').notNull(),
+        entityId: text('entity_id'),
+        route: text('route'),
+        targetRoleIds: jsonb('target_role_ids').$type<number[]>().notNull(),
+        targetRoleNames: jsonb('target_role_names').$type<string[]>().notNull(),
+        selectionMode: text('selection_mode').default('auto').notNull(),
+        actorUserId: integer('actor_user_id').references(() => users.userId, {
+            onDelete: 'set null',
+        }),
+        actorName: text('actor_name').notNull(),
+        actorRoleId: integer('actor_role_id'),
+        actorRoleName: text('actor_role_name'),
+        createdAt: tz('created_at').defaultNow().notNull(),
+    },
+    (t) => [
+        index('notifications_created_idx').on(t.createdAt),
+        index('notifications_target_roles_gin_idx').using('gin', t.targetRoleIds),
+    ],
+);
+
+export const notificationReads = pgTable(
+    'notification_reads',
+    {
+        notificationId: integer('notification_id')
+            .notNull()
+            .references(() => notifications.notificationId, { onDelete: 'cascade' }),
+        userId: integer('user_id')
+            .notNull()
+            .references(() => users.userId, { onDelete: 'cascade' }),
+        readAt: tz('read_at').defaultNow().notNull(),
+    },
+    (t) => [
+        primaryKey({ columns: [t.notificationId, t.userId] }),
+        index('notification_reads_user_idx').on(t.userId),
+    ],
+);
+
 // =========================================================================
 // 2. UNITS & CONVERSIONS
 // =========================================================================
@@ -249,6 +302,7 @@ export const items = pgTable(
 
         // Current/reference cost. Historical actual cost is stored on the lot.
         unitCost: money('unit_cost').default('0').notNull(),
+        isVatable: boolean('is_vatable').default(true).notNull(),
         isActive: boolean('is_active').default(true).notNull(),
         ...auditFields,
     },
@@ -304,6 +358,9 @@ export const companySettings = pgTable(
         email: varchar('email', { length: 254 }),
         phone: varchar('phone', { length: 40 }),
         currencyCode: varchar('currency_code', { length: 3 }).notNull().default('PHP'),
+        vatRatePercent: numeric('vat_rate_percent', { precision: 5, scale: 2 })
+            .notNull()
+            .default('12.00'),
         defaultReorderLevel: qty('default_reorder_level').notNull().default('10'),
         expiryWarningDays: integer('expiry_warning_days').notNull().default(30),
         version: integer('version').notNull().default(1),
@@ -313,7 +370,7 @@ export const companySettings = pgTable(
         check('settings_singleton', sql`${t.settingsId}=1`),
         check(
             'settings_limits',
-            sql`${t.defaultReorderLevel}>=0 and ${t.expiryWarningDays} between 0 and 3650 and ${t.version}>0`,
+            sql`${t.defaultReorderLevel}>=0 and ${t.expiryWarningDays} between 0 and 3650 and ${t.vatRatePercent} between 0 and 100 and ${t.version}>0`,
         ),
     ],
 );
@@ -508,6 +565,7 @@ export const formulaRevisionMaterials = pgTable(
     (t) => [
         unique('formula_revision_component_uq').on(t.requestId, t.componentItemId),
         check('formula_revision_qty_positive', sql`${t.quantity}>0`),
+        index('formula_rev_mat_component_idx').on(t.componentItemId),
     ],
 );
 
@@ -678,6 +736,9 @@ export const purchaseOrderLines = pgTable(
         qtyOrdered: qty('qty_ordered').notNull(),
         qtyReceived: qty('qty_received').default('0').notNull(),
         unitPrice: money('unit_price').notNull(),
+        vatRatePercent: numeric('vat_rate_percent', { precision: 5, scale: 2 })
+            .default('0.00')
+            .notNull(),
         ...auditFields,
     },
     (t) => [
@@ -686,6 +747,7 @@ export const purchaseOrderLines = pgTable(
         check('pol_qty_received_nonneg', sql`${t.qtyReceived} >= 0`),
         check('pol_qty_received_lte_ordered', sql`${t.qtyReceived} <= ${t.qtyOrdered}`),
         check('pol_unit_price_nonneg', sql`${t.unitPrice} >= 0`),
+        check('pol_vat_rate_range', sql`${t.vatRatePercent} >= 0 and ${t.vatRatePercent} <= 100`),
         index('pol_item_idx').on(t.itemId),
         index('pol_uom_idx').on(t.uomId),
     ],
@@ -824,6 +886,7 @@ export const lots = pgTable(
         index('lots_packing_order_idx').on(t.packingOrderId),
         index('lots_expiry_idx').on(t.expirationDate),
         index('lots_qc_idx').on(t.qcStatus),
+        index('lots_created_id_idx').on(t.createdAt, t.lotId),
     ],
 );
 
@@ -1011,6 +1074,7 @@ export const salesOrders = pgTable(
         ),
         index('sales_order_customer_idx').on(t.customerId),
         index('sales_order_status_idx').on(t.status),
+        index('sales_order_date_idx').on(t.orderDate),
     ],
 );
 
@@ -1032,6 +1096,9 @@ export const salesOrderLines = pgTable(
         qtyOrdered: qty('qty_ordered').notNull(),
         qtyDelivered: qty('qty_delivered').default('0').notNull(),
         unitPrice: money('unit_price').notNull(),
+        vatRatePercent: numeric('vat_rate_percent', { precision: 5, scale: 2 })
+            .default('0.00')
+            .notNull(),
         ...auditFields,
     },
     (t) => [
@@ -1040,6 +1107,10 @@ export const salesOrderLines = pgTable(
         check(
             'sales_line_quantities_valid',
             sql`${t.qtyOrdered}>0 and ${t.qtyDelivered}>=0 and ${t.qtyDelivered}<=${t.qtyOrdered} and ${t.unitPrice}>=0`,
+        ),
+        check(
+            'sales_line_vat_rate_range',
+            sql`${t.vatRatePercent} >= 0 and ${t.vatRatePercent} <= 100`,
         ),
         index('sales_line_item_idx').on(t.itemId),
         index('sales_line_uom_idx').on(t.uomId),
@@ -1080,6 +1151,7 @@ export const deliveryOrders = pgTable(
         index('delivery_source_idx').on(t.sourceLocationId),
         index('delivery_transit_idx').on(t.transitLocationId),
         index('delivery_status_idx').on(t.status),
+        index('delivery_order_date_idx').on(t.deliveryDate),
     ],
 );
 
@@ -1198,6 +1270,8 @@ export const inventoryTransactions = pgTable(
         index('txn_lot_created_idx').on(t.lotId, t.createdAt),
         index('txn_item_created_idx').on(t.itemId, t.createdAt),
         index('txn_location_created_idx').on(t.locationId, t.createdAt),
+        index('txn_created_id_idx').on(t.createdAt, t.transactionId),
+        index('txn_type_created_idx').on(t.transactionType, t.createdAt),
         index('txn_packing_order_idx').on(t.packingOrderId),
         index('txn_po_line_idx').on(t.poLineId),
         index('txn_transfer_line_idx').on(t.transferLineId),
@@ -1330,6 +1404,8 @@ export const dbRelations = defineRelations(
         deliveryOrders,
         deliveryOrderLines,
         inventoryTransactions,
+        notifications,
+        notificationReads,
     },
     (r) => ({
         // ----- Auth -----
@@ -1711,6 +1787,25 @@ export const dbRelations = defineRelations(
             }),
             authorizedBy: r.one.users({
                 from: r.inventoryTransactions.authorizedByUserId,
+                to: r.users.userId,
+            }),
+        },
+
+        // ----- Role Notifications -----
+        notifications: {
+            actor: r.one.users({
+                from: r.notifications.actorUserId,
+                to: r.users.userId,
+            }),
+            reads: r.many.notificationReads(),
+        },
+        notificationReads: {
+            notification: r.one.notifications({
+                from: r.notificationReads.notificationId,
+                to: r.notifications.notificationId,
+            }),
+            user: r.one.users({
+                from: r.notificationReads.userId,
                 to: r.users.userId,
             }),
         },

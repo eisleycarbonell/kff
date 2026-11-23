@@ -34,6 +34,8 @@ export function createAuthMiddleware(service: Pick<AuthService, 'getSessionUser'
                 );
             throw error;
         }
+        if (payload.purpose === 'socket')
+            throw new AppError(401, 'Please sign in with a session token.');
         const id =
             typeof payload.id === 'string' && /^\d+$/.test(payload.id) ? Number(payload.id) : NaN;
         if (!Number.isSafeInteger(id) || id <= 0 || id > 2_147_483_647)

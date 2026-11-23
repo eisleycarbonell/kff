@@ -26,14 +26,8 @@ import {
     FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import {
-    Select,
-    SelectContent,
-    SelectGroup,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
+import { ComboboxSelect } from "@/components/shared/combobox-select"
+import { NumericInput } from "@/components/shared/numeric-input"
 type Props = {
     mode?: "adjustment" | "count"
     open: boolean
@@ -76,6 +70,10 @@ function AdjustmentContent({
         qtyAvailable: stock?.qtyAvailable ?? "0",
     }))
     const [errors, setErrors] = useState<AdjustmentFormErrors>({})
+    const [suppressedSaveError, setSuppressedSaveError] = useState<Error | null>(null)
+    const activeSaveError =
+        saveError && saveError !== suppressedSaveError ? saveError.message : undefined
+    const qtyError = errors.qtyOnHand ?? activeSaveError
     const unit =
         options.lots.find((lot) => lot.lotId === values.lotId)
             ?.primaryUomName ?? ""
@@ -89,6 +87,7 @@ function AdjustmentContent({
             delete next[field]
             return next
         })
+        if (saveError) setSuppressedSaveError(saveError)
     }
     function selectPosition(
         field: "lotId" | "locationId",
@@ -155,6 +154,7 @@ function AdjustmentContent({
     async function submit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault()
         if (isSaving) return
+        setSuppressedSaveError(null)
         const next = validateStockAdjustment(
             values,
             options,
@@ -189,16 +189,6 @@ function AdjustmentContent({
                 aria-busy={isSaving}
                 className="flex flex-col gap-5"
             >
-                {saveError && (
-                    <Alert variant="destructive">
-                        <AlertTitle>
-                            {mode === "count"
-                                ? "Count was not recorded"
-                                : "Adjustment was not recorded"}
-                        </AlertTitle>
-                        <AlertDescription>{saveError.message}</AlertDescription>
-                    </Alert>
-                )}
                 <FieldGroup className="gap-4">
                     {selects.map((field) => (
                         <Field
@@ -209,7 +199,8 @@ function AdjustmentContent({
                             <FieldLabel htmlFor={`${id}-${field.name}`}>
                                 {field.label}
                             </FieldLabel>
-                            <Select
+                            <ComboboxSelect
+                                id={`${id}-${field.name}`}
                                 name={field.name}
                                 items={field.items}
                                 value={values[field.name]}
@@ -219,34 +210,10 @@ function AdjustmentContent({
                                         ? update("reasonId", value)
                                         : selectPosition(field.name, value)
                                 }
-                            >
-                                <SelectTrigger
-                                    id={`${id}-${field.name}`}
-                                    className="w-full data-[size=default]:h-10"
-                                    aria-invalid={Boolean(errors[field.name])}
-                                    aria-describedby={`${id}-${field.name}-error`}
-                                >
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectGroup>
-                                        {field.items
-                                            .filter(
-                                                (option) =>
-                                                    option.value !== null,
-                                            )
-                                            .map((option) => (
-                                                <SelectItem
-                                                    key={option.value}
-                                                    value={option.value!}
-                                                    disabled={option.disabled}
-                                                >
-                                                    {option.label}
-                                                </SelectItem>
-                                            ))}
-                                    </SelectGroup>
-                                </SelectContent>
-                            </Select>
+                                aria-invalid={Boolean(errors[field.name])}
+                                aria-describedby={`${id}-${field.name}-error`}
+                                className="h-10 w-full"
+                            />
                             <FieldError id={`${id}-${field.name}-error`}>
                                 {errors[field.name]}
                             </FieldError>
@@ -271,23 +238,22 @@ function AdjustmentContent({
                         </dl>
                     )}
                     <Field
-                        data-invalid={Boolean(errors.qtyOnHand)}
+                        data-invalid={Boolean(qtyError)}
                         data-disabled={isSaving}
                     >
                         <FieldLabel htmlFor={`${id}-qtyOnHand`}>
                             Counted quantity {unit && `(${unit})`}
                         </FieldLabel>
-                        <Input
+                        <NumericInput
                             id={`${id}-qtyOnHand`}
                             name="qtyOnHand"
-                            inputMode="decimal"
+                            maxWholeDigits={10}
+                            maxDecimalPlaces={4}
                             value={values.qtyOnHand}
-                            onChange={(event) =>
-                                update("qtyOnHand", event.target.value)
-                            }
+                            onValueChange={(next) => update("qtyOnHand", next)}
                             disabled={isSaving}
                             required
-                            aria-invalid={Boolean(errors.qtyOnHand)}
+                            aria-invalid={Boolean(qtyError)}
                             aria-describedby={`${id}-quantity-feedback`}
                             className="h-10"
                         />
@@ -296,7 +262,7 @@ function AdjustmentContent({
                                 The final on-hand balance after correction,
                                 including stock reserved for orders.
                             </FieldDescription>
-                            <FieldError>{errors.qtyOnHand}</FieldError>
+                            <FieldError>{qtyError}</FieldError>
                         </div>
                     </Field>
                     <Field

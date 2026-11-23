@@ -31,13 +31,12 @@ import {
     DropdownMenuLabel,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
+import { ComboboxSelect } from "@/components/shared/combobox-select"
+
+const pageSizeItems = [5, 10, 20, 50].map((value) => ({
+    value: String(value),
+    label: String(value),
+}))
 import {
     Table,
     TableBody,
@@ -106,7 +105,8 @@ function TransferGrid({ table, name, statuses, onExport, onAdd }: GridProps) {
                         }}
                     />
                 </div>
-                <Select
+                <ComboboxSelect
+                    aria-label="Filter by status"
                     items={statusItems}
                     value={(table.getColumn("status")?.getFilterValue() as string) ?? "all"}
                     onValueChange={(value) => {
@@ -116,21 +116,8 @@ function TransferGrid({ table, name, statuses, onExport, onAdd }: GridProps) {
                         table.resetRowSelection()
                         table.setPageIndex(0)
                     }}
-                >
-                    <SelectTrigger
-                        className="min-w-40 data-[size=default]:h-10"
-                        aria-label="Filter by status"
-                    >
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {statusItems.map((item) => (
-                            <SelectItem key={item.value} value={item.value}>
-                                {item.label}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+                    className="h-10 min-w-40"
+                />
                 {hasFilters && (
                     <Button variant="ghost" className="h-10" onClick={reset}>
                         <X />
@@ -206,8 +193,8 @@ function TransferGrid({ table, name, statuses, onExport, onAdd }: GridProps) {
                                             ? header.column.getIsSorted() === "asc"
                                                 ? "ascending"
                                                 : header.column.getIsSorted() === "desc"
-                                                  ? "descending"
-                                                  : "none"
+                                                    ? "descending"
+                                                    : "none"
                                             : undefined
                                     }
                                 >
@@ -266,8 +253,8 @@ function TransferGrid({ table, name, statuses, onExport, onAdd }: GridProps) {
                                     {hasFilters
                                         ? "Try another search or clear the filters."
                                         : onAdd
-                                          ? "Create a stock transfer to begin."
-                                          : "Dispatched goods appear here until their destination confirms receipt."}
+                                            ? "Create a stock transfer to begin."
+                                            : "Dispatched goods appear here until their destination confirms receipt."}
                                 </p>
                                 {(hasFilters || onAdd) && (
                                     <Button
@@ -291,27 +278,15 @@ function TransferGrid({ table, name, statuses, onExport, onAdd }: GridProps) {
                     of {filtered.length} {name}
                 </p>
                 <div className="flex flex-wrap items-center gap-3">
-                    <Select
-                        items={[5, 10, 20, 50].map((value) => ({
-                            value: String(value),
-                            label: String(value),
-                        }))}
+                    <ComboboxSelect
+                        aria-label="Rows per page"
+                        items={pageSizeItems}
                         value={String(pageSize)}
                         onValueChange={(value) => {
                             if (value) table.setPageSize(Number(value))
                         }}
-                    >
-                        <SelectTrigger aria-label="Rows per page" className="w-20">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {[5, 10, 20, 50].map((value) => (
-                                <SelectItem key={value} value={String(value)}>
-                                    {value}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                        className="w-20"
+                    />
                     <span className="text-sm">
                         Page {pageIndex + 1} of {Math.max(1, table.getPageCount())}
                     </span>

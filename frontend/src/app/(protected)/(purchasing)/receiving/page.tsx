@@ -6,6 +6,7 @@ import { PackageCheck } from "lucide-react"
 
 import { ReceivingStatistics } from "@/components/modules/receiving/receiving-statistics"
 import { ReceivingTable } from "@/components/modules/receiving/receiving-table"
+import { BulkImportActions } from "@/components/shared/bulk-import-actions"
 import { PageHeader } from "@/components/shared/page-header"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -51,13 +52,16 @@ export default function ReceivingPage() {
                 description="Receive purchase orders, record lots, and track incoming stock."
                 actions={
                     canReceive && (
-                        <Button
-                            className="h-10 gap-2 px-4"
-                            onClick={openAdd}
-                            disabled={isReceiving}
-                        >
-                            <PackageCheck /> Receive stock
-                        </Button>
+                        <>
+                            <BulkImportActions moduleKey="receiving" disabled={isReceiving} />
+                            <Button
+                                className="h-10 gap-2 px-4"
+                                onClick={openAdd}
+                                disabled={isReceiving}
+                            >
+                                <PackageCheck /> Receive stock
+                            </Button>
+                        </>
                     )
                 }
             />

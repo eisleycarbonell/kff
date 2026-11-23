@@ -3,13 +3,7 @@ import { PERMISSIONS, type Role } from "@/components/modules/roles/role.schema"
 import type { RoleTableInstance } from "@/components/modules/roles/role-table-columns"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
+import { ComboboxSelect } from "@/components/shared/combobox-select"
 import {
     DropdownMenu,
     DropdownMenuCheckboxItem,
@@ -92,7 +86,8 @@ export function RoleTableToolbar({
                     }}
                 />
             </div>
-            <Select
+            <ComboboxSelect
+                aria-label="Filter by permission"
                 items={permissionItems}
                 value={(table.getColumn("permission")?.getFilterValue() as string) ?? "all"}
                 onValueChange={(value) => {
@@ -102,21 +97,8 @@ export function RoleTableToolbar({
                     table.resetRowSelection()
                     table.setPageIndex(0)
                 }}
-            >
-                <SelectTrigger
-                    className="min-w-44 data-[size=default]:h-10"
-                    aria-label="Filter by permission"
-                >
-                    <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                    {permissionItems.map((item) => (
-                        <SelectItem key={item.value} value={item.value}>
-                            {item.label}
-                        </SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
+                className="h-10 w-full sm:w-auto sm:min-w-44"
+            />
             {hasFilters && (
                 <Button variant="ghost" className="h-10" onClick={onReset}>
                     <X />

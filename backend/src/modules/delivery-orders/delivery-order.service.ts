@@ -97,9 +97,15 @@ export async function listDeliveryOrders(database: Reader = db) {
         headers.map((row) => row.deliveryOrderId),
         database,
     );
+    const linesByDeliveryId = new Map<number, typeof lines>();
+    for (const line of lines) {
+        const list = linesByDeliveryId.get(line.deliveryOrderId) ?? [];
+        list.push(line);
+        linesByDeliveryId.set(line.deliveryOrderId, list);
+    }
     return headers.map((header) => ({
         ...header,
-        lines: lines.filter((line) => line.deliveryOrderId === header.deliveryOrderId),
+        lines: linesByDeliveryId.get(header.deliveryOrderId) ?? [],
     }));
 }
 export async function getDeliveryOrder(id: number, database: Reader = db) {
@@ -108,8 +114,23 @@ export async function getDeliveryOrder(id: number, database: Reader = db) {
     return { ...header, lines: await linesFor([id], database) };
 }
 export async function getDeliveryOrderOptions() {
+    const activeRes = db
+        .select({
+            lotId: inventoryReservations.lotId,
+            locationId: inventoryReservations.locationId,
+            qtyReserved:
+                sql<string>`sum(${inventoryReservations.qtyReserved} - ${inventoryReservations.qtyConsumed})`.as(
+                    'qty_reserved',
+                ),
+        })
+        .from(inventoryReservations)
+        .where(isNull(inventoryReservations.releasedAt))
+        .groupBy(inventoryReservations.lotId, inventoryReservations.locationId)
+        .as('active_res');
+    const reservedExpr = sql`coalesce(${activeRes.qtyReserved}, 0)`;
+
     const [orders, locationRows, stockRows] = await Promise.all([
-        listSalesOrders(),
+        listSalesOrders(db, ['Confirmed', 'Partially Delivered']),
         db
             .select({
                 locationId: locations.locationId,
@@ -134,19 +155,24 @@ export async function getDeliveryOrderOptions() {
                 qcStatus: lots.qcStatus,
                 expirationDate: lots.expirationDate,
                 packingOrderId: lots.packingOrderId,
-                qtyReserved: sql<string>`coalesce((select sum(${inventoryReservations.qtyReserved}-${inventoryReservations.qtyConsumed}) from ${inventoryReservations} where ${inventoryReservations.lotId}=${inventoryStock.lotId} and ${inventoryReservations.locationId}=${inventoryStock.locationId} and ${inventoryReservations.releasedAt} is null),0)::numeric(14,4)::text`,
+                qtyReserved: sql<string>`${reservedExpr}::numeric(14,4)::text`,
             })
             .from(inventoryStock)
             .innerJoin(items, eq(inventoryStock.itemId, items.itemId))
             .innerJoin(lots, eq(inventoryStock.lotId, lots.lotId))
             .innerJoin(uoms, eq(items.primaryUomId, uoms.uomId))
+            .leftJoin(
+                activeRes,
+                and(
+                    eq(activeRes.lotId, inventoryStock.lotId),
+                    eq(activeRes.locationId, inventoryStock.locationId),
+                ),
+            )
             .where(and(eq(items.itemType, 'Finished Good'), eq(items.isActive, true)))
             .orderBy(asc(items.name), asc(lots.lotNumber)),
     ]);
     return {
-        salesOrders: orders.filter((order) =>
-            ['Confirmed', 'Partially Delivered'].includes(order.status),
-        ),
+        salesOrders: orders,
         locations: locationRows,
         stock: stockRows.map((row) => ({
             ...row,

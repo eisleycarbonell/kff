@@ -89,6 +89,47 @@ test('Supabase JS client configuration supports standard and Vercel-prefixed env
     assert.equal(vercelPrefixed.isServiceRole, true);
 });
 
+test('NODE_ENV switches between local PostgreSQL in development and Supabase in production', () => {
+    const mixedEnv = {
+        DATABASE_URL: 'postgresql://postgres:secret@localhost:5433/kff',
+        DATABASE_POSTGRES_PRISMA_URL:
+            'postgresql://postgres.ref:pw@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres?sslmode=require&pgbouncer=true',
+        DATABASE_POSTGRES_URL_NON_POOLING:
+            'postgresql://postgres.ref:pw@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres?sslmode=require',
+    };
+
+    assert.equal(
+        resolveDatabaseUrl({ ...mixedEnv, NODE_ENV: 'development' }),
+        mixedEnv.DATABASE_URL,
+    );
+    assert.equal(
+        resolveDirectDatabaseUrl({ ...mixedEnv, NODE_ENV: 'development' }),
+        mixedEnv.DATABASE_URL,
+    );
+
+    assert.equal(
+        resolveDatabaseUrl({ ...mixedEnv, NODE_ENV: 'production' }),
+        mixedEnv.DATABASE_POSTGRES_PRISMA_URL,
+    );
+    assert.equal(
+        resolveDirectDatabaseUrl({ ...mixedEnv, NODE_ENV: 'production' }),
+        mixedEnv.DATABASE_POSTGRES_URL_NON_POOLING,
+    );
+
+    const localOverrideEnv = {
+        LOCAL_DATABASE_URL: 'postgresql://postgres:secret@localhost:5433/kff',
+        DATABASE_URL: mixedEnv.DATABASE_POSTGRES_PRISMA_URL,
+    };
+    assert.equal(
+        resolveDatabaseUrl({ ...localOverrideEnv, NODE_ENV: 'development' }),
+        localOverrideEnv.LOCAL_DATABASE_URL,
+    );
+    assert.equal(
+        resolveDatabaseUrl({ ...localOverrideEnv, NODE_ENV: 'production' }),
+        localOverrideEnv.DATABASE_URL,
+    );
+});
+
 test('missing DATABASE_URL fails with a clear configuration error', () => {
     assert.throws(() => resolveDatabaseConfig('', {}), /DATABASE_URL/);
 });

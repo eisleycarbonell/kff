@@ -113,6 +113,7 @@ async function populateSampleData(tx: Transaction, now: Date, passwordHash: stri
         settingsId: 1,
         companyName: 'Kusina Filipino Food Trading & Packing',
         currencyCode: 'PHP',
+        vatRatePercent: '12.00',
         defaultReorderLevel: '10.0000',
         expiryWarningDays: 30,
         createdBy: actor,
@@ -323,6 +324,7 @@ async function populateSampleData(tx: Transaction, now: Date, passwordHash: stri
                 qtyOrdered: quantity,
                 qtyReceived: quantity,
                 unitPrice: item.unitCost,
+                vatRatePercent: item.isVatable ? '12.00' : '0.00',
                 ...audit,
             })
             .returning();
@@ -363,6 +365,7 @@ async function populateSampleData(tx: Transaction, now: Date, passwordHash: stri
                 itemType: 'Packaging - Hardware',
                 primaryUomId: pc!.uomId,
                 unitCost: packaging.cost,
+                isVatable: true,
                 ...audit,
             })
             .returning();
@@ -379,6 +382,7 @@ async function populateSampleData(tx: Transaction, now: Date, passwordHash: stri
         );
     }
     for (const product of sampleProducts) {
+        const rawVatable = product.code === 'NOODLES';
         const [raw, label] = await tx
             .insert(items)
             .values([
@@ -388,6 +392,7 @@ async function populateSampleData(tx: Transaction, now: Date, passwordHash: stri
                     itemType: 'Raw Material - Bulk',
                     primaryUomId: kg!.uomId,
                     unitCost: product.cost,
+                    isVatable: rawVatable,
                     shelfLifeDays: product.shelfLife,
                     requiresQc: true,
                     ...audit,
@@ -398,6 +403,7 @@ async function populateSampleData(tx: Transaction, now: Date, passwordHash: stri
                     itemType: 'Packaging - Label',
                     primaryUomId: pc!.uomId,
                     unitCost: '0.3500',
+                    isVatable: true,
                     ...audit,
                 },
             ])
@@ -446,6 +452,7 @@ async function populateSampleData(tx: Transaction, now: Date, passwordHash: stri
                 netWeightG: String(product.grams),
                 shelfLifeDays: product.shelfLife,
                 unitCost: cost,
+                isVatable: true,
                 ...audit,
             })
             .returning();
@@ -483,6 +490,7 @@ async function populateSampleData(tx: Transaction, now: Date, passwordHash: stri
         itemType: 'Raw Material - Bulk',
         primaryUomId: kg!.uomId,
         unitCost: '0.0000',
+        isVatable: false,
         ...audit,
     });
     const packedLots = new Map<string, Lot>();
@@ -782,6 +790,7 @@ async function populateSampleData(tx: Transaction, now: Date, passwordHash: stri
                     qtyOrdered: quantityString(BigInt(product.quantity) * 10_000n),
                     qtyDelivered: quantityString(fulfilled.get(product.code) ?? 0n),
                     unitPrice: product.price,
+                    vatRatePercent: item.isVatable ? '12.00' : '0.00',
                     ...audit,
                     createdAt: day(-6),
                 })
@@ -987,6 +996,7 @@ async function populateSampleData(tx: Transaction, now: Date, passwordHash: stri
                 qtyOrdered: pending.ordered,
                 qtyReceived: pending.received,
                 unitPrice: garlic.unitCost,
+                vatRatePercent: garlic.isVatable ? '12.00' : '0.00',
                 ...audit,
             })
             .returning();

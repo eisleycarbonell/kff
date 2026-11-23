@@ -26,14 +26,7 @@ import {
     FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import {
-    Select,
-    SelectContent,
-    SelectGroup,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
+import { ComboboxSelect } from "@/components/shared/combobox-select"
 type Props = {
     open: boolean
     onOpenChange: (open: boolean) => void
@@ -123,7 +116,8 @@ function LocationFormContent({
                         data-disabled={isSaving || location?.isInUse}
                     >
                         <FieldLabel htmlFor={id + "-locationType"}>Location type</FieldLabel>
-                        <Select
+                        <ComboboxSelect
+                            id={id + "-locationType"}
                             name="locationType"
                             items={typeItems}
                             value={values.locationType}
@@ -131,25 +125,10 @@ function LocationFormContent({
                             onValueChange={(value) => {
                                 if (value) update("locationType", value)
                             }}
-                        >
-                            <SelectTrigger
-                                id={id + "-locationType"}
-                                className="w-full data-[size=default]:h-10"
-                                aria-invalid={Boolean(errors.locationType)}
-                                aria-describedby={id + "-type-feedback"}
-                            >
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectGroup>
-                                    {typeItems.map((option) => (
-                                        <SelectItem key={option.value} value={option.value}>
-                                            {option.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectGroup>
-                            </SelectContent>
-                        </Select>
+                            aria-invalid={Boolean(errors.locationType)}
+                            aria-describedby={id + "-type-feedback"}
+                            className="h-10 w-full"
+                        />
                         <div id={id + "-type-feedback"}>
                             {location?.isInUse && (
                                 <FieldDescription>

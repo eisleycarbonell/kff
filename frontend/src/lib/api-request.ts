@@ -1,3 +1,5 @@
+import { useNotifyTargetStore } from "@/lib/realtime-notify-store"
+
 export const API_BASE_URL = (
     process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001/api"
 ).replace(/\/+$/, "")
@@ -11,6 +13,45 @@ function resolveRequestBaseUrl(): string {
         return "/api"
     }
     return API_BASE_URL
+}
+
+export function resolveSocketUrl(): string {
+    const explicit = (process.env.NEXT_PUBLIC_SOCKET_URL ?? "").trim().replace(/\/+$/, "")
+    if (explicit) return explicit
+    if (/^https?:\/\//i.test(API_BASE_URL)) {
+        return API_BASE_URL.replace(/\/api$/i, "")
+    }
+    return ""
+}
+
+export function buildNotifyRequestHeaders(
+    method: string,
+    path: string,
+): { headers: Record<string, string>; sentNote: boolean } {
+    const upperMethod = method.toUpperCase()
+    if (!["POST", "PUT", "PATCH", "DELETE"].includes(upperMethod)) {
+        return { headers: {}, sentNote: false }
+    }
+    if (path.startsWith("/auth") || path.startsWith("/notifications")) {
+        return { headers: {}, sentNote: false }
+    }
+
+    const state = useNotifyTargetStore.getState()
+    const headers: Record<string, string> = {
+        "X-Notify-Mode": state.mode,
+    }
+    if (state.socketId) {
+        headers["X-Socket-Id"] = state.socketId
+    }
+    if (state.mode === "custom" && state.selectedRoleIds.length > 0) {
+        headers["X-Notify-Role-Ids"] = state.selectedRoleIds.join(",")
+    }
+    const trimmedNote = state.note.trim()
+    if (state.mode !== "none" && trimmedNote) {
+        headers["X-Notify-Message"] = encodeURIComponent(trimmedNote)
+        return { headers, sentNote: true }
+    }
+    return { headers, sentNote: false }
 }
 
 export class ApiError extends Error {
@@ -30,6 +71,8 @@ export async function apiRequest(
     options: RequestInit = {},
     allowEmpty = false,
 ): Promise<unknown> {
+    const method = (options.method ?? "GET").toUpperCase()
+    const notifyMeta = buildNotifyRequestHeaders(method, path)
     let response: Response
     try {
         response = await fetch(`${resolveRequestBaseUrl()}${path}`, {
@@ -38,6 +81,7 @@ export async function apiRequest(
             headers: {
                 Accept: "application/json",
                 ...(options.body ? { "Content-Type": "application/json" } : {}),
+                ...notifyMeta.headers,
                 ...options.headers,
             },
         })
@@ -45,6 +89,10 @@ export async function apiRequest(
         if (options.signal?.aborted || (error instanceof Error && error.name === "AbortError"))
             throw error
         throw new Error("Unable to reach the API. Check your connection and try again.")
+    }
+    if (response.ok && notifyMeta.sentNote) {
+        const state = useNotifyTargetStore.getState()
+        if (state.clearNoteAfterSend) state.clearNote()
     }
     if (response.ok && response.status === 204 && allowEmpty) return
     let payload: unknown

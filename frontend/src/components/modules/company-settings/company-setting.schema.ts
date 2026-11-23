@@ -7,6 +7,7 @@ export const settingsSchema = z.object({
     currencyCode: z.string(),
     defaultReorderLevel: z.string(),
     expiryWarningDays: z.int(),
+    vatRatePercent: z.string().optional(),
     version: z.int().positive(),
 })
 export const settingsInputSchema = z.object({
@@ -22,6 +23,11 @@ export const settingsInputSchema = z.object({
         .regex(/^[A-Z]{3}$/),
     defaultReorderLevel: z.string().regex(/^\d{1,10}(?:\.\d{1,4})?$/),
     expiryWarningDays: z.int().min(0).max(3650),
+    vatRatePercent: z
+        .string()
+        .trim()
+        .regex(/^(?:100(?:\.00?)?|\d{1,2}(?:\.\d{1,2})?)$/)
+        .optional(),
 })
 export type Settings = z.output<typeof settingsSchema>
 export type SettingsInput = z.output<typeof settingsInputSchema>

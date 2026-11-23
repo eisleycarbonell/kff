@@ -23,13 +23,8 @@ import {
 import { Field, FieldLabel, FieldError } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
+import { ComboboxSelect } from "@/components/shared/combobox-select"
+import { NumericInput } from "@/components/shared/numeric-input"
 import {
     Table,
     TableHeader,
@@ -85,10 +80,10 @@ function PackingOrderFormContent({
             values.sourceLocationId &&
             (decimalUnits(values.targetQty) ?? BigInt(0)) > BigInt(0)
             ? {
-                  itemId: values.itemId,
-                  sourceLocationId: values.sourceLocationId,
-                  targetQty: values.targetQty,
-              }
+                itemId: values.itemId,
+                sourceLocationId: values.sourceLocationId,
+                targetQty: values.targetQty,
+            }
             : null,
     )
     function update<K extends keyof PackingFormValues>(key: K, value: PackingFormValues[K]) {
@@ -191,53 +186,40 @@ function PackingOrderFormContent({
                         </Field>
                         <Field className="sm:col-span-2" data-invalid={Boolean(errors.itemId)}>
                             <FieldLabel htmlFor={`${id}-product`}>Finished product</FieldLabel>
-                            <Select
+                            <ComboboxSelect
+                                id={`${id}-product`}
                                 name="itemId"
-                                items={products}
+                                items={products.map((item) => ({
+                                    ...item,
+                                    disabled: !options?.items.find(
+                                        (row) => row.itemId === item.value,
+                                    )?.hasBom,
+                                }))}
                                 value={values.itemId}
                                 disabled={isSaving || Boolean(order)}
                                 onValueChange={(value) => update("itemId", value)}
-                            >
-                                <SelectTrigger
-                                    id={`${id}-product`}
-                                    className="w-full data-[size=default]:h-10"
-                                    aria-invalid={Boolean(errors.itemId)}
-                                    aria-describedby={
-                                        errors.itemId ? `${id}-product-error` : undefined
-                                    }
-                                >
-                                    <SelectValue placeholder="Select a finished product" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {products.map((item) => (
-                                        <SelectItem
-                                            key={item.value}
-                                            value={item.value}
-                                            disabled={
-                                                !options?.items.find(
-                                                    (row) => row.itemId === item.value,
-                                                )?.hasBom
-                                            }
-                                        >
-                                            {item.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                                placeholder="Select a finished product"
+                                aria-invalid={Boolean(errors.itemId)}
+                                aria-describedby={
+                                    errors.itemId ? `${id}-product-error` : undefined
+                                }
+                                className="h-10 w-full"
+                            />
                             <FieldError id={`${id}-product-error`}>{errors.itemId}</FieldError>
                         </Field>
                         <Field data-invalid={Boolean(errors.targetQty)}>
                             <FieldLabel htmlFor={`${id}-quantity`}>
                                 Target quantity {product ? `(${product.primaryUomName})` : ""}
                             </FieldLabel>
-                            <Input
+                            <NumericInput
                                 id={`${id}-quantity`}
                                 name="targetQty"
-                                inputMode="decimal"
+                                maxWholeDigits={10}
+                                maxDecimalPlaces={4}
                                 required
                                 value={values.targetQty}
                                 disabled={isSaving || Boolean(order)}
-                                onChange={(e) => update("targetQty", e.target.value)}
+                                onValueChange={(next) => update("targetQty", next)}
                                 aria-invalid={Boolean(errors.targetQty)}
                                 aria-describedby={
                                     errors.targetQty ? `${id}-quantity-error` : undefined
@@ -247,31 +229,20 @@ function PackingOrderFormContent({
                         </Field>
                         <Field data-invalid={Boolean(errors.sourceLocationId)}>
                             <FieldLabel htmlFor={`${id}-source`}>Material source</FieldLabel>
-                            <Select
+                            <ComboboxSelect
+                                id={`${id}-source`}
                                 name="sourceLocationId"
                                 items={locations}
                                 value={values.sourceLocationId}
                                 disabled={isSaving || Boolean(order)}
                                 onValueChange={(value) => update("sourceLocationId", value)}
-                            >
-                                <SelectTrigger
-                                    id={`${id}-source`}
-                                    className="w-full data-[size=default]:h-10"
-                                    aria-invalid={Boolean(errors.sourceLocationId)}
-                                    aria-describedby={
-                                        errors.sourceLocationId ? `${id}-source-error` : undefined
-                                    }
-                                >
-                                    <SelectValue placeholder="Select source" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {locations.map((item) => (
-                                        <SelectItem key={item.value} value={item.value}>
-                                            {item.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                                placeholder="Select source"
+                                aria-invalid={Boolean(errors.sourceLocationId)}
+                                aria-describedby={
+                                    errors.sourceLocationId ? `${id}-source-error` : undefined
+                                }
+                                className="h-10 w-full"
+                            />
                             <FieldError id={`${id}-source-error`}>
                                 {errors.sourceLocationId}
                             </FieldError>
@@ -283,7 +254,8 @@ function PackingOrderFormContent({
                             <FieldLabel htmlFor={`${id}-destination`}>
                                 Finished goods destination
                             </FieldLabel>
-                            <Select
+                            <ComboboxSelect
+                                id={`${id}-destination`}
                                 name="destinationLocationId"
                                 items={locations.filter(
                                     (item) => item.value !== values.sourceLocationId,
@@ -291,29 +263,15 @@ function PackingOrderFormContent({
                                 value={values.destinationLocationId}
                                 disabled={isSaving}
                                 onValueChange={(value) => update("destinationLocationId", value)}
-                            >
-                                <SelectTrigger
-                                    id={`${id}-destination`}
-                                    className="w-full data-[size=default]:h-10"
-                                    aria-invalid={Boolean(errors.destinationLocationId)}
-                                    aria-describedby={
-                                        errors.destinationLocationId
-                                            ? `${id}-destination-error`
-                                            : undefined
-                                    }
-                                >
-                                    <SelectValue placeholder="Select destination" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {locations
-                                        .filter((item) => item.value !== values.sourceLocationId)
-                                        .map((item) => (
-                                            <SelectItem key={item.value} value={item.value}>
-                                                {item.label}
-                                            </SelectItem>
-                                        ))}
-                                </SelectContent>
-                            </Select>
+                                placeholder="Select destination"
+                                aria-invalid={Boolean(errors.destinationLocationId)}
+                                aria-describedby={
+                                    errors.destinationLocationId
+                                        ? `${id}-destination-error`
+                                        : undefined
+                                }
+                                className="h-10 w-full"
+                            />
                             <FieldError id={`${id}-destination-error`}>
                                 {errors.destinationLocationId}
                             </FieldError>

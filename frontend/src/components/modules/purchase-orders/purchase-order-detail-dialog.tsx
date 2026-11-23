@@ -169,8 +169,8 @@ export function PurchaseOrderDetailDialog({
                                     <dd className="mt-1">
                                         {current.expectedDeliveryDate
                                             ? dateFormat.format(
-                                                  new Date(current.expectedDeliveryDate),
-                                              )
+                                                new Date(current.expectedDeliveryDate),
+                                            )
                                             : "Not set"}
                                     </dd>
                                 </div>
@@ -185,6 +185,7 @@ export function PurchaseOrderDetailDialog({
                                             <TableHead className="text-right">Received</TableHead>
                                             <TableHead className="text-right">Remaining</TableHead>
                                             <TableHead className="text-right">Unit price</TableHead>
+                                            <TableHead className="text-right">VAT</TableHead>
                                             <TableHead className="text-right">Line value</TableHead>
                                         </TableRow>
                                     </TableHeader>
@@ -215,6 +216,11 @@ export function PurchaseOrderDetailDialog({
                                                 <TableCell className="text-right tabular-nums">
                                                     {formatPurchaseOrderDecimal(line.unitPrice)}
                                                 </TableCell>
+                                                <TableCell className="text-right text-xs tabular-nums text-muted-foreground">
+                                                    {Number(line.vatRatePercent ?? 0) > 0
+                                                        ? `${line.vatRatePercent}% (${formatPurchaseOrderDecimal(line.vatAmount ?? "0")})`
+                                                        : "No VAT"}
+                                                </TableCell>
                                                 <TableCell className="text-right font-medium tabular-nums">
                                                     {formatPurchaseOrderDecimal(line.lineTotal)}
                                                 </TableCell>
@@ -225,18 +231,38 @@ export function PurchaseOrderDetailDialog({
                             </div>
                             <dl className="grid gap-3 sm:grid-cols-3">
                                 {[
-                                    { label: "Order value", value: current.totalAmount },
-                                    { label: "Received value", value: current.receivedAmount },
+                                    {
+                                        label: "Order value",
+                                        value: current.totalAmount,
+                                        note:
+                                            current.netAmount && current.vatAmount
+                                                ? `Net ${formatPurchaseOrderDecimal(current.netAmount)} + VAT ${formatPurchaseOrderDecimal(current.vatAmount)}`
+                                                : null,
+                                    },
+                                    {
+                                        label: "Received value",
+                                        value: current.receivedAmount,
+                                        note:
+                                            current.receivedNetAmount && current.receivedVatAmount
+                                                ? `Net ${formatPurchaseOrderDecimal(current.receivedNetAmount)} + VAT ${formatPurchaseOrderDecimal(current.receivedVatAmount)}`
+                                                : null,
+                                    },
                                     {
                                         label: "Outstanding value",
                                         value: current.outstandingAmount,
+                                        note: null,
                                     },
-                                ].map(({ label, value }) => (
+                                ].map(({ label, value, note }) => (
                                     <div key={label} className="min-w-0 rounded-lg border p-4">
                                         <dt className="text-sm text-muted-foreground">{label}</dt>
                                         <dd className="mt-1 break-words text-xl font-semibold tabular-nums">
                                             {formatPurchaseOrderDecimal(value)}
                                         </dd>
+                                        {note && (
+                                            <p className="mt-1 text-xs text-muted-foreground tabular-nums">
+                                                {note}
+                                            </p>
+                                        )}
                                     </div>
                                 ))}
                             </dl>

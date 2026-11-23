@@ -10,6 +10,7 @@ export const DEFAULT_SETTINGS = {
     email: null,
     phone: null,
     currencyCode: 'PHP',
+    vatRatePercent: '12.00',
     defaultReorderLevel: '10.0000',
     expiryWarningDays: 30,
     version: 1,
@@ -55,12 +56,13 @@ export async function updateSettings(
                     'Currency cannot change after priced operational records exist.',
                 );
         }
-        const { expectedVersion, ...values } = input;
+        const { expectedVersion, vatRatePercent, ...values } = input;
         return (
             await tx
                 .update(companySettings)
                 .set({
                     ...values,
+                    ...(vatRatePercent === undefined ? {} : { vatRatePercent }),
                     version: expectedVersion + 1,
                     updatedBy: actorId,
                     updatedAt: new Date(),

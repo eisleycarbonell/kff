@@ -181,23 +181,13 @@ reactivating it, link the relevant items again.
 
 ## 8. Create the packing formula through the UI
 
-**Menu:** Master Data > Formula Revisions (`/formula-revisions`). **Permission:** Packing; review also requires User Management and a different user.
+**Menu:** Master Data > Packing Formulas (`/bom`). **Permission:** Packing (`canManagePacking`). (Or click **Save & add components** directly after creating a Finished Good in Items / Products.)
 
-1. Click **Prepare request**, enter a unique request number and notes, select
-   **Finished product** `HP-FG-GARLIC-100G`, choose **Replace** and an effective date.
-2. In the first component select `HP-RM-GARLIC`, enter quantity `0.100` and UOM `kg`.
-3. Use **Add component** to add the pouch, label and seal below. Each material
-   appears once and each quantity is for **one finished pc**.
-4. Review all four rows and **Create draft**. Add an action note and **Submit for review**.
-5. Sign in as a different reviewer with Packing and User Management permissions.
-   Open the request, inspect its requirements and effective date, enter a review
-   note, then **Approve and apply** on or after that date.
-6. Sign back in as the operational training account with all five permissions,
-   or hand subsequent steps to the appropriate operators. The formula reviewer
-   may not have Purchasing, Inventory or Transfers permission.
-7. Open **Packing Formulas** (`/bom`) to inspect/export the published definition.
-   Future changes or retirement use another reviewed revision. Existing packing
-   orders retain their saved requirements after later releases.
+1. Click **Create formula** (or land directly from Items with the product pre-selected), choose **Finished product** `HP-FG-GARLIC-100G`. Its assigned label `HP-LBL-GARLIC` is pre-added as `1 pc` automatically.
+2. Optionally choose **Copy from existing product** to reuse components from a similar product.
+3. In the ingredient row select `HP-RM-GARLIC`, enter quantity `0.100` (or `100` `g`, or use **From batch**), and verify UOM `kg`.
+4. Add `HP-PCH-100G` (`1 pc`) and `HP-SEAL` (`1 pc`). Each material appears once and each quantity is for **one finished pc**.
+5. Review all four rows and click **Save packing formula**. Changes take effect immediately for new packing orders while existing orders keep their saved requirements.
 
 | Component SKU | Quantity per finished piece | Component UOM |
 | --- | --- | --- |
@@ -537,7 +527,7 @@ outstanding reservations. Permanent disposal uses Scrap & Disposal instead.
 | --- | --- |
 | Missing action or view-only message | Ask the administrator to review the account's permission from section 1, then refresh the session. |
 | Unit or location cannot be changed | A used unit's conversion or location type is protected. Select/create the correct master record; do not repurpose a referenced record. |
-| Product says **(no formula)** | Prepare and independently release its formula through Formula Revisions as described in step 8. |
+| Product says **(no formula)** | Define its packing formula in **Packing Formulas** (`/bom`) as described in step 8. |
 | PO missing from Receiving | It must be Sent or Partially Received with an outstanding quantity. A Draft cannot be received. |
 | Material missing from a PO dropdown | Select its supplier first. Add or activate that supplier's material link in Suppliers or Items, check material activity, then refresh options. |
 | Receiving reports changed balances | Click **Review latest balances**, inspect remaining quantities, and correct the entered lot quantities before resubmitting. |
@@ -550,9 +540,9 @@ outstanding reservations. Permanent disposal uses Scrap & Disposal instead.
 | Count below reservations | Recheck the count and resolve the protected commitments through their owning workflow before applying a correction. |
 | Save/receipt response is uncertain | Reopen the document and review its saved state, movements and outstanding quantities before submitting again, especially for incremental transfer receipts. |
 
-Company configuration and formula release are supported setup steps above.
+Company configuration and direct packing formulas are supported setup steps above.
 Scrap & Disposal remains available for exceptions with independent review.
-Count Sessions, QC Decisions and Stock Dispositions are retired, not missing
+Count Sessions, QC Decisions, Stock Dispositions, and Formula Revisions are retired, not missing
 steps in the happy path. Their old records are retained through authenticated
 history APIs; old pages redirect to Inventory Stock. Previously held-location
 balances remain visible, but this simplified flow adds no replacement operation
@@ -581,12 +571,12 @@ This is an operator guide checked against repository source, not a record of a l
 ## Reviewed controls and operational reports
 
 Use the [complete controls happy paths](inventory-controls-and-reports.md) for
-Company Settings, pack ratios/barcodes, reorder levels, reason codes, scrap approval and formula
-release/retirement. Set master data before creating operational records.
+Company Settings, pack ratios/barcodes, reorder levels, reason codes, scrap approval, and direct
+packing formulas. Set master data before creating operational records.
 
-Use Formula Revisions to prepare and independently release a formula, then
-create a future packing order using that published definition. Use Stock
-Adjustments for verified count differences. Historical Count/QC/Disposition
+Manage formulas directly in **Packing Formulas** (`/bom`), then
+create packing orders using those saved requirements. Use Stock
+Adjustments for verified count differences. Historical Count/QC/Disposition/Formula
 samples are retained for history and cannot be resumed; they are not steps to
 perform in a new operator run.
 

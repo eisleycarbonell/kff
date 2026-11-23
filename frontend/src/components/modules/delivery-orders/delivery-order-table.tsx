@@ -34,13 +34,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
+import { ComboboxSelect } from "@/components/shared/combobox-select"
 import {
     Table,
     TableBody,
@@ -136,7 +130,8 @@ export const DeliveryOrderTable = memo(function DeliveryOrderTable({
                         className="h-10 bg-card pl-10"
                     />
                 </div>
-                <Select
+                <ComboboxSelect
+                    aria-label="Filter delivery status"
                     items={statusItems}
                     value={(table.getColumn("status")?.getFilterValue() as string) ?? "all"}
                     onValueChange={(value) => {
@@ -146,21 +141,8 @@ export const DeliveryOrderTable = memo(function DeliveryOrderTable({
                         table.resetRowSelection()
                         table.setPageIndex(0)
                     }}
-                >
-                    <SelectTrigger
-                        aria-label="Filter delivery status"
-                        className="min-w-40 bg-card data-[size=default]:h-10"
-                    >
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {statusItems.map((item) => (
-                            <SelectItem key={item.value} value={item.value}>
-                                {item.label}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+                    className="h-10 min-w-40 bg-card"
+                />
                 {hasFilters && (
                     <Button variant="ghost" className="h-10" onClick={clearFilters}>
                         <X />
@@ -240,8 +222,8 @@ export const DeliveryOrderTable = memo(function DeliveryOrderTable({
                                             ? header.column.getIsSorted() === "asc"
                                                 ? "ascending"
                                                 : header.column.getIsSorted() === "desc"
-                                                  ? "descending"
-                                                  : "none"
+                                                    ? "descending"
+                                                    : "none"
                                             : undefined
                                     }
                                 >
@@ -284,8 +266,8 @@ export const DeliveryOrderTable = memo(function DeliveryOrderTable({
                                             cell.column.id === "select"
                                                 ? "pl-5"
                                                 : cell.column.id === "actions"
-                                                  ? "pr-5 text-right"
-                                                  : "px-3 py-4"
+                                                    ? "pr-5 text-right"
+                                                    : "px-3 py-4"
                                         }
                                     >
                                         <table.FlexRender cell={cell} />
@@ -333,24 +315,15 @@ export const DeliveryOrderTable = memo(function DeliveryOrderTable({
                 </p>
                 <div className="flex flex-wrap items-center gap-3">
                     <span className="text-sm text-muted-foreground">Rows per page</span>
-                    <Select
+                    <ComboboxSelect
+                        aria-label="Rows per page"
                         items={pageSizeItems}
                         value={String(pageSize)}
                         onValueChange={(value) => {
                             if (value) table.setPageSize(Number(value))
                         }}
-                    >
-                        <SelectTrigger aria-label="Rows per page" className="w-16">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {pageSizeItems.map((item) => (
-                                <SelectItem key={item.value} value={item.value}>
-                                    {item.label}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                        className="w-16"
+                    />
                     <span className="text-sm tabular-nums">
                         Page {pageIndex + 1} of {Math.max(table.getPageCount(), 1)}
                     </span>

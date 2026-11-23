@@ -1,11 +1,14 @@
 "use client"
 
+import { Suspense } from "react"
 import dynamic from "next/dynamic"
 import Link from "next/link"
 import { Plus, Send, XCircle } from "lucide-react"
 
+import { PurchaseOrderRequisitions } from "@/components/modules/purchase-orders/purchase-order-requisitions"
 import { PurchaseOrderStatistics } from "@/components/modules/purchase-orders/purchase-order-statistics"
 import { PurchaseOrderTable } from "@/components/modules/purchase-orders/purchase-order-table"
+import { BulkImportActions } from "@/components/shared/bulk-import-actions"
 import { PageHeader } from "@/components/shared/page-header"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import {
@@ -46,8 +49,10 @@ export default function PurchaseOrdersPage() {
         formRequested,
         editingOrder,
         defaultPoNumber,
+        prefillDraft,
         isPreparingNumber,
         openAdd,
+        openAddWithPrefill,
         openEdit,
         viewingOrder,
         detailOpen,
@@ -85,10 +90,13 @@ export default function PurchaseOrdersPage() {
                 description="Plan supplier purchases and track ordered, received, and remaining quantities."
                 actions={
                     canManage && (
-                        <Button className="h-10 gap-2 px-4" onClick={openAdd} disabled={isBusy}>
-                            <Plus />
-                            {isPreparingNumber ? "Preparing PO..." : "Create purchase order"}
-                        </Button>
+                        <>
+                            <BulkImportActions moduleKey="purchase-orders" disabled={isBusy} />
+                            <Button className="h-10 gap-2 px-4" onClick={openAdd} disabled={isBusy}>
+                                <Plus />
+                                {isPreparingNumber ? "Preparing PO..." : "Create purchase order"}
+                            </Button>
+                        </>
                     )
                 }
             />
@@ -140,6 +148,15 @@ export default function PurchaseOrdersPage() {
                         </Alert>
                     )}
                     <PurchaseOrderStatistics orders={orders} />
+                    <Suspense fallback={null}>
+                        <PurchaseOrderRequisitions
+                            canManage={canManage}
+                            isBusy={isBusy}
+                            options={options}
+                            optionsReady={optionsReady}
+                            onPrepareRequisition={openAddWithPrefill}
+                        />
+                    </Suspense>
                     <PurchaseOrderTable
                         orders={orders}
                         canManage={canManage}
@@ -158,6 +175,7 @@ export default function PurchaseOrdersPage() {
                     onOpenChange={setFormOpen}
                     order={editingOrder}
                     defaultPoNumber={defaultPoNumber}
+                    initialDraft={prefillDraft}
                     orders={orders}
                     options={options}
                     optionsReady={optionsReady}

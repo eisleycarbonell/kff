@@ -29,13 +29,8 @@ import {
 } from "@/components/ui/dialog"
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
+import { ComboboxSelect } from "@/components/shared/combobox-select"
+import { NumericInput } from "@/components/shared/numeric-input"
 import { Skeleton } from "@/components/ui/skeleton"
 
 type ReceivingFormProps = {
@@ -80,8 +75,12 @@ function ReceivingFormContent({
         lines: [{ ...createEmptyReceivingLine(), uiKey: "lot-0" }],
     })
     const [errors, setErrors] = useState<ReceivingFormErrors>({})
+    const [suppressedReceiveError, setSuppressedReceiveError] = useState<string | null>(null)
     const [isReviewing, setIsReviewing] = useState(false)
     const [reviewed, setReviewed] = useState(false)
+    const activeReceiveError =
+        receiveError && receiveError !== suppressedReceiveError ? receiveError : undefined
+    const orderError = errors.poId ?? activeReceiveError
     const order = options.orders.find((candidate) => candidate.poId === values.poId)
     const activeLocations = options.locations.filter(
         (location) =>
@@ -114,12 +113,17 @@ function ReceivingFormContent({
             }))
     const busy = isReceiving || isReviewing
 
+    function clearReceiveError() {
+        if (receiveError) setSuppressedReceiveError(receiveError)
+    }
+
     function changeOrder(poId: number | null) {
         if (poId === values.poId) return
         const uiKey = `lot-${nextKey.current++}`
         setValues({ poId, lines: [{ ...createEmptyReceivingLine(), uiKey }] })
         setErrors({})
         setReviewed(false)
+        clearReceiveError()
     }
 
     function updateLine<Key extends keyof ReceivingLineFormValues>(
@@ -135,6 +139,7 @@ function ReceivingFormContent({
         }))
         setErrors({})
         setReviewed(false)
+        clearReceiveError()
     }
 
     function changeMaterial(uiKey: string, poLineId: number | null) {
@@ -156,6 +161,7 @@ function ReceivingFormContent({
         })
         setErrors({})
         setReviewed(false)
+        clearReceiveError()
     }
 
     function addLot() {
@@ -177,6 +183,7 @@ function ReceivingFormContent({
             }
         })
         setErrors({})
+        clearReceiveError()
     }
 
     async function reviewBalances() {
@@ -188,6 +195,7 @@ function ReceivingFormContent({
                 setValues((current) => reviewReceivingBalances(current, latest))
                 setErrors({})
                 setReviewed(true)
+                clearReceiveError()
             }
         } finally {
             setIsReviewing(false)
@@ -197,6 +205,7 @@ function ReceivingFormContent({
     async function submit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault()
         if (busy || !optionsReady || isOptionsLoading || optionsError) return
+        setSuppressedReceiveError(null)
         const nextErrors = validateReceipt(values, options)
         setErrors(nextErrors)
         if (Object.keys(nextErrors).length) {
@@ -210,8 +219,8 @@ function ReceivingFormContent({
             const fieldId = nextErrors.poId
                 ? `${id}-order`
                 : key && index !== undefined
-                  ? `${id}-${values.lines[index].uiKey}-${key}`
-                  : `${id}-lots`
+                    ? `${id}-${values.lines[index].uiKey}-${key}`
+                    : `${id}-lots`
             document.getElementById(fieldId)?.focus()
             return
         }
@@ -289,39 +298,25 @@ function ReceivingFormContent({
                         </AlertDescription>
                     </Alert>
                 )}
-                <Field data-invalid={Boolean(errors.poId)}>
+                <Field data-invalid={Boolean(orderError)}>
                     <FieldLabel htmlFor={`${id}-order`}>Purchase order</FieldLabel>
-                    <Select
-                        items={orderItems}
+                    <ComboboxSelect
+                        id={`${id}-order`}
+                        items={orderItems.map((item) => ({
+                            ...item,
+                            disabled: !options.orders.some(
+                                (candidate) => candidate.poId === item.value,
+                            ),
+                        }))}
                         value={values.poId}
                         onValueChange={changeOrder}
                         disabled={busy || !optionsReady}
-                    >
-                        <SelectTrigger
-                            id={`${id}-order`}
-                            className="w-full data-[size=default]:h-10"
-                            aria-invalid={Boolean(errors.poId)}
-                            aria-describedby={errors.poId ? `${id}-order-error` : undefined}
-                        >
-                            <SelectValue placeholder="Select a sent purchase order" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {orderItems.map((item) => (
-                                <SelectItem
-                                    key={item.value}
-                                    value={item.value}
-                                    disabled={
-                                        !options.orders.some(
-                                            (candidate) => candidate.poId === item.value,
-                                        )
-                                    }
-                                >
-                                    {item.label}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <FieldError id={`${id}-order-error`}>{errors.poId}</FieldError>
+                        placeholder="Select a sent purchase order"
+                        aria-invalid={Boolean(orderError)}
+                        aria-describedby={orderError ? `${id}-order-error` : undefined}
+                        className="h-10 w-full"
+                    />
+                    <FieldError id={`${id}-order-error`}>{orderError}</FieldError>
                     {order && (
                         <FieldDescription>
                             {order.status} · {order.supplierName}
@@ -383,17 +378,17 @@ function ReceivingFormContent({
                             })
                         const primaryQuantity = source
                             ? calculateReceiptPrimaryQuantity(
-                                  line.qtyReceived,
-                                  source.purchaseUomFactor,
-                                  source.primaryUomFactor,
-                              )
+                                line.qtyReceived,
+                                source.purchaseUomFactor,
+                                source.primaryUomFactor,
+                            )
                             : null
                         const unitCost = source
                             ? calculateReceiptUnitCost(
-                                  source.unitPrice,
-                                  source.purchaseUomFactor,
-                                  source.primaryUomFactor,
-                              )
+                                source.unitPrice,
+                                source.purchaseUomFactor,
+                                source.primaryUomFactor,
+                            )
                             : null
                         const lineId = `${id}-${line.uiKey}`
                         return (
@@ -427,36 +422,21 @@ function ReceivingFormContent({
                                 </div>
                                 <Field data-invalid={Boolean(lineErrors.poLineId)}>
                                     <FieldLabel htmlFor={`${lineId}-poLineId`}>Material</FieldLabel>
-                                    <Select
+                                    <ComboboxSelect
+                                        id={`${lineId}-poLineId`}
                                         items={materialItems}
                                         value={line.poLineId}
                                         disabled={busy || !order}
                                         onValueChange={(value) => changeMaterial(line.uiKey, value)}
-                                    >
-                                        <SelectTrigger
-                                            id={`${lineId}-poLineId`}
-                                            className="w-full data-[size=default]:h-10"
-                                            aria-invalid={Boolean(lineErrors.poLineId)}
-                                            aria-describedby={
-                                                lineErrors.poLineId
-                                                    ? `${lineId}-material-error`
-                                                    : undefined
-                                            }
-                                        >
-                                            <SelectValue placeholder="Select a purchase order line" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {materialItems.map((item) => (
-                                                <SelectItem
-                                                    key={item.value}
-                                                    value={item.value}
-                                                    disabled={item.disabled}
-                                                >
-                                                    {item.label}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                        placeholder="Select a purchase order line"
+                                        aria-invalid={Boolean(lineErrors.poLineId)}
+                                        aria-describedby={
+                                            lineErrors.poLineId
+                                                ? `${lineId}-material-error`
+                                                : undefined
+                                        }
+                                        className="h-10 w-full"
+                                    />
                                     <FieldError id={`${lineId}-material-error`}>
                                         {lineErrors.poLineId}
                                     </FieldError>
@@ -496,17 +476,14 @@ function ReceivingFormContent({
                                         <FieldLabel htmlFor={`${lineId}-qtyReceived`}>
                                             Receive quantity{source ? ` (${source.uomName})` : ""}
                                         </FieldLabel>
-                                        <Input
+                                        <NumericInput
                                             id={`${lineId}-qtyReceived`}
                                             name={`quantity-${line.uiKey}`}
-                                            inputMode="decimal"
+                                            maxWholeDigits={10}
+                                            maxDecimalPlaces={4}
                                             value={line.qtyReceived}
-                                            onChange={(event) =>
-                                                updateLine(
-                                                    line.uiKey,
-                                                    "qtyReceived",
-                                                    event.target.value,
-                                                )
+                                            onValueChange={(next) =>
+                                                updateLine(line.uiKey, "qtyReceived", next)
                                             }
                                             required
                                             disabled={busy || !source}
@@ -526,38 +503,23 @@ function ReceivingFormContent({
                                         <FieldLabel htmlFor={`${lineId}-locationId`}>
                                             Receiving destination
                                         </FieldLabel>
-                                        <Select
+                                        <ComboboxSelect
+                                            id={`${lineId}-locationId`}
                                             items={locationItems}
                                             value={line.locationId}
                                             disabled={busy || !optionsReady}
                                             onValueChange={(value) =>
                                                 updateLine(line.uiKey, "locationId", value)
                                             }
-                                        >
-                                            <SelectTrigger
-                                                id={`${lineId}-locationId`}
-                                                className="w-full data-[size=default]:h-10"
-                                                aria-invalid={Boolean(lineErrors.locationId)}
-                                                aria-describedby={
-                                                    lineErrors.locationId
-                                                        ? `${lineId}-location-error`
-                                                        : undefined
-                                                }
-                                            >
-                                                <SelectValue placeholder="Select storage location" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {locationItems.map((item) => (
-                                                    <SelectItem
-                                                        key={item.value}
-                                                        value={item.value}
-                                                        disabled={item.disabled}
-                                                    >
-                                                        {item.label}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
+                                            placeholder="Select storage location"
+                                            aria-invalid={Boolean(lineErrors.locationId)}
+                                            aria-describedby={
+                                                lineErrors.locationId
+                                                    ? `${lineId}-location-error`
+                                                    : undefined
+                                            }
+                                            className="h-10 w-full"
+                                        />
                                         <FieldError id={`${lineId}-location-error`}>
                                             {lineErrors.locationId}
                                         </FieldError>
@@ -639,12 +601,6 @@ function ReceivingFormContent({
                 >
                     <Plus /> Add lot
                 </Button>
-                {receiveError && (
-                    <Alert variant="destructive">
-                        <AlertTitle>Unable to confirm receipt</AlertTitle>
-                        <AlertDescription>{receiveError}</AlertDescription>
-                    </Alert>
-                )}
                 <DialogFooter>
                     <Button
                         type="button"

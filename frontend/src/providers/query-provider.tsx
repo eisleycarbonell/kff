@@ -16,7 +16,7 @@ export function QueryProvider({ children }: { children: ReactNode }) {
             queryCache: new QueryCache({ onError: expireSession }),
             mutationCache: new MutationCache({ onError: expireSession }),
             defaultOptions: {
-                queries: { staleTime: 60_000, retry: 1 },
+                queries: { staleTime: 60_000, retry: 1, refetchOnWindowFocus: false },
             },
         })
         return client

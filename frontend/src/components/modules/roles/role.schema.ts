@@ -26,13 +26,65 @@ export const PERMISSIONS = [
         label: "Users & roles",
         description: "Manage user accounts, roles, and permissions.",
     },
+    {
+        key: "canManageAccounting",
+        label: "Accounting",
+        description: "Access the accounting module, all costing roll-ups, COGS, and valuation ledgers.",
+    },
 ] as const
+
+export const NOTIFICATION_TAGS = [
+    {
+        key: "notifyInventory",
+        label: "Inventory & Stock",
+        description: "Receive alerts for stock adjustments, lots, scrap, items, and master data.",
+    },
+    {
+        key: "notifyPurchasing",
+        label: "Purchasing & Receiving",
+        description: "Receive alerts for supplier purchase orders and goods receiving.",
+    },
+    {
+        key: "notifyPacking",
+        label: "Packing & Formulas",
+        description: "Receive alerts for packing orders, reservations, and BOM formulas.",
+    },
+    {
+        key: "notifyTransfers",
+        label: "Transfers & Delivery",
+        description: "Receive alerts for stock transfers and customer deliveries.",
+    },
+    {
+        key: "notifySales",
+        label: "Sales Orders",
+        description: "Receive alerts for customer sales orders and fulfillment.",
+    },
+    {
+        key: "notifyAccounting",
+        label: "Accounting & Costing",
+        description: "Receive alerts for costing, valuation, and company settings.",
+    },
+    {
+        key: "notifyUsers",
+        label: "Users & Access",
+        description: "Receive alerts for user account and role permission changes.",
+    },
+] as const
+
 const settingsSchema = z.object({
     canManageInventory: z.boolean().default(false),
     canManagePurchasing: z.boolean().default(false),
     canManagePacking: z.boolean().default(false),
     canManageTransfers: z.boolean().default(false),
     canManageUsers: z.boolean().default(false),
+    canManageAccounting: z.boolean().default(false),
+    notifyInventory: z.boolean().default(false),
+    notifyPurchasing: z.boolean().default(false),
+    notifyPacking: z.boolean().default(false),
+    notifyTransfers: z.boolean().default(false),
+    notifySales: z.boolean().default(false),
+    notifyAccounting: z.boolean().default(false),
+    notifyUsers: z.boolean().default(false),
 })
 export const EMPTY_SETTINGS = settingsSchema.parse({})
 export const roleSchema = z.object({
@@ -66,7 +118,7 @@ export function toRoleUpdate(values: RoleFormValues, role: Role): RoleUpdateInpu
     const changes: RoleUpdateInput = {}
     if (input.name !== role.name) changes.name = input.name
     if (input.description !== role.description) changes.description = input.description
-    for (const { key } of PERMISSIONS) {
+    for (const { key } of [...PERMISSIONS, ...NOTIFICATION_TAGS]) {
         if (input.settings[key] !== role.settings[key])
             (changes.settings ??= {})[key] = input.settings[key]
     }

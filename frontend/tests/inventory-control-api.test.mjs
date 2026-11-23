@@ -287,3 +287,36 @@ test("reason code helpers normalize whitespace descriptions and toggle active st
     const updated = await reasons.setRecordActiveStatus(9, false)
     assert.equal(updated.isActive, false)
 })
+
+test("company settings schema accepts and preserves default VAT rate percent", async () => {
+    const { settingsSchema, settingsInputSchema } = await import(
+        "../src/components/modules/company-settings/company-setting.schema.ts"
+    )
+    const saved = settingsSchema.parse({
+        companyName: "KFF Trading",
+        address: null,
+        email: null,
+        phone: null,
+        currencyCode: "PHP",
+        defaultReorderLevel: "10.0000",
+        expiryWarningDays: 30,
+        vatRatePercent: "12.00",
+        version: 2,
+    })
+    assert.equal(saved.vatRatePercent, "12.00")
+    const input = settingsInputSchema.parse({
+        expectedVersion: 2,
+        companyName: "KFF Trading",
+        address: null,
+        email: null,
+        phone: null,
+        currencyCode: "PHP",
+        defaultReorderLevel: "10",
+        expiryWarningDays: 30,
+        vatRatePercent: "12.00",
+    })
+    assert.equal(input.vatRatePercent, "12.00")
+    assert.throws(() =>
+        settingsInputSchema.parse({ ...input, vatRatePercent: "105" }),
+    )
+})

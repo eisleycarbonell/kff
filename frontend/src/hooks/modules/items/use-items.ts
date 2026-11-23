@@ -92,6 +92,7 @@ export function useItems() {
   const writePending = useRef(false);
   const deactivatingItems = target ?? EMPTY_ITEMS;
   const canManage = session.data?.permissions.canManageInventory === true;
+  const canManagePacking = session.data?.permissions.canManagePacking === true;
   const loadError = itemsQuery.error ?? uomsQuery.error ?? session.error;
 
   function cacheItems(saved: Item[]) {
@@ -106,7 +107,7 @@ export function useItems() {
     });
   }
   function refresh() {
-            void invalidateInventoryAvailability(client)
+    void invalidateInventoryAvailability(client);
     for (const key of [
       "items",
       "item-supplier-links",
@@ -114,10 +115,7 @@ export function useItems() {
       "supplier-items",
       "purchase-order-options",
       "dashboard",
-      "sales-order-options",
-      "sales-order-material-plan",
       "inventory-reports",
-      "inventory-control-options",
       "inventory-controls",
       "item-packaging-options",
       "reorder-policies-options",
@@ -125,9 +123,6 @@ export function useItems() {
       "inventory-report-options",
       "packing-formulas",
       "packing-formula-options",
-      "packing-options",
-      "packing-preview",
-      "delivery-order-options",
       "sales-orders",
       "delivery-orders",
     ])
@@ -225,6 +220,7 @@ export function useItems() {
     items: itemsQuery.data ?? EMPTY_ITEMS,
     uoms: uomsQuery.data ?? EMPTY_UOMS,
     canManage,
+    canManagePacking,
     loadStatus,
     loadError,
     formOpen,
@@ -254,14 +250,13 @@ export function useItems() {
         void uomsQuery.refetch();
       }
     },
-    handleSave: async (values: ItemFormValues, item: Item | null) => {
-      if (writePending.current) return false;
+    handleSave: async (values: ItemFormValues, item: Item | null): Promise<Item | null> => {
+      if (writePending.current) return null;
       writePending.current = true;
       try {
-        await save.mutateAsync({ values, item });
-        return true;
+        return await save.mutateAsync({ values, item });
       } catch {
-        return false;
+        return null;
       } finally {
         writePending.current = false;
       }

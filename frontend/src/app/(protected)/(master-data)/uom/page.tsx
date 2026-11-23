@@ -2,6 +2,7 @@
 import dynamic from "next/dynamic"
 import Link from "next/link"
 import { FolderCog, Plus, Trash2 } from "lucide-react"
+import { BulkImportActions } from "@/components/shared/bulk-import-actions"
 import { PageHeader } from "@/components/shared/page-header"
 import { UomStatistics } from "@/components/modules/uoms/uom-statistics"
 import { UomTable } from "@/components/modules/uoms/uom-table"
@@ -41,6 +42,10 @@ export default function UnitsOfMeasurePage() {
                 actions={
                     catalog.canManage && (
                         <div className="flex flex-wrap gap-2">
+                            <BulkImportActions
+                                moduleKey="uoms"
+                                disabled={catalog.loadStatus !== "ready"}
+                            />
                             <Button
                                 variant="outline"
                                 className="h-10 gap-2 px-4"

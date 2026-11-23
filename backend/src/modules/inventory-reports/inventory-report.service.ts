@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, lt, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, isNull, lt, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { db } from '../../db/index.ts';
 import { AppError } from '../../errors/app-error.ts';
@@ -7,6 +7,7 @@ import {
     uoms,
     lots,
     locations,
+    inventoryReservations,
     inventoryStock,
     inventoryTransactions,
     purchaseOrderLines,
@@ -45,24 +46,22 @@ export async function getInventoryReport(
 ) {
     return database.transaction(
         async (tx) => {
-            const settings = await getSettings(tx);
+            const [settings, reorderRows, catalog] = await Promise.all([
+                getSettings(tx),
+                query.useReorderPolicies ? tx.select().from(reorderPolicies) : Promise.resolve([]),
+                tx
+                    .select(catalogFields)
+                    .from(items)
+                    .innerJoin(uoms, eq(items.primaryUomId, uoms.uomId))
+                    .leftJoin(label, eq(items.labelItemId, label.itemId)),
+            ]);
             if (query.useReorderPolicies)
                 query = { ...query, threshold: settings.defaultReorderLevel };
             if (query.useCompanyExpiryDays)
                 query = { ...query, expiryDays: settings.expiryWarningDays };
             const levels = new Map<number, string>(
-                query.useReorderPolicies
-                    ? (await tx.select().from(reorderPolicies)).map((r) => [
-                          r.itemId,
-                          r.reorderLevel,
-                      ])
-                    : [],
+                reorderRows.map((r) => [r.itemId, r.reorderLevel]),
             );
-            const catalog = await tx
-                .select(catalogFields)
-                .from(items)
-                .innerJoin(uoms, eq(items.primaryUomId, uoms.uomId))
-                .leftJoin(label, eq(items.labelItemId, label.itemId));
             if (query.itemId && !catalog.some((row) => row.itemId === query.itemId))
                 throw new AppError(400, 'Select an existing report item.');
             if (
@@ -183,7 +182,25 @@ export async function getInventoryReport(
                     );
                 return buildInventoryReport(query, catalog, [], rows, now);
             }
-            const reserved = sql`coalesce((select sum(r.qty_reserved-r.qty_consumed) from inventory_reservations r where r.item_id=inventory_stock.item_id and r.lot_id=inventory_stock.lot_id and r.location_id=inventory_stock.location_id and r.released_at is null),0)`;
+            const activeRes = tx
+                .select({
+                    itemId: inventoryReservations.itemId,
+                    lotId: inventoryReservations.lotId,
+                    locationId: inventoryReservations.locationId,
+                    qtyReserved:
+                        sql<string>`sum(${inventoryReservations.qtyReserved} - ${inventoryReservations.qtyConsumed})`.as(
+                            'qty_reserved',
+                        ),
+                })
+                .from(inventoryReservations)
+                .where(isNull(inventoryReservations.releasedAt))
+                .groupBy(
+                    inventoryReservations.itemId,
+                    inventoryReservations.lotId,
+                    inventoryReservations.locationId,
+                )
+                .as('active_res');
+            const reserved = sql`coalesce(${activeRes.qtyReserved}, 0)`;
             const stock = await tx
                 .select({
                     ...catalogFields,
@@ -216,6 +233,14 @@ export async function getInventoryReport(
                     ),
                 )
                 .innerJoin(locations, eq(locations.locationId, inventoryStock.locationId))
+                .leftJoin(
+                    activeRes,
+                    and(
+                        eq(activeRes.itemId, inventoryStock.itemId),
+                        eq(activeRes.lotId, inventoryStock.lotId),
+                        eq(activeRes.locationId, inventoryStock.locationId),
+                    ),
+                )
                 .leftJoin(packingOrders, eq(packingOrders.packingOrderId, lots.packingOrderId))
                 .leftJoin(purchaseOrderLines, eq(purchaseOrderLines.poLineId, lots.poLineId))
                 .leftJoin(purchaseOrders, eq(purchaseOrders.poId, purchaseOrderLines.poId));

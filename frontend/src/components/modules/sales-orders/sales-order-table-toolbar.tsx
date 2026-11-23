@@ -8,13 +8,7 @@ import {
 import type { SalesOrderTableInstance } from "@/components/modules/sales-orders/sales-order-table-columns"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
+import { ComboboxSelect } from "@/components/shared/combobox-select"
 import {
     DropdownMenu,
     DropdownMenuCheckboxItem,
@@ -63,7 +57,7 @@ function exportOrders(orders: SalesOrder[]) {
         new Blob(
             [
                 "\uFEFF" +
-                    rows.map((row) => row.map(escape).join(",")).join("\r\n"),
+                rows.map((row) => row.map(escape).join(",")).join("\r\n"),
             ],
             {
                 type: "text/csv;charset=utf-8;",
@@ -109,7 +103,8 @@ export function SalesOrderTableToolbar({
                     className="h-10 bg-card pl-10"
                 />
             </div>
-            <Select
+            <ComboboxSelect
+                aria-label="Filter by status"
                 items={statuses}
                 value={
                     (table.getColumn("status")?.getFilterValue() as string) ??
@@ -122,21 +117,8 @@ export function SalesOrderTableToolbar({
                     table.resetRowSelection()
                     table.setPageIndex(0)
                 }}
-            >
-                <SelectTrigger
-                    aria-label="Filter by status"
-                    className="min-w-44 bg-card data-[size=default]:h-10"
-                >
-                    <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                    {statuses.map((item) => (
-                        <SelectItem key={item.value} value={item.value}>
-                            {item.label}
-                        </SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
+                className="h-10 w-full bg-card sm:w-auto sm:min-w-44"
+            />
             {hasFilters && (
                 <Button
                     variant="ghost"

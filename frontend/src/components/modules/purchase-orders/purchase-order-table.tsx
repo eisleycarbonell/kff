@@ -20,13 +20,7 @@ import {
 } from "@/components/modules/purchase-orders/purchase-order-table-columns"
 import { PurchaseOrderTableToolbar } from "@/components/modules/purchase-orders/purchase-order-table-toolbar"
 import { Button } from "@/components/ui/button"
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
+import { ComboboxSelect } from "@/components/shared/combobox-select"
 import {
     Table,
     TableBody,
@@ -114,16 +108,16 @@ export const PurchaseOrderTable = memo(function PurchaseOrderTable({
                                         header.column.id === "select"
                                             ? "h-12 w-14 pl-5"
                                             : header.column.id === "actions"
-                                              ? "h-12 w-14 pr-5"
-                                              : "h-12 px-3"
+                                                ? "h-12 w-14 pr-5"
+                                                : "h-12 px-3"
                                     }
                                     aria-sort={
                                         header.column.getCanSort()
                                             ? header.column.getIsSorted() === "asc"
                                                 ? "ascending"
                                                 : header.column.getIsSorted() === "desc"
-                                                  ? "descending"
-                                                  : "none"
+                                                    ? "descending"
+                                                    : "none"
                                             : undefined
                                     }
                                 >
@@ -166,8 +160,8 @@ export const PurchaseOrderTable = memo(function PurchaseOrderTable({
                                             cell.column.id === "select"
                                                 ? "pl-5"
                                                 : cell.column.id === "actions"
-                                                  ? "pr-5 text-right"
-                                                  : "px-3 py-4"
+                                                    ? "pr-5 text-right"
+                                                    : "px-3 py-4"
                                         }
                                     >
                                         <table.FlexRender cell={cell} />
@@ -191,8 +185,8 @@ export const PurchaseOrderTable = memo(function PurchaseOrderTable({
                                     {hasFilters
                                         ? "Try a different search or clear your filters."
                                         : canManage
-                                          ? "Create your first purchase order to plan a supplier purchase."
-                                          : "PurchaseOrder records will appear here once they are added."}
+                                            ? "Create your first purchase order to plan a supplier purchase."
+                                            : "PurchaseOrder records will appear here once they are added."}
                                 </p>
                                 {(hasFilters || canManage) && (
                                     <Button
@@ -219,24 +213,15 @@ export const PurchaseOrderTable = memo(function PurchaseOrderTable({
                 <div className="flex flex-wrap items-center gap-4">
                     <div className="flex items-center gap-2 text-sm">
                         <span className="text-muted-foreground">Rows per page</span>
-                        <Select
+                        <ComboboxSelect
+                            aria-label="Rows per page"
                             items={pageSizeItems}
                             value={String(pageSize)}
                             onValueChange={(value) => {
                                 if (value) table.setPageSize(Number(value))
                             }}
-                        >
-                            <SelectTrigger aria-label="Rows per page" className="w-16">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {pageSizeItems.map((item) => (
-                                    <SelectItem key={item.value} value={item.value}>
-                                        {item.label}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                            className="w-16"
+                        />
                     </div>
                     <span className="text-sm tabular-nums">
                         Page {pageIndex + 1} of {pageCount}

@@ -21,14 +21,12 @@ import {
 } from "@/components/modules/inventory-movements/inventory-movement.schema"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import {
-    Select,
-    SelectContent,
-    SelectGroup,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
+import { ComboboxSelect } from "@/components/shared/combobox-select"
+
+const movementTypeItems = [
+    { value: "all", label: "All movements" },
+    ...MOVEMENT_TYPES.map((value) => ({ value, label: value })),
+]
 import {
     Table,
     TableBody,
@@ -229,60 +227,27 @@ export const InventoryMovementTable = memo(function InventoryMovementTable({
                     />
                 </div>
                 {!adjustmentsOnly && (
-                    <Select
-                        items={[
-                            { value: "all", label: "All movements" },
-                            ...MOVEMENT_TYPES.map((value) => ({ value, label: value })),
-                        ]}
+                    <ComboboxSelect
+                        aria-label="Filter by movement type"
+                        items={movementTypeItems}
                         value={type}
                         onValueChange={(value) => {
                             setType((value ?? "all") as MovementType | "all")
                             table.setPageIndex(0)
                         }}
-                    >
-                        <SelectTrigger
-                            aria-label="Filter by movement type"
-                            className="min-w-40 data-[size=default]:h-10"
-                        >
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectGroup>
-                                <SelectItem value="all">All movements</SelectItem>
-                                {MOVEMENT_TYPES.map((value) => (
-                                    <SelectItem key={value} value={value}>
-                                        {value}
-                                    </SelectItem>
-                                ))}
-                            </SelectGroup>
-                        </SelectContent>
-                    </Select>
+                        className="h-10 min-w-40"
+                    />
                 )}
-                <Select
+                <ComboboxSelect
+                    aria-label="Filter by location"
                     items={[{ value: "all", label: "All locations" }, ...locations]}
                     value={location}
                     onValueChange={(value) => {
                         setLocation(value ?? "all")
                         table.setPageIndex(0)
                     }}
-                >
-                    <SelectTrigger
-                        aria-label="Filter by location"
-                        className="max-w-64 min-w-40 data-[size=default]:h-10"
-                    >
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectGroup>
-                            <SelectItem value="all">All locations</SelectItem>
-                            {locations.map((item) => (
-                                <SelectItem key={item.value} value={item.value}>
-                                    {item.label}
-                                </SelectItem>
-                            ))}
-                        </SelectGroup>
-                    </SelectContent>
-                </Select>
+                    className="h-10 max-w-64 min-w-40"
+                />
                 {hasFilters && (
                     <Button variant="ghost" className="h-10" onClick={clearFilters}>
                         <X />

@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic"
 import Link from "next/link"
 import { ClipboardPenLine } from "lucide-react"
+import { BulkImportActions } from "@/components/shared/bulk-import-actions"
 import { PageHeader } from "@/components/shared/page-header"
 import { InventoryMovementTable } from "@/components/modules/inventory-movements/inventory-movement-table"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -32,16 +33,24 @@ export default function StockAdjustmentsPage() {
                 description="Review corrections to lot and location balances with reasons and audit history."
                 actions={
                     stock.canManage && (
-                        <Button
-                            className="h-10"
-                            onClick={() => stock.openAdjustment()}
-                            disabled={
-                                !stock.canAdjust || stock.loadStatus !== "ready"
-                            }
-                        >
-                            <ClipboardPenLine />
-                            Record adjustment
-                        </Button>
+                        <>
+                            <BulkImportActions
+                                moduleKey="inventory-adjustments"
+                                disabled={
+                                    !stock.canAdjust || stock.loadStatus !== "ready"
+                                }
+                            />
+                            <Button
+                                className="h-10"
+                                onClick={() => stock.openAdjustment()}
+                                disabled={
+                                    !stock.canAdjust || stock.loadStatus !== "ready"
+                                }
+                            >
+                                <ClipboardPenLine />
+                                Record adjustment
+                            </Button>
+                        </>
                     )
                 }
             />

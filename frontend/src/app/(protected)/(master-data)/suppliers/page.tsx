@@ -8,6 +8,7 @@ import { Plus } from "lucide-react"
 import type { Supplier } from "@/components/modules/suppliers/supplier.schema"
 import { SupplierStatistics } from "@/components/modules/suppliers/supplier-statistics"
 import { SupplierTable } from "@/components/modules/suppliers/supplier-table"
+import { BulkImportActions } from "@/components/shared/bulk-import-actions"
 import { PageHeader } from "@/components/shared/page-header"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import {
@@ -85,10 +86,13 @@ export default function SuppliersPage() {
                 description="Manage supplier details and the materials they supply."
                 actions={
                     canManage && (
-                        <Button className="h-10 gap-2 px-4" onClick={openAdd} disabled={isBusy}>
-                            <Plus />
-                            Add supplier
-                        </Button>
+                        <>
+                            <BulkImportActions moduleKey="suppliers" disabled={isBusy} />
+                            <Button className="h-10 gap-2 px-4" onClick={openAdd} disabled={isBusy}>
+                                <Plus />
+                                Add supplier
+                            </Button>
+                        </>
                     )
                 }
             />

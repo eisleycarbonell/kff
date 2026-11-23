@@ -6,6 +6,7 @@ import { Plus } from "lucide-react"
 
 import { CustomerStatistics } from "@/components/modules/customers/customer-statistics"
 import { CustomerTable } from "@/components/modules/customers/customer-table"
+import { BulkImportActions } from "@/components/shared/bulk-import-actions"
 import { PageHeader } from "@/components/shared/page-header"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import {
@@ -62,10 +63,13 @@ export default function CustomersPage() {
                 description="Manage customer accounts and contacts."
                 actions={
                     canManage && (
-                        <Button className="h-10 gap-2 px-4" onClick={openAdd} disabled={isUpdating}>
-                            <Plus />
-                            Add customer
-                        </Button>
+                        <>
+                            <BulkImportActions moduleKey="customers" disabled={isUpdating} />
+                            <Button className="h-10 gap-2 px-4" onClick={openAdd} disabled={isUpdating}>
+                                <Plus />
+                                Add customer
+                            </Button>
+                        </>
                     )
                 }
             />

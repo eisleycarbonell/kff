@@ -20,13 +20,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog"
 import { Field, FieldLabel } from "@/components/ui/field"
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
+import { ComboboxSelect } from "@/components/shared/combobox-select"
 import {
     Table,
     TableBody,
@@ -225,23 +219,15 @@ function ActionContent({
                             <FieldLabel htmlFor="delivery-transit-location">
                                 In Transit location
                             </FieldLabel>
-                            <Select
+                            <ComboboxSelect
+                                id="delivery-transit-location"
                                 items={locations}
                                 value={transitLocationId}
                                 onValueChange={setTransitLocationId}
                                 disabled={pending}
-                            >
-                                <SelectTrigger id="delivery-transit-location" className="w-full">
-                                    <SelectValue placeholder="Select transit location" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {locations.map((item) => (
-                                        <SelectItem key={item.value} value={item.value}>
-                                            {item.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                                placeholder="Select transit location"
+                                className="w-full"
+                            />
                             {!locations.length && (
                                 <p className="text-sm text-muted-foreground">
                                     Configure an active In Transit location before dispatch.

@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ChoiceField } from "@/components/shared/choice-field"
+import { NumericInput } from "@/components/shared/numeric-input"
 type Props = {
     kind: ControlKind
     open: boolean
@@ -67,14 +68,25 @@ function Content(p: Props) {
         return (
             <Field>
                 <FieldLabel htmlFor={uid + key}>{label}</FieldLabel>
-                <Input
-                    id={uid + key}
-                    type={type}
-                    value={values[key]}
-                    required={required}
-                    maxLength={key === "requestNumber" ? 40 : 2000}
-                    onChange={(e) => change(key, e.target.value)}
-                />
+                {key === "quantity" ? (
+                    <NumericInput
+                        id={uid + key}
+                        maxWholeDigits={10}
+                        maxDecimalPlaces={4}
+                        value={values[key]}
+                        required={required}
+                        onValueChange={(next) => change(key, next)}
+                    />
+                ) : (
+                    <Input
+                        id={uid + key}
+                        type={type}
+                        value={values[key]}
+                        required={required}
+                        maxLength={key === "requestNumber" ? 40 : 2000}
+                        onChange={(e) => change(key, e.target.value)}
+                    />
+                )}
             </Field>
         )
     }
@@ -343,17 +355,19 @@ function Content(p: Props) {
                                                 <FieldLabel htmlFor={uid + "quantity" + index}>
                                                     Quantity per product unit
                                                 </FieldLabel>
-                                                <Input
+                                                <NumericInput
                                                     id={uid + "quantity" + index}
+                                                    maxWholeDigits={8}
+                                                    maxDecimalPlaces={6}
                                                     value={row.quantity}
                                                     required
-                                                    onChange={(e) =>
+                                                    onValueChange={(next) =>
                                                         setComponents((rows) =>
                                                             rows.map((r, i) =>
                                                                 i === index
                                                                     ? {
                                                                         ...r,
-                                                                        quantity: e.target.value,
+                                                                        quantity: next,
                                                                     }
                                                                     : r,
                                                             ),

@@ -1,5 +1,5 @@
 "use client"
-import { useId, useState, type FormEvent } from "react"
+import { useId, useMemo, useState, type FormEvent } from "react"
 import {
     ITEM_TYPES,
     QC_STATUSES,
@@ -10,13 +10,8 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Field, FieldLabel } from "@/components/ui/field"
-import {
-    Select,
-    SelectTrigger,
-    SelectValue,
-    SelectContent,
-    SelectItem,
-} from "@/components/ui/select"
+import { ComboboxSelect } from "@/components/shared/combobox-select"
+import { NumericInput } from "@/components/shared/numeric-input"
 import { Checkbox } from "@/components/ui/checkbox"
 type Props = {
     filters: ReportFilters
@@ -40,32 +35,20 @@ function FilterSelect({
     disabled?: boolean
 }) {
     const id = useId()
-    const all = [{ value: "all", label: "All" }, ...choices]
+    const all = useMemo(() => [{ value: "all", label: "All" }, ...choices], [choices])
     return (
         <Field>
             <FieldLabel htmlFor={id}>{label}</FieldLabel>
-            <Select
+            <ComboboxSelect
+                id={id}
                 items={all}
                 value={value || "all"}
-                onValueChange={(value) =>
-                    onChange(value === "all" ? "" : (value ?? ""))
+                onValueChange={(nextValue) =>
+                    onChange(nextValue === "all" ? "" : (nextValue ?? ""))
                 }
                 disabled={disabled}
-            >
-                <SelectTrigger
-                    id={id}
-                    className="w-full data-[size=default]:h-10"
-                >
-                    <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                    {all.map((choice) => (
-                        <SelectItem key={choice.value} value={choice.value}>
-                            {choice.label}
-                        </SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
+                className="h-10 w-full"
+            />
         </Field>
     )
 }
@@ -227,14 +210,13 @@ export function InventoryReportFilters({
                         <FieldLabel htmlFor={`${id}-threshold`}>
                             Available quantity at or below
                         </FieldLabel>
-                        <Input
+                        <NumericInput
                             id={`${id}-threshold`}
-                            inputMode="decimal"
+                            maxWholeDigits={10}
+                            maxDecimalPlaces={4}
                             value={draft.threshold ?? ""}
                             placeholder="Company / item default"
-                            onChange={(e) =>
-                                update({ threshold: e.target.value })
-                            }
+                            onValueChange={(next) => update({ threshold: next })}
                         />
                         <p className="text-xs text-muted-foreground">
                             Threshold in each item&apos;s primary unit; active
@@ -248,23 +230,19 @@ export function InventoryReportFilters({
                             <FieldLabel htmlFor={`${id}-expiry`}>
                                 Expiry window override in days (UTC)
                             </FieldLabel>
-                            <Input
+                            <NumericInput
                                 id={`${id}-expiry`}
-                                type="number"
-                                min={0}
-                                max={3650}
+                                allowDecimal={false}
+                                maxWholeDigits={4}
                                 value={
                                     Number.isNaN(draft.expiryDays)
                                         ? ""
-                                        : (draft.expiryDays ?? "")
+                                        : String(draft.expiryDays ?? "")
                                 }
                                 placeholder="Company default"
-                                onChange={(e) =>
+                                onValueChange={(next) =>
                                     update({
-                                        expiryDays:
-                                            e.target.value === ""
-                                                ? undefined
-                                                : Number(e.target.value),
+                                        expiryDays: next === "" ? undefined : Number(next),
                                     })
                                 }
                             />

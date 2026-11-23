@@ -12,14 +12,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
-import {
-    Select,
-    SelectContent,
-    SelectGroup,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
+import { ComboboxSelect } from "@/components/shared/combobox-select"
 
 const statuses = ["Draft", "Sent", "Partially Received", "Completed", "Cancelled"]
 const statusItems = [
@@ -125,7 +118,8 @@ export function PurchaseOrderTableToolbar({
                     className="h-10 bg-card pl-10"
                 />
             </div>
-            <Select
+            <ComboboxSelect
+                aria-label="Filter purchase orders by status"
                 items={statusItems}
                 value={(table.getColumn("status")?.getFilterValue() as string) ?? "all"}
                 onValueChange={(value) => {
@@ -134,24 +128,10 @@ export function PurchaseOrderTableToolbar({
                         ?.setFilterValue(!value || value === "all" ? undefined : value)
                     resetSelection()
                 }}
-            >
-                <SelectTrigger
-                    aria-label="Filter purchase orders by status"
-                    className="min-w-40 bg-card data-[size=default]:h-10"
-                >
-                    <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectGroup>
-                        {statusItems.map((status) => (
-                            <SelectItem key={status.value} value={status.value}>
-                                {status.label}
-                            </SelectItem>
-                        ))}
-                    </SelectGroup>
-                </SelectContent>
-            </Select>
-            <Select
+                className="h-10 w-full bg-card sm:w-auto sm:min-w-40"
+            />
+            <ComboboxSelect
+                aria-label="Filter purchase orders by supplier"
                 items={supplierItems}
                 value={supplierFilter === undefined ? "all" : `supplier:${supplierFilter}`}
                 onValueChange={(value) => {
@@ -162,23 +142,8 @@ export function PurchaseOrderTableToolbar({
                         )
                     resetSelection()
                 }}
-            >
-                <SelectTrigger
-                    aria-label="Filter purchase orders by supplier"
-                    className="w-full min-w-40 bg-card data-[size=default]:h-10 sm:w-48"
-                >
-                    <SelectValue className="min-w-0" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectGroup>
-                        {supplierItems.map((supplier) => (
-                            <SelectItem key={supplier.value} value={supplier.value}>
-                                {supplier.label}
-                            </SelectItem>
-                        ))}
-                    </SelectGroup>
-                </SelectContent>
-            </Select>
+                className="h-10 w-full min-w-40 bg-card sm:w-48"
+            />
             {hasFilters && (
                 <Button variant="ghost" className="h-10" onClick={onClearFilters}>
                     <X />

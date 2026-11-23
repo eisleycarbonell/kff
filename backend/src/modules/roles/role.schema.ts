@@ -6,6 +6,14 @@ export const permissionFields = {
     canManagePacking: z.boolean(),
     canManageTransfers: z.boolean(),
     canManageUsers: z.boolean(),
+    canManageAccounting: z.boolean(),
+    notifyInventory: z.boolean(),
+    notifyPurchasing: z.boolean(),
+    notifyPacking: z.boolean(),
+    notifyTransfers: z.boolean(),
+    notifySales: z.boolean(),
+    notifyAccounting: z.boolean(),
+    notifyUsers: z.boolean(),
 };
 export const roleSettingsSchema = z.strictObject(permissionFields);
 export const emptyRoleSettings = {
@@ -14,6 +22,14 @@ export const emptyRoleSettings = {
     canManagePacking: false,
     canManageTransfers: false,
     canManageUsers: false,
+    canManageAccounting: false,
+    notifyInventory: false,
+    notifyPurchasing: false,
+    notifyPacking: false,
+    notifyTransfers: false,
+    notifySales: false,
+    notifyAccounting: false,
+    notifyUsers: false,
 };
 const name = z.string().trim().min(1).max(80);
 const description = z

@@ -12,7 +12,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { ComboboxSelect } from "@/components/shared/combobox-select"
 import { downloadCsv } from "@/lib/csv"
 
 const statusItems = [
@@ -76,7 +76,8 @@ export function CustomerTableToolbar({ table, hasFilters, onClearFilters }: Cust
                     className="h-10 bg-card pl-10"
                 />
             </div>
-            <Select
+            <ComboboxSelect
+                aria-label="Filter by status"
                 items={statusItems}
                 value={(table.getColumn("status")?.getFilterValue() as string) ?? "all"}
                 onValueChange={(value) => {
@@ -84,16 +85,8 @@ export function CustomerTableToolbar({ table, hasFilters, onClearFilters }: Cust
                     table.resetRowSelection()
                     table.setPageIndex(0)
                 }}
-            >
-                <SelectTrigger aria-label="Filter by status" className="min-w-36 bg-card data-[size=default]:h-10">
-                    <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                    {statusItems.map((item) => (
-                        <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
+                className="h-10 w-full bg-card sm:w-auto sm:min-w-36"
+            />
             {hasFilters && (
                 <Button variant="ghost" className="h-10" onClick={onClearFilters}>
                     <X />

@@ -407,3 +407,27 @@ test("item labels use existing label materials and preserve an assigned inactive
     false,
   );
 });
+
+test("item schema supports optional VATable status for VATable and VAT-exempt items", async () => {
+  const exempt = { ...item, sku: "RM-PEPPER", isVatable: false };
+  const vatable = { ...item, sku: "FG-GARLIC", itemType: "Finished Good", isVatable: true };
+  globalThis.fetch = async () => response([exempt, vatable]);
+  const list = await api.getItems();
+  assert.equal(list[0].isVatable, false);
+  assert.equal(list[1].isVatable, true);
+  assert.equal(
+    schema.toItemInput({
+      sku: "RM-PEPPER",
+      name: "Black pepper",
+      itemType: "Raw Material - Bulk",
+      primaryUomId: 1,
+      unitCost: "10",
+      netWeightG: "",
+      shelfLifeDays: "",
+      requiresQc: false,
+      isVatable: false,
+      isActive: true,
+    }).isVatable,
+    false,
+  );
+});

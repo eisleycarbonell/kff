@@ -26,14 +26,8 @@ import {
     FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import {
-    Select,
-    SelectContent,
-    SelectGroup,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
+import { ComboboxSelect } from "@/components/shared/combobox-select"
+import { NumericInput } from "@/components/shared/numeric-input"
 type Props = {
     open: boolean
     onOpenChange: (open: boolean) => void
@@ -123,7 +117,8 @@ function UomFormContent({
                         data-disabled={isSaving || locked}
                     >
                         <FieldLabel htmlFor={id + "-uomClassId"}>Unit class</FieldLabel>
-                        <Select
+                        <ComboboxSelect
+                            id={id + "-uomClassId"}
                             name="uomClassId"
                             items={classItems}
                             value={values.uomClassId}
@@ -143,25 +138,10 @@ function UomFormContent({
                                 }))
                                 setErrors({})
                             }}
-                        >
-                            <SelectTrigger
-                                id={id + "-uomClassId"}
-                                className="w-full data-[size=default]:h-10"
-                                aria-invalid={Boolean(errors.uomClassId)}
-                                aria-describedby={id + "-class-error"}
-                            >
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectGroup>
-                                    {classes.map((group) => (
-                                        <SelectItem key={group.uomClassId} value={group.uomClassId}>
-                                            {group.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectGroup>
-                            </SelectContent>
-                        </Select>
+                            aria-invalid={Boolean(errors.uomClassId)}
+                            aria-describedby={id + "-class-error"}
+                            className="h-10 w-full"
+                        />
                         <FieldError id={id + "-class-error"}>{errors.uomClassId}</FieldError>
                     </Field>
                     <Field
@@ -201,14 +181,15 @@ function UomFormContent({
                         data-disabled={isSaving || locked || values.isBase}
                     >
                         <FieldLabel htmlFor={id + "-factorToBase"}>Factor to base unit</FieldLabel>
-                        <Input
+                        <NumericInput
                             id={id + "-factorToBase"}
                             name="factorToBase"
                             value={values.factorToBase}
-                            inputMode="decimal"
+                            maxWholeDigits={10}
+                            maxDecimalPlaces={8}
                             required
                             disabled={isSaving || locked || values.isBase}
-                            onChange={(event) => update("factorToBase", event.target.value)}
+                            onValueChange={(next) => update("factorToBase", next)}
                             aria-invalid={Boolean(errors.factorToBase)}
                             aria-describedby={id + "-factor-feedback"}
                             className="h-10"

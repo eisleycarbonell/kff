@@ -4,6 +4,7 @@ import { useCallback, useEffect } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { getLoadStatus } from "@/lib/load-status"
 import { apiRequest, ApiError } from "@/lib/api-request"
+import { useNotifyTargetStore } from "@/lib/realtime-notify-store"
 import { useSession, SESSION_QUERY_KEY } from "@/hooks/use-session"
 import {
     dashboardDataSchema,
@@ -11,6 +12,15 @@ import {
 } from "@/components/modules/dashboard/dashboard.schema"
 
 export const DASHBOARD_QUERY_KEY = ["dashboard"] as const
+
+const EMPTY_STOCK_BY_TYPE: DashboardData["stockByType"] = []
+const EMPTY_STOCK_BY_LOCATION: DashboardData["stockByLocation"] = []
+const EMPTY_PACKING_ORDERS: DashboardData["activePackingOrders"] = []
+const EMPTY_PURCHASE_ORDERS: DashboardData["pendingPurchaseOrders"] = []
+const EMPTY_TRANSFERS: DashboardData["activeTransfers"] = []
+const EMPTY_EXPIRING_LOTS: DashboardData["expiringLots"] = []
+const EMPTY_LOW_STOCK: DashboardData["lowStockItems"] = []
+const EMPTY_RECENT_ACTIVITY: DashboardData["recentActivity"] = []
 
 export async function getDashboardData(signal?: AbortSignal): Promise<DashboardData> {
     const raw = await apiRequest("/dashboard", { signal })
@@ -24,13 +34,14 @@ export async function getDashboardData(signal?: AbortSignal): Promise<DashboardD
 export function useDashboard() {
     const session = useSession()
     const client = useQueryClient()
+    const socketConnected = useNotifyTargetStore((state) => state.socketId !== null)
     const queryKey = [...DASHBOARD_QUERY_KEY, session.data?.userId]
 
     const dashboardQuery = useQuery({
         queryKey,
         queryFn: ({ signal }) => getDashboardData(signal),
         enabled: Boolean(session.data),
-        refetchInterval: 30_000, // Poll periodically for live overview updates
+        refetchInterval: socketConnected ? false : 30_000,
     })
 
     const loadError = dashboardQuery.error ?? session.error
@@ -51,14 +62,15 @@ export function useDashboard() {
     return {
         data: dashboardQuery.data ?? null,
         summary: dashboardQuery.data?.summary ?? null,
-        stockByType: dashboardQuery.data?.stockByType ?? [],
-        stockByLocation: dashboardQuery.data?.stockByLocation ?? [],
-        activePackingOrders: dashboardQuery.data?.activePackingOrders ?? [],
-        pendingPurchaseOrders: dashboardQuery.data?.pendingPurchaseOrders ?? [],
-        activeTransfers: dashboardQuery.data?.activeTransfers ?? [],
-        expiringLots: dashboardQuery.data?.expiringLots ?? [],
-        lowStockItems: dashboardQuery.data?.lowStockItems ?? [],
-        recentActivity: dashboardQuery.data?.recentActivity ?? [],
+        stockByType: dashboardQuery.data?.stockByType ?? EMPTY_STOCK_BY_TYPE,
+        stockByLocation: dashboardQuery.data?.stockByLocation ?? EMPTY_STOCK_BY_LOCATION,
+        activePackingOrders: dashboardQuery.data?.activePackingOrders ?? EMPTY_PACKING_ORDERS,
+        pendingPurchaseOrders:
+            dashboardQuery.data?.pendingPurchaseOrders ?? EMPTY_PURCHASE_ORDERS,
+        activeTransfers: dashboardQuery.data?.activeTransfers ?? EMPTY_TRANSFERS,
+        expiringLots: dashboardQuery.data?.expiringLots ?? EMPTY_EXPIRING_LOTS,
+        lowStockItems: dashboardQuery.data?.lowStockItems ?? EMPTY_LOW_STOCK,
+        recentActivity: dashboardQuery.data?.recentActivity ?? EMPTY_RECENT_ACTIVITY,
         loadStatus,
         loadError,
         isFetching: session.isFetching || dashboardQuery.isFetching,

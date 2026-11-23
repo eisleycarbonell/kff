@@ -13,6 +13,7 @@ import {
     Settings,
     ArrowLeftRight,
     Truck,
+    Wallet,
 } from "lucide-react"
 import { NavMain } from "@/components/layout/nav-main"
 import { NavUser } from "@/components/layout/nav-user"
@@ -113,7 +114,6 @@ const data = {
                     url: "/items",
                 },
                 { title: "Packing Formulas", url: "/bom" },
-                { title: "Formula Revisions", url: "/formula-revisions" },
                 { title: "Item Packaging", url: "/item-packaging" },
                 { title: "Reorder Levels", url: "/reorder-policies" },
                 { title: "Reason Codes", url: "/reason-codes" },
@@ -145,6 +145,37 @@ const data = {
             ],
         },
         {
+            title: "Accounting",
+            url: "#",
+            icon: Wallet,
+            items: [
+                {
+                    title: "Overview & P&L",
+                    url: "/accounting",
+                },
+                {
+                    title: "General Ledger",
+                    url: "/accounting/general-ledger",
+                },
+                {
+                    title: "Inventory Valuation",
+                    url: "/accounting/valuation",
+                },
+                {
+                    title: "Production Costing",
+                    url: "/accounting/production-costing",
+                },
+                {
+                    title: "Receivables & Margin",
+                    url: "/accounting/receivables-margins",
+                },
+                {
+                    title: "Payables & POs",
+                    url: "/accounting/payables",
+                },
+            ],
+        },
+        {
             title: "Users & Access",
             url: "#",
             icon: UsersRound,
@@ -171,11 +202,27 @@ const data = {
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const session = useSession()
     const company = useCompanySettings()
-    const items = data.navMain.filter(
-        (item) =>
-            item.title !== "Users & Access" ||
-            session.data?.permissions.canManageUsers === true,
-    )
+    const permissions = session.data?.permissions
+    const isAccountingOnly =
+        permissions?.canManageAccounting === true &&
+        permissions.canManageInventory !== true &&
+        permissions.canManagePurchasing !== true &&
+        permissions.canManagePacking !== true &&
+        permissions.canManageTransfers !== true &&
+        permissions.canManageUsers !== true
+
+    const items = data.navMain.filter((item) => {
+        if (item.title === "Accounting") {
+            return permissions?.canManageAccounting === true
+        }
+        if (item.title === "Users & Access") {
+            return permissions?.canManageUsers === true
+        }
+        if (isAccountingOnly) {
+            return item.title === "Dashboard"
+        }
+        return true
+    })
     return (
         <Sidebar variant="inset" {...props}>
             <SidebarHeader>

@@ -28,6 +28,7 @@ export function useCompanySettings() {
         queryKey: ["company-settings", session.data?.userId],
         queryFn: ({ signal }) => getSettings(signal),
         enabled: Boolean(session.data),
+        staleTime: 5 * 60_000,
     })
     const save = useMutation({
         mutationFn: saveSettings,

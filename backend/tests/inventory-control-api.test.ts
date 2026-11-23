@@ -202,9 +202,18 @@ test('control API enforces operational and reviewer permissions and derives acto
             changeType: 'Replace',
             components: [{ componentItemId: 2, quantity: '1', uomId: 1 }],
         };
+        current = { ...current, permissions: { canManageInventory: true } };
         assert.equal((await post('', formula)).status, 403);
-        current = { ...current, permissions: { canManagePacking: true } };
-        assert.equal((await post('', formula)).status, 201);
+        current = { ...current, permissions: { canManageUsers: true, canManagePacking: true } };
+        assert.equal((await post('', formula)).status, 409);
+        header.kind = 'Formula';
+        detail.kind = 'Formula';
+        assert.equal((await fetch(base + '/1', { headers: { cookie } })).status, 200);
+        for (const action of ['submit', 'approve', 'reject', 'cancel', 'reopen'])
+            assert.equal(
+                (await post('/1/actions', { action, reviewNote: 'Retired workflow' })).status,
+                409,
+            );
     } finally {
         await new Promise<void>((resolve) => {
             server.close(() => resolve());
@@ -243,9 +252,8 @@ test('control inputs reject fake approvals, invalid evidence and incompatible wo
     assert.equal(checkedBalance('10', '8', '-2'), '8.0000');
 });
 
-test('only scrap and formula review workflows accept writes', () => {
-    for (const kind of ['Count', 'QC', 'Disposition'])
+test('only scrap review workflows accept writes', () => {
+    for (const kind of ['Count', 'QC', 'Disposition', 'Formula'])
         assert.throws(() => assertActiveControlKind(kind), { status: 409 });
     assert.doesNotThrow(() => assertActiveControlKind('Scrap'));
-    assert.doesNotThrow(() => assertActiveControlKind('Formula'));
 });

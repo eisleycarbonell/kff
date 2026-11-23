@@ -280,16 +280,11 @@ test(
                 'warehouse',
                 201,
             );
-            const revision = await request(
-                '/inventory-controls',
+            await request(
+                '/packing-formulas',
                 'POST',
                 {
-                    requestNumber: 'AUD-FORMULA',
-                    kind: 'Formula',
                     itemId: finished.itemId,
-                    changeType: 'Replace',
-                    effectiveDate: today,
-                    notes: 'Released garlic formula for isolated system-flow verification.',
                     components: [
                         { componentItemId: raw.itemId, uomId: kg, quantity: '0.1' },
                         ...[pouch, label, seal].map((component) => ({
@@ -302,16 +297,6 @@ test(
                 'warehouse',
                 201,
             );
-            await request(
-                `/inventory-controls/${revision.requestId}/actions`,
-                'POST',
-                { action: 'submit', reviewNote: 'Ready for review.' },
-                'warehouse',
-            );
-            await request(`/inventory-controls/${revision.requestId}/actions`, 'POST', {
-                action: 'approve',
-                reviewNote: 'Independent release.',
-            });
             const sale = await request(
                 '/sales-orders',
                 'POST',

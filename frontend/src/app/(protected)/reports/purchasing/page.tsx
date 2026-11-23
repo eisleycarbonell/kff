@@ -13,11 +13,6 @@ export default function Page() {
             <PageHeader
                 title="Purchasing Report"
                 description="Operational records with exact quantities, source references and separate units."
-                actions={
-                    <Button variant="outline" onClick={f.refresh} disabled={f.busy}>
-                        Refresh report
-                    </Button>
-                }
             />
             <ReportFilters
                 kind="purchasing"

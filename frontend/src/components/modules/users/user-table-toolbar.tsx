@@ -12,13 +12,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
+import { ComboboxSelect } from "@/components/shared/combobox-select"
 
 const verificationItems = [
     { value: "all", label: "All email statuses" },
@@ -105,7 +99,8 @@ export function UserTableToolbar({
                     className="h-10 bg-card pl-10"
                 />
             </div>
-            <Select
+            <ComboboxSelect
+                aria-label="Filter by role"
                 items={roleItems}
                 value={(table.getColumn("role")?.getFilterValue() as string) ?? "all"}
                 onValueChange={(value) => {
@@ -113,22 +108,10 @@ export function UserTableToolbar({
                     table.resetRowSelection()
                     table.setPageIndex(0)
                 }}
-            >
-                <SelectTrigger
-                    aria-label="Filter by role"
-                    className="min-w-36 bg-card data-[size=default]:h-10"
-                >
-                    <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                    {roleItems.map((item) => (
-                        <SelectItem key={item.value} value={item.value}>
-                            {item.label}
-                        </SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
-            <Select
+                className="h-10 w-full bg-card sm:w-auto sm:min-w-36"
+            />
+            <ComboboxSelect
+                aria-label="Filter by email status"
                 items={verificationItems}
                 value={(table.getColumn("verification")?.getFilterValue() as string) ?? "all"}
                 onValueChange={(value) => {
@@ -138,21 +121,8 @@ export function UserTableToolbar({
                     table.resetRowSelection()
                     table.setPageIndex(0)
                 }}
-            >
-                <SelectTrigger
-                    aria-label="Filter by email status"
-                    className="min-w-44 bg-card data-[size=default]:h-10"
-                >
-                    <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                    {verificationItems.map((item) => (
-                        <SelectItem key={item.value} value={item.value}>
-                            {item.label}
-                        </SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
+                className="h-10 w-full bg-card sm:w-auto sm:min-w-44"
+            />
             {hasFilters && (
                 <Button variant="ghost" className="h-10" onClick={onClearFilters}>
                     <X />

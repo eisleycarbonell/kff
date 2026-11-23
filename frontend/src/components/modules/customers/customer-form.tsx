@@ -8,7 +8,6 @@ import {
     type CustomerFormErrors,
     type CustomerFormValues,
 } from "@/components/modules/customers/customer.schema"
-import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -57,15 +56,21 @@ function CustomerFormContent({
         isActive: customer?.isActive ?? true,
     }))
     const [errors, setErrors] = useState<CustomerFormErrors>({})
+    const [suppressedSaveError, setSuppressedSaveError] = useState<string | null | undefined>(null)
+    const activeSaveError =
+        error && error !== suppressedSaveError ? error : undefined
+    const nameError = errors.name ?? activeSaveError
 
     function update<Key extends keyof CustomerFormValues>(key: Key, value: CustomerFormValues[Key]) {
         setValues((current) => ({ ...current, [key]: value }))
         setErrors((current) => ({ ...current, [key]: undefined }))
+        if (error) setSuppressedSaveError(error)
     }
 
     async function submit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault()
         if (isSaving) return
+        setSuppressedSaveError(null)
         const normalized: CustomerFormValues = {
             ...values,
             name: values.name.trim(),
@@ -100,7 +105,7 @@ function CustomerFormContent({
             </DialogHeader>
             <form onSubmit={submit} className="space-y-5" aria-busy={isSaving} noValidate>
                 <FieldGroup className="gap-4">
-                    <Field data-invalid={Boolean(errors.name)} data-disabled={isSaving}>
+                    <Field data-invalid={Boolean(nameError)} data-disabled={isSaving}>
                         <FieldLabel htmlFor={`${id}-name`}>Customer name</FieldLabel>
                         <Input
                             id={`${id}-name`}
@@ -112,10 +117,10 @@ function CustomerFormContent({
                             required
                             disabled={isSaving}
                             className="h-10"
-                            aria-invalid={Boolean(errors.name)}
-                            aria-describedby={errors.name ? `${id}-name-error` : undefined}
+                            aria-invalid={Boolean(nameError)}
+                            aria-describedby={nameError ? `${id}-name-error` : undefined}
                         />
-                        <FieldError id={`${id}-name-error`}>{errors.name}</FieldError>
+                        <FieldError id={`${id}-name-error`}>{nameError}</FieldError>
                     </Field>
                     <Field data-invalid={Boolean(errors.contactName)} data-disabled={isSaving}>
                         <FieldLabel htmlFor={`${id}-contactName`}>
@@ -227,11 +232,6 @@ function CustomerFormContent({
                         </FieldContent>
                     </Field>
                 </FieldGroup>
-                {error && (
-                    <Alert variant="destructive">
-                        <AlertDescription>{error}</AlertDescription>
-                    </Alert>
-                )}
                 <DialogFooter>
                     <Button type="button" variant="outline" disabled={isSaving} onClick={() => onOpenChange(false)}>
                         Cancel

@@ -21,14 +21,14 @@ export const PackingFormulaStatistics = memo(function PackingFormulaStatistics({
         },
     ]
     return (
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-3">
             {cards.map(({ label, value, icon: Icon }) => (
-                <Card key={label} className="border py-5 ring-0">
-                    <CardContent className="flex items-start gap-4 px-5">
-                        <Icon className="mt-0.5 size-6 text-primary" aria-hidden="true" />
-                        <div>
-                            <p className="text-sm text-muted-foreground">{label}</p>
-                            <p className="mt-2 text-3xl font-semibold tabular-nums">{value}</p>
+                <Card key={label} className="border py-3 ring-0">
+                    <CardContent className="flex items-start gap-3 px-4">
+                        <Icon className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden="true" />
+                        <div className="min-w-0">
+                            <p className="text-xs text-muted-foreground">{label}</p>
+                            <p className="mt-1 text-xl font-semibold tabular-nums sm:text-2xl">{value}</p>
                         </div>
                     </CardContent>
                 </Card>

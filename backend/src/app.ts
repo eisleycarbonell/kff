@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { createSettingsRouter } from './modules/company-settings/company-setting.routes.ts';
 import type { SettingsService } from './modules/company-settings/company-setting.controller.ts';
 import { createReasonCodeRouter } from './modules/reason-codes/reason-code.routes.ts';
@@ -20,8 +21,10 @@ import type { StockService } from './modules/inventory-stocks/inventory-stock.co
 import express from 'express';
 
 import { AppError } from './errors/app-error.ts';
+import { createCompressionMiddleware } from './middleware/compression.ts';
 import { errorHandler } from './middleware/error-handler.ts';
 import httpLogger from './middleware/httpLogger.ts';
+import logger from './utils/logger.ts';
 import type { UserService } from './modules/users/user.controller.ts';
 import { createUserRouter } from './modules/users/user.routes.ts';
 import HttpStatusCode from './utils/statusCodeHandler.ts';
@@ -59,8 +62,15 @@ import type { FormulaService } from './modules/packing-formulas/packing-formula.
 import type { DeliveryOrderService } from './modules/delivery-orders/delivery-order.controller.ts';
 import { createInventoryReportRouter } from './modules/inventory-reports/inventory-report.routes.ts';
 import type { InventoryReportService } from './modules/inventory-reports/inventory-report.controller.ts';
+import { createAccountingRouter } from './modules/accounting/accounting.routes.ts';
+import type { AccountingService } from './modules/accounting/accounting.controller.ts';
+import { createNotificationRouter } from './modules/notifications/notification.routes.ts';
+import type { NotificationService } from './modules/notifications/notification.controller.ts';
+import { parseNotifyHeaders } from './modules/notifications/notification.schema.ts';
+import { resolveMutationContext } from './modules/notifications/notification.rules.ts';
+import { emitDataSync, isRealtimeEnabled, normalizeSocketId } from './realtime/socket.ts';
 
-function parseCorsOrigins(rawOrigin = process.env.CORS_ORIGIN) {
+export function parseCorsOrigins(rawOrigin = process.env.CORS_ORIGIN) {
     const origins = (rawOrigin ?? 'http://localhost:3000')
         .split(',')
         .map((origin) => origin.trim().replace(/\/+$/, ''))
@@ -96,6 +106,8 @@ export function createApp(modules: {
     reorderPolicyService?: ReorderPolicyService;
     controlService?: ControlService;
     operationalReportService?: OperationalReportService;
+    accountingService?: AccountingService;
+    notificationService?: NotificationService;
 }) {
     const app = express();
 
@@ -106,17 +118,86 @@ export function createApp(modules: {
             origin: parseCorsOrigins(),
             credentials: true,
             methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
-            allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+            allowedHeaders: [
+                'Content-Type',
+                'Authorization',
+                'Accept',
+                'X-Notify-Mode',
+                'X-Notify-Role-Ids',
+                'X-Notify-Message',
+                'X-Socket-Id',
+            ],
         }),
     );
+    app.use(createCompressionMiddleware());
     app.use(express.json());
 
     app.get('/api/health', (_request, response) => {
         sendSuccessResponse(response, {
             status: 'ok',
             uptime: process.uptime(),
+            realtime: isRealtimeEnabled(),
             timestamp: new Date().toISOString(),
         });
+    });
+
+    app.use('/api', (request, response, next) => {
+        if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method)) {
+            return next();
+        }
+        const path = request.originalUrl || request.url;
+        if (path.startsWith('/api/auth/') || path.startsWith('/api/notifications')) {
+            return next();
+        }
+        const notifySelection = parseNotifyHeaders(request.headers);
+        const originSocketId = normalizeSocketId(request.headers['x-socket-id']);
+        response.on('finish', () => {
+            if (response.statusCode < 200 || response.statusCode >= 300) return;
+            const session = response.locals.session as
+                { userId: number; firstName: string; lastName: string; roleId: number } | undefined;
+            if (!session) return;
+            const actor = session;
+
+            if (modules.notificationService) {
+                void modules.notificationService
+                    .recordMutationSyncAndNotification({
+                        method: request.method,
+                        path,
+                        actor,
+                        notifySelection,
+                        originSocketId,
+                    })
+                    .catch((error) => {
+                        logger.warn(
+                            {
+                                path,
+                                reason: error instanceof Error ? error.message : String(error),
+                            },
+                            'Realtime mutation sync/notification failed',
+                        );
+                    });
+                return;
+            }
+
+            const context = resolveMutationContext(request.method, path);
+            emitDataSync(
+                {
+                    eventId: randomUUID(),
+                    module: context.module,
+                    action: context.action,
+                    method: request.method,
+                    path: path.split('?')[0] ?? path,
+                    entityId: context.entityId,
+                    queryKeys: context.queryKeys,
+                    actorUserId: actor.userId,
+                    actorName: `${actor.firstName} ${actor.lastName}`.trim() || 'User',
+                    actorRoleId: actor.roleId,
+                    timestamp: new Date().toISOString(),
+                },
+                { excludeSocketId: originSocketId },
+            );
+        });
+        next();
     });
 
     const authenticate = createAuthMiddleware(modules.authService);
@@ -210,6 +291,13 @@ export function createApp(modules: {
         app.use('/api/transfers', createTransferRouter(modules.transferService, authenticate));
     if (modules.dashboardService)
         app.use('/api/dashboard', createDashboardRouter(modules.dashboardService, authenticate));
+    if (modules.accountingService)
+        app.use('/api/accounting', createAccountingRouter(modules.accountingService, authenticate));
+    if (modules.notificationService)
+        app.use(
+            '/api/notifications',
+            createNotificationRouter(modules.notificationService, authenticate),
+        );
     app.use((_request, _response, next) => {
         next(new AppError(HttpStatusCode.NOT_FOUND, 'Route not found.'));
     });

@@ -46,7 +46,15 @@ const isInUse = sql<boolean>`(
     exists (select 1 from ${salesOrderLines} where ${salesOrderLines.itemId} = ${items.itemId})
 )`;
 
-const itemFields = {
+type SupplierLink = {
+    supplierItemId: number;
+    supplierId: number;
+    name: string;
+    isActive: boolean;
+    supplierIsActive: boolean;
+};
+
+const baseItemFields = {
     itemId: items.itemId,
     sku: items.sku,
     name: items.name,
@@ -61,20 +69,19 @@ const itemFields = {
     shelfLifeDays: items.shelfLifeDays,
     requiresQc: items.requiresQc,
     unitCost: items.unitCost,
+    isVatable: items.isVatable,
     isActive: items.isActive,
     createdBy: items.createdBy,
     createdAt: items.createdAt,
     updatedBy: items.updatedBy,
     updatedAt: items.updatedAt,
+};
+
+const itemFields = {
+    ...baseItemFields,
     isInUse,
     supplierLinks: sql<
-        {
-            supplierItemId: number;
-            supplierId: number;
-            name: string;
-            isActive: boolean;
-            supplierIsActive: boolean;
-        }[]
+        SupplierLink[]
     >`coalesce((select jsonb_agg(jsonb_build_object('supplierItemId', ${supplierItems.supplierItemId}, 'supplierId', ${suppliers.supplierId}, 'name', ${suppliers.name}, 'isActive', ${supplierItems.isActive}, 'supplierIsActive', ${suppliers.isActive}) order by ${suppliers.name}) from ${supplierItems} join ${suppliers} on ${suppliers.supplierId} = ${supplierItems.supplierId} where ${supplierItems.itemId} = ${items.itemId}), '[]'::jsonb)`,
 };
 type Reader = Pick<typeof db, 'select'>;
@@ -87,7 +94,66 @@ const itemQuery = (database: Reader = db) =>
         .innerJoin(uomClasses, eq(uoms.uomClassId, uomClasses.uomClassId));
 
 export async function listItems() {
-    return itemQuery().orderBy(asc(items.name), asc(items.itemId));
+    const [baseRows, linkRows, usedRows] = await Promise.all([
+        db
+            .select(baseItemFields)
+            .from(items)
+            .leftJoin(label, eq(items.labelItemId, label.itemId))
+            .innerJoin(uoms, eq(items.primaryUomId, uoms.uomId))
+            .innerJoin(uomClasses, eq(uoms.uomClassId, uomClasses.uomClassId))
+            .orderBy(asc(items.name), asc(items.itemId)),
+        db
+            .select({
+                itemId: supplierItems.itemId,
+                supplierItemId: supplierItems.supplierItemId,
+                supplierId: suppliers.supplierId,
+                name: suppliers.name,
+                isActive: supplierItems.isActive,
+                supplierIsActive: suppliers.isActive,
+            })
+            .from(supplierItems)
+            .innerJoin(suppliers, eq(suppliers.supplierId, supplierItems.supplierId))
+            .orderBy(asc(suppliers.name)),
+        db.execute<{ item_id: number }>(sql`
+            select label_item_id as item_id from items where label_item_id is not null
+            union select item_id from reorder_policies
+            union select item_id from formula_revisions
+            union select component_item_id as item_id from formula_revision_materials
+            union select item_id from supplier_items
+            union select parent_item_id as item_id from bill_of_materials
+            union select component_item_id as item_id from bill_of_materials
+            union select item_id from item_packaging
+            union select item_id from purchase_order_lines
+            union select item_id from packing_orders
+            union select item_id from packing_order_materials
+            union select item_id from lots
+            union select item_id from inventory_stock
+            union select item_id from inventory_reservations
+            union select item_id from inventory_transactions
+            union select item_id from stock_transfer_lines
+            union select item_id from sales_order_lines
+        `),
+    ]);
+
+    const usedItemIds = new Set(usedRows.map((row) => Number(row.item_id)));
+    const linksByItemId = new Map<number, SupplierLink[]>();
+    for (const row of linkRows) {
+        const list = linksByItemId.get(row.itemId) ?? [];
+        list.push({
+            supplierItemId: row.supplierItemId,
+            supplierId: row.supplierId,
+            name: row.name,
+            isActive: row.isActive,
+            supplierIsActive: row.supplierIsActive,
+        });
+        linksByItemId.set(row.itemId, list);
+    }
+
+    return baseRows.map((row) => ({
+        ...row,
+        isInUse: usedItemIds.has(row.itemId),
+        supplierLinks: linksByItemId.get(row.itemId) ?? [],
+    }));
 }
 export async function getItem(
     id: number,

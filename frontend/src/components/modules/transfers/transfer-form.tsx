@@ -24,13 +24,8 @@ import {
 import { Field, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
+import { ComboboxSelect } from "@/components/shared/combobox-select"
+import { NumericInput } from "@/components/shared/numeric-input"
 
 type Props = {
     open: boolean
@@ -185,7 +180,8 @@ function TransferFormContent({
                             <FieldLabel htmlFor={`${id}-sourceLocationId`}>
                                 Source warehouse
                             </FieldLabel>
-                            <Select
+                            <ComboboxSelect
+                                id={`${id}-sourceLocationId`}
                                 name="sourceLocationId"
                                 items={sources}
                                 value={values.sourceLocationId}
@@ -203,23 +199,11 @@ function TransferFormContent({
                                     }))
                                     setErrors({})
                                 }}
-                            >
-                                <SelectTrigger
-                                    id={`${id}-sourceLocationId`}
-                                    className="w-full data-[size=default]:h-10"
-                                    aria-invalid={Boolean(errors.sourceLocationId)}
-                                    aria-describedby={`${id}-source-help`}
-                                >
-                                    <SelectValue placeholder="Select source warehouse" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {sources.map((row) => (
-                                        <SelectItem key={row.value} value={row.value}>
-                                            {row.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                                placeholder="Select source warehouse"
+                                aria-invalid={Boolean(errors.sourceLocationId)}
+                                aria-describedby={`${id}-source-help`}
+                                className="h-10 w-full"
+                            />
                             <p id={`${id}-source-help`} className="text-xs text-muted-foreground">
                                 Changing the source clears selected lots.
                             </p>
@@ -229,28 +213,17 @@ function TransferFormContent({
                             <FieldLabel htmlFor={`${id}-destinationLocationId`}>
                                 Destination
                             </FieldLabel>
-                            <Select
+                            <ComboboxSelect
+                                id={`${id}-destinationLocationId`}
                                 name="destinationLocationId"
                                 items={destinations}
                                 value={values.destinationLocationId}
                                 disabled={isSubmitting}
                                 onValueChange={(value) => update("destinationLocationId", value)}
-                            >
-                                <SelectTrigger
-                                    id={`${id}-destinationLocationId`}
-                                    className="w-full data-[size=default]:h-10"
-                                    aria-invalid={Boolean(errors.destinationLocationId)}
-                                >
-                                    <SelectValue placeholder="Select warehouse, branch or store" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {destinations.map((row) => (
-                                        <SelectItem key={row.value} value={row.value}>
-                                            {row.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                                placeholder="Select warehouse, branch or store"
+                                aria-invalid={Boolean(errors.destinationLocationId)}
+                                className="h-10 w-full"
+                            />
                             <FieldError>{errors.destinationLocationId}</FieldError>
                         </Field>
                     </div>
@@ -264,7 +237,9 @@ function TransferFormContent({
                                 stock.
                             </p>
                         </div>
-                        <Select
+                        <ComboboxSelect
+                            id={`${id}-lines`}
+                            aria-label="Add finished-product lot"
                             items={lotItems}
                             value={null}
                             disabled={
@@ -281,24 +256,11 @@ function TransferFormContent({
                                         { itemId: lot.itemId, lotId: lot.lotId, qtyRequested: "" },
                                     ])
                             }}
-                        >
-                            <SelectTrigger
-                                id={`${id}-lines`}
-                                aria-label="Add finished-product lot"
-                                className="w-full data-[size=default]:h-10"
-                                aria-invalid={Boolean(errors.lines)}
-                            >
-                                <Plus className="size-4" />
-                                <SelectValue placeholder="Add a finished-product lot" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {lotItems.map((row) => (
-                                    <SelectItem key={row.value} value={row.value}>
-                                        {row.label}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                            startIcon={<Plus className="size-4" />}
+                            placeholder="Add a finished-product lot"
+                            aria-invalid={Boolean(errors.lines)}
+                            className="h-10 w-full"
+                        />
                         {values.sourceLocationId &&
                             !availableLots.length &&
                             !values.lines.length && (
@@ -376,23 +338,24 @@ function TransferFormContent({
                                             Requested quantity{" "}
                                             {label ? `(${label.primaryUomName})` : ""}
                                         </FieldLabel>
-                                        <Input
+                                        <NumericInput
                                             id={`${id}-qty-${line.lotId}`}
                                             name={`quantity-${line.lotId}`}
-                                            inputMode="decimal"
+                                            maxWholeDigits={10}
+                                            maxDecimalPlaces={4}
                                             required
                                             value={line.qtyRequested}
                                             disabled={isSubmitting}
                                             aria-invalid={Boolean(errors.lines)}
-                                            onChange={(event) =>
+                                            onValueChange={(next) =>
                                                 update(
                                                     "lines",
                                                     values.lines.map((row) =>
                                                         row.lotId === line.lotId
                                                             ? {
-                                                                  ...row,
-                                                                  qtyRequested: event.target.value,
-                                                              }
+                                                                ...row,
+                                                                qtyRequested: next,
+                                                            }
                                                             : row,
                                                     ),
                                                 )

@@ -20,16 +20,6 @@ export default function StockMovementsPage() {
             <PageHeader
                 title="Stock Movements"
                 description="Trace receiving, packing, transfers, scrap, and adjustments by item, lot, and location."
-                actions={
-                    <Button
-                        variant="outline"
-                        className="h-10"
-                        onClick={feature.retry}
-                        disabled={feature.isFetching}
-                    >
-                        Refresh
-                    </Button>
-                }
             />
             {feature.loadStatus === "signed-out" && (
                 <Alert>

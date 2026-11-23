@@ -8,7 +8,6 @@ import {
     type SupplierFormErrors,
     type SupplierFormValues,
 } from "@/components/modules/suppliers/supplier.schema"
-import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -54,6 +53,10 @@ function SupplierFormContent({
         isActive: supplier?.isActive ?? true,
     }))
     const [errors, setErrors] = useState<SupplierFormErrors>({})
+    const [suppressedSaveError, setSuppressedSaveError] = useState<string | null | undefined>(null)
+    const activeSaveError =
+        saveError && saveError !== suppressedSaveError ? saveError : undefined
+    const nameError = errors.name ?? activeSaveError
 
     function update<Key extends keyof SupplierFormValues>(
         key: Key,
@@ -61,11 +64,13 @@ function SupplierFormContent({
     ) {
         setValues((current) => ({ ...current, [key]: value }))
         setErrors((current) => ({ ...current, [key]: undefined }))
+        if (saveError) setSuppressedSaveError(saveError)
     }
 
     async function submit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault()
         if (isSaving) return
+        setSuppressedSaveError(null)
         const normalized = {
             ...values,
             name: values.name.trim(),
@@ -96,7 +101,7 @@ function SupplierFormContent({
             </DialogHeader>
             <form onSubmit={submit} className="space-y-5" aria-busy={isSaving}>
                 <FieldGroup className="gap-4">
-                    <Field data-invalid={Boolean(errors.name)} data-disabled={isSaving}>
+                    <Field data-invalid={Boolean(nameError)} data-disabled={isSaving}>
                         <FieldLabel htmlFor={`${id}-name`}>Supplier name</FieldLabel>
                         <Input
                             id={`${id}-name`}
@@ -108,10 +113,10 @@ function SupplierFormContent({
                             required
                             disabled={isSaving}
                             className="h-10"
-                            aria-invalid={Boolean(errors.name)}
+                            aria-invalid={Boolean(nameError)}
                             aria-describedby={`${id}-name-error`}
                         />
-                        <FieldError id={`${id}-name-error`}>{errors.name}</FieldError>
+                        <FieldError id={`${id}-name-error`}>{nameError}</FieldError>
                     </Field>
                     <Field data-invalid={Boolean(errors.email)} data-disabled={isSaving}>
                         <FieldLabel htmlFor={`${id}-email`}>
@@ -159,11 +164,6 @@ function SupplierFormContent({
                         </FieldContent>
                     </Field>
                 </FieldGroup>
-                {saveError && (
-                    <Alert variant="destructive">
-                        <AlertDescription>{saveError}</AlertDescription>
-                    </Alert>
-                )}
                 <DialogFooter>
                     <Button
                         type="button"

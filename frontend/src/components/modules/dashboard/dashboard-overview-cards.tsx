@@ -4,11 +4,13 @@ import {
     AlertCircle,
     ArrowLeftRight,
     Boxes,
+    ClipboardCheck,
     Clock,
     Coins,
     Factory,
     PackageCheck,
     ShoppingCart,
+    Truck,
 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -167,31 +169,82 @@ export function DashboardOverviewCards({ summary }: { summary: DashboardSummary 
                 { label: "Impact", value: "Packing Risk" },
             ],
         },
+        ...(summary.openSalesOrdersCount !== undefined
+            ? [
+                  {
+                      title: "Open Sales Orders",
+                      value: summary.openSalesOrdersCount,
+                      badge: `${summary.confirmedSalesOrdersCount ?? 0} ready to ship`,
+                      badgeVariant:
+                          (summary.confirmedSalesOrdersCount ?? 0) > 0
+                              ? ("default" as const)
+                              : ("secondary" as const),
+                      icon: ClipboardCheck,
+                      color: "text-indigo-600 dark:text-indigo-400",
+                      bg: "bg-indigo-500/10",
+                      border: "hover:border-indigo-500/30",
+                      details: [
+                          {
+                              label: "Ready/Partial",
+                              value: String(summary.confirmedSalesOrdersCount ?? 0),
+                          },
+                          { label: "Status", value: "Open Demand" },
+                      ],
+                  },
+              ]
+            : []),
+        ...(summary.activeDeliveriesCount !== undefined
+            ? [
+                  {
+                      title: "Customer Deliveries",
+                      value: summary.activeDeliveriesCount,
+                      badge: `${summary.inTransitDeliveriesCount ?? 0} in transit`,
+                      badgeVariant:
+                          (summary.inTransitDeliveriesCount ?? 0) > 0
+                              ? ("default" as const)
+                              : ("outline" as const),
+                      icon: Truck,
+                      color: "text-emerald-600 dark:text-emerald-400",
+                      bg: "bg-emerald-500/10",
+                      border: "hover:border-emerald-500/30",
+                      details: [
+                          {
+                              label: "In Transit",
+                              value: String(summary.inTransitDeliveriesCount ?? 0),
+                          },
+                          {
+                              label: "Completed",
+                              value: String(summary.completedDeliveriesCount ?? 0),
+                          },
+                      ],
+                  },
+              ]
+            : []),
     ]
 
     return (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
             {cards.map((card) => {
                 const Icon = card.icon
                 return (
                     <Card
                         key={card.title}
-                        className={`group relative overflow-hidden border transition-all duration-200 hover:shadow-md ${card.border}`}
+                        className={`group relative overflow-hidden border py-0 transition-all duration-200 hover:shadow-md ${card.border}`}
                     >
-                        <CardContent className="p-5">
+                        <CardContent className="p-3.5">
                             <div className="flex items-start justify-between gap-2">
                                 <span className="text-xs font-medium text-muted-foreground">
                                     {card.title}
                                 </span>
                                 <div
-                                    className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${card.bg}`}
+                                    className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${card.bg}`}
                                 >
-                                    <Icon className={`size-4.5 ${card.color}`} />
+                                    <Icon className={`size-4 ${card.color}`} />
                                 </div>
                             </div>
 
-                            <div className="mt-3 flex items-baseline justify-between gap-2">
-                                <span className="text-2xl font-bold tracking-tight tabular-nums">
+                            <div className="mt-1.5 flex items-baseline justify-between gap-2">
+                                <span className="text-lg font-bold tracking-tight tabular-nums sm:text-xl">
                                     {card.value}
                                 </span>
                                 <Badge
@@ -202,7 +255,7 @@ export function DashboardOverviewCards({ summary }: { summary: DashboardSummary 
                                 </Badge>
                             </div>
 
-                            <div className="mt-4 flex items-center justify-between border-t border-border/50 pt-2.5 text-[11px] text-muted-foreground">
+                            <div className="mt-2.5 flex items-center justify-between border-t border-border/50 pt-2 text-[11px] text-muted-foreground">
                                 {card.details.map((detail, index) => (
                                     <span key={index} className="truncate">
                                         <span className="font-normal">{detail.label}: </span>

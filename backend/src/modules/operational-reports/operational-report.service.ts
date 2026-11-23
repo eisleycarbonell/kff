@@ -1,4 +1,4 @@
-import { asc, eq } from 'drizzle-orm';
+import { and, asc, eq, gte, inArray, isNull, lt } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { db } from '../../db/index.ts';
 import {
@@ -28,6 +28,7 @@ import { purchaseOrderAmounts } from '../purchase-orders/purchase-order.rules.ts
 import { getSettings } from '../company-settings/company-setting.service.ts';
 import { AppError } from '../../errors/app-error.ts';
 import type { OperationalReportQuery, ReportSection } from './operational-report.schema.ts';
+
 const section = (
     title: string,
     labels: Record<string, string>,
@@ -38,6 +39,13 @@ const section = (
     rows,
 });
 const date = (value: Date | string | null) => (value instanceof Date ? value.toISOString() : value);
+
+function nextUtcDay(day: string): Date {
+    const end = new Date(`${day}T00:00:00.000Z`);
+    end.setUTCDate(end.getUTCDate() + 1);
+    return end;
+}
+
 export async function getOperationalReport(q: OperationalReportQuery, database: typeof db = db) {
     return database.transaction(
         async (tx) => {
@@ -47,6 +55,17 @@ export async function getOperationalReport(q: OperationalReportQuery, database: 
                 return Boolean(
                     day && (!q.fromDate || day >= q.fromDate) && (!q.toDate || day <= q.toDate),
                 );
+            };
+            const timestampRange = (
+                column:
+                    | typeof purchaseOrders.orderDate
+                    | typeof packingOrders.createdAt
+                    | typeof stockTransfers.requestedAt,
+            ) => {
+                const conds = [];
+                if (q.fromDate) conds.push(gte(column, new Date(`${q.fromDate}T00:00:00.000Z`)));
+                if (q.toDate) conds.push(lt(column, nextUtcDay(q.toDate)));
+                return conds.length ? and(...conds) : undefined;
             };
             const result = {
                 report: q.report,
@@ -69,6 +88,7 @@ export async function getOperationalReport(q: OperationalReportQuery, database: 
                     .innerJoin(suppliers, eq(suppliers.supplierId, purchaseOrders.supplierId))
                     .innerJoin(items, eq(items.itemId, purchaseOrderLines.itemId))
                     .innerJoin(uoms, eq(uoms.uomId, purchaseOrderLines.uomId))
+                    .where(timestampRange(purchaseOrders.orderDate))
                     .orderBy(asc(purchaseOrders.poId), asc(purchaseOrderLines.poLineId));
                 result.sections.push(
                     section(
@@ -130,9 +150,10 @@ export async function getOperationalReport(q: OperationalReportQuery, database: 
                     .innerJoin(uoms, eq(uoms.uomId, items.primaryUomId))
                     .innerJoin(source, eq(source.locationId, packingOrders.sourceLocationId))
                     .innerJoin(dest, eq(dest.locationId, packingOrders.destinationLocationId))
+                    .where(timestampRange(packingOrders.createdAt))
                     .orderBy(asc(packingOrders.packingOrderId));
                 const selected = rows.filter((r) => inRange(r.order.createdAt));
-                const ids = new Set(selected.map((r) => r.order.packingOrderId));
+                const packingIds = selected.map((r) => r.order.packingOrderId);
                 result.sections.push(
                     section(
                         'Packing output and variance',
@@ -172,25 +193,52 @@ export async function getOperationalReport(q: OperationalReportQuery, database: 
                         })),
                     ),
                 );
-                const materials = await tx
-                    .select({
-                        material: packingOrderMaterials,
-                        number: packingOrders.packingOrderNumber,
-                        sku: items.sku,
-                        name: items.name,
-                        uom: uoms.name,
-                    })
-                    .from(packingOrderMaterials)
-                    .innerJoin(
-                        packingOrders,
-                        eq(packingOrders.packingOrderId, packingOrderMaterials.packingOrderId),
-                    )
-                    .innerJoin(items, eq(items.itemId, packingOrderMaterials.itemId))
-                    .innerJoin(uoms, eq(uoms.uomId, items.primaryUomId));
-                const consumes = await tx
-                    .select()
-                    .from(inventoryTransactions)
-                    .where(eq(inventoryTransactions.transactionType, 'Consume'));
+                const [materials, consumes] =
+                    packingIds.length > 0
+                        ? await Promise.all([
+                              tx
+                                  .select({
+                                      material: packingOrderMaterials,
+                                      number: packingOrders.packingOrderNumber,
+                                      sku: items.sku,
+                                      name: items.name,
+                                      uom: uoms.name,
+                                  })
+                                  .from(packingOrderMaterials)
+                                  .innerJoin(
+                                      packingOrders,
+                                      eq(
+                                          packingOrders.packingOrderId,
+                                          packingOrderMaterials.packingOrderId,
+                                      ),
+                                  )
+                                  .innerJoin(items, eq(items.itemId, packingOrderMaterials.itemId))
+                                  .innerJoin(uoms, eq(uoms.uomId, items.primaryUomId))
+                                  .where(inArray(packingOrderMaterials.packingOrderId, packingIds)),
+                              tx
+                                  .select({
+                                      packingOrderId: inventoryTransactions.packingOrderId,
+                                      itemId: inventoryTransactions.itemId,
+                                      qtyChange: inventoryTransactions.qtyChange,
+                                  })
+                                  .from(inventoryTransactions)
+                                  .where(
+                                      and(
+                                          eq(inventoryTransactions.transactionType, 'Consume'),
+                                          inArray(inventoryTransactions.packingOrderId, packingIds),
+                                      ),
+                                  ),
+                          ])
+                        : [[], []];
+                const consumedByPackingItem = new Map<string, bigint>();
+                for (const t of consumes) {
+                    if (t.packingOrderId === null) continue;
+                    const key = `${t.packingOrderId}:${t.itemId}`;
+                    consumedByPackingItem.set(
+                        key,
+                        (consumedByPackingItem.get(key) ?? 0n) - quantityUnits(t.qtyChange),
+                    );
+                }
                 result.sections.push(
                     section(
                         'Saved material requirements and actual consumption',
@@ -202,24 +250,18 @@ export async function getOperationalReport(q: OperationalReportQuery, database: 
                             consumed: 'Ledger consumption',
                             uom: 'Primary UOM',
                         },
-                        materials
-                            .filter((r) => ids.has(r.material.packingOrderId))
-                            .map((r) => ({
-                                number: r.number,
-                                sku: r.sku,
-                                item: r.name,
-                                required: r.material.requiredQty,
-                                consumed: quantityString(
-                                    consumes
-                                        .filter(
-                                            (t) =>
-                                                t.packingOrderId === r.material.packingOrderId &&
-                                                t.itemId === r.material.itemId,
-                                        )
-                                        .reduce((sum, t) => sum - quantityUnits(t.qtyChange), 0n),
-                                ),
-                                uom: r.uom,
-                            })),
+                        materials.map((r) => ({
+                            number: r.number,
+                            sku: r.sku,
+                            item: r.name,
+                            required: r.material.requiredQty,
+                            consumed: quantityString(
+                                consumedByPackingItem.get(
+                                    `${r.material.packingOrderId}:${r.material.itemId}`,
+                                ) ?? 0n,
+                            ),
+                            uom: r.uom,
+                        })),
                     ),
                 );
             } else if (q.report === 'transfers') {
@@ -246,6 +288,7 @@ export async function getOperationalReport(q: OperationalReportQuery, database: 
                     .innerJoin(uoms, eq(uoms.uomId, items.primaryUomId))
                     .innerJoin(source, eq(source.locationId, stockTransfers.sourceLocationId))
                     .innerJoin(dest, eq(dest.locationId, stockTransfers.destinationLocationId))
+                    .where(timestampRange(stockTransfers.requestedAt))
                     .orderBy(
                         asc(stockTransfers.transferId),
                         asc(stockTransferLines.transferLineId),
@@ -291,34 +334,49 @@ export async function getOperationalReport(q: OperationalReportQuery, database: 
                     ),
                 );
             } else {
-                const catalog = await tx
-                    .select({ lot: lots, sku: items.sku, name: items.name, uom: uoms.name })
-                    .from(lots)
-                    .innerJoin(items, eq(items.itemId, lots.itemId))
-                    .innerJoin(uoms, eq(uoms.uomId, items.primaryUomId))
-                    .orderBy(asc(lots.lotId));
-                if (q.lotId && !catalog.some((r) => r.lot.lotId === q.lotId))
+                const [catalog, ledger] = await Promise.all([
+                    tx
+                        .select({ lot: lots, sku: items.sku, name: items.name, uom: uoms.name })
+                        .from(lots)
+                        .innerJoin(items, eq(items.itemId, lots.itemId))
+                        .innerJoin(uoms, eq(uoms.uomId, items.primaryUomId))
+                        .orderBy(asc(lots.lotId)),
+                    tx
+                        .select()
+                        .from(inventoryTransactions)
+                        .orderBy(asc(inventoryTransactions.transactionId)),
+                ]);
+                const catalogByLotId = new Map(catalog.map((r) => [r.lot.lotId, r]));
+                if (q.lotId && !catalogByLotId.has(q.lotId))
                     throw new AppError(400, 'Select an existing lot.');
-                const ledger = await tx
-                    .select()
-                    .from(inventoryTransactions)
-                    .orderBy(asc(inventoryTransactions.transactionId));
+
+                const consumesByPackingOrder = new Map<number, typeof ledger>();
+                const producedRows: typeof ledger = [];
+                for (const t of ledger) {
+                    if (!t.packingOrderId) continue;
+                    if (t.transactionType === 'Consume') {
+                        const list = consumesByPackingOrder.get(t.packingOrderId) ?? [];
+                        list.push(t);
+                        consumesByPackingOrder.set(t.packingOrderId, list);
+                    } else if (t.transactionType === 'Produce') {
+                        producedRows.push(t);
+                    }
+                }
+
                 const edges: { parent: number; child: number; order: number; quantity: string }[] =
                     [];
-                for (const produced of ledger.filter(
-                    (t) => t.transactionType === 'Produce' && t.packingOrderId,
-                ))
-                    for (const consumed of ledger.filter(
-                        (t) =>
-                            t.transactionType === 'Consume' &&
-                            t.packingOrderId === produced.packingOrderId,
-                    ))
+                for (const produced of producedRows) {
+                    const packingOrderId = produced.packingOrderId!;
+                    for (const consumed of consumesByPackingOrder.get(packingOrderId) ?? []) {
                         edges.push({
                             parent: consumed.lotId,
                             child: produced.lotId,
-                            order: produced.packingOrderId!,
+                            order: packingOrderId,
                             quantity: quantityString(-quantityUnits(consumed.qtyChange)),
                         });
+                    }
+                }
+
                 const ancestors = new Set<number>(),
                     descendants = new Set<number>();
                 const walk = (id: number, direction: 'up' | 'down', seen: Set<number>) => {
@@ -335,16 +393,84 @@ export async function getOperationalReport(q: OperationalReportQuery, database: 
                 const selected = new Set(
                     q.lotId ? [...ancestors, ...descendants] : catalog.map((r) => r.lot.lotId),
                 );
-                const orders = await tx.select().from(packingOrders),
-                    poLines = await tx
-                        .select({
-                            line: purchaseOrderLines,
-                            number: purchaseOrders.poNumber,
-                            supplier: suppliers.name,
-                        })
-                        .from(purchaseOrderLines)
-                        .innerJoin(purchaseOrders, eq(purchaseOrders.poId, purchaseOrderLines.poId))
-                        .innerJoin(suppliers, eq(suppliers.supplierId, purchaseOrders.supplierId));
+                const selectedIds = [...selected];
+
+                const [orders, poLines, stocks, reservations, transfers, deliveries] =
+                    await Promise.all([
+                        tx.select().from(packingOrders),
+                        tx
+                            .select({
+                                line: purchaseOrderLines,
+                                number: purchaseOrders.poNumber,
+                                supplier: suppliers.name,
+                            })
+                            .from(purchaseOrderLines)
+                            .innerJoin(
+                                purchaseOrders,
+                                eq(purchaseOrders.poId, purchaseOrderLines.poId),
+                            )
+                            .innerJoin(
+                                suppliers,
+                                eq(suppliers.supplierId, purchaseOrders.supplierId),
+                            ),
+                        selectedIds.length > 0
+                            ? tx
+                                  .select({ stock: inventoryStock, location: locations.name })
+                                  .from(inventoryStock)
+                                  .innerJoin(
+                                      locations,
+                                      eq(locations.locationId, inventoryStock.locationId),
+                                  )
+                                  .where(inArray(inventoryStock.lotId, selectedIds))
+                            : Promise.resolve([]),
+                        selectedIds.length > 0
+                            ? tx
+                                  .select()
+                                  .from(inventoryReservations)
+                                  .where(
+                                      and(
+                                          inArray(inventoryReservations.lotId, selectedIds),
+                                          isNull(inventoryReservations.releasedAt),
+                                      ),
+                                  )
+                            : Promise.resolve([]),
+                        tx
+                            .select({
+                                id: stockTransferLines.transferLineId,
+                                number: stockTransfers.transferNumber,
+                            })
+                            .from(stockTransferLines)
+                            .innerJoin(
+                                stockTransfers,
+                                eq(stockTransfers.transferId, stockTransferLines.transferId),
+                            ),
+                        tx
+                            .select({
+                                id: deliveryOrderLines.deliveryOrderLineId,
+                                number: deliveryOrders.deliveryOrderNumber,
+                            })
+                            .from(deliveryOrderLines)
+                            .innerJoin(
+                                deliveryOrders,
+                                eq(
+                                    deliveryOrders.deliveryOrderId,
+                                    deliveryOrderLines.deliveryOrderId,
+                                ),
+                            ),
+                    ]);
+
+                const orderById = new Map(orders.map((p) => [p.packingOrderId, p]));
+                const poLineById = new Map(poLines.map((p) => [p.line.poLineId, p]));
+                const transferByLineId = new Map(transfers.map((r) => [r.id, r.number]));
+                const deliveryByLineId = new Map(deliveries.map((r) => [r.id, r.number]));
+                const reservationsByLotLocation = new Map<string, typeof reservations>();
+                for (const t of reservations) {
+                    const key = `${t.lotId}:${t.locationId}`;
+                    const list = reservationsByLotLocation.get(key) ?? [];
+                    list.push(t);
+                    reservationsByLotLocation.set(key, list);
+                }
+
                 result.sections.push(
                     section(
                         'Lot origins',
@@ -362,10 +488,14 @@ export async function getOperationalReport(q: OperationalReportQuery, database: 
                         catalog
                             .filter((r) => selected.has(r.lot.lotId))
                             .map((r) => {
-                                const po = poLines.find((p) => p.line.poLineId === r.lot.poLineId),
-                                    pack = orders.find(
-                                        (p) => p.packingOrderId === r.lot.packingOrderId,
-                                    );
+                                const po =
+                                    r.lot.poLineId !== null
+                                        ? poLineById.get(r.lot.poLineId)
+                                        : undefined;
+                                const pack =
+                                    r.lot.packingOrderId !== null
+                                        ? orderById.get(r.lot.packingOrderId)
+                                        : undefined;
                                 return {
                                     lot: r.lot.lotNumber,
                                     sku: r.sku,
@@ -400,22 +530,18 @@ export async function getOperationalReport(q: OperationalReportQuery, database: 
                                     (ancestors.has(e.parent) && ancestors.has(e.child)) ||
                                     (descendants.has(e.parent) && descendants.has(e.child)),
                             )
-                            .map((e) => ({
-                                parent: catalog.find((r) => r.lot.lotId === e.parent)!.lot
-                                    .lotNumber,
-                                child: catalog.find((r) => r.lot.lotId === e.child)!.lot.lotNumber,
-                                order: orders.find((r) => r.packingOrderId === e.order)!
-                                    .packingOrderNumber,
-                                consumed: e.quantity,
-                                uom: catalog.find((r) => r.lot.lotId === e.parent)!.uom,
-                            })),
+                            .map((e) => {
+                                const parentLot = catalogByLotId.get(e.parent)!;
+                                return {
+                                    parent: parentLot.lot.lotNumber,
+                                    child: catalogByLotId.get(e.child)!.lot.lotNumber,
+                                    order: orderById.get(e.order)!.packingOrderNumber,
+                                    consumed: e.quantity,
+                                    uom: parentLot.uom,
+                                };
+                            }),
                     ),
                 );
-                const stocks = await tx
-                    .select({ stock: inventoryStock, location: locations.name })
-                    .from(inventoryStock)
-                    .innerJoin(locations, eq(locations.locationId, inventoryStock.locationId));
-                const reservations = await tx.select().from(inventoryReservations);
                 result.sections.push(
                     section(
                         'Current locations and reservations',
@@ -427,50 +553,26 @@ export async function getOperationalReport(q: OperationalReportQuery, database: 
                             available: 'Available',
                             uom: 'Primary UOM',
                         },
-                        stocks
-                            .filter((r) => selected.has(r.stock.lotId))
-                            .map((r) => {
-                                const lot = catalog.find((l) => l.lot.lotId === r.stock.lotId)!;
-                                const reserved = outstandingReservations(
-                                    reservations.filter(
-                                        (t) =>
-                                            t.lotId === r.stock.lotId &&
-                                            t.locationId === r.stock.locationId,
-                                    ),
-                                );
-                                return {
-                                    lot: lot.lot.lotNumber,
-                                    location: r.location,
-                                    onhand: r.stock.qtyOnHand,
-                                    reserved,
-                                    available: quantityString(
-                                        quantityUnits(r.stock.qtyOnHand) - quantityUnits(reserved),
-                                    ),
-                                    uom: lot.uom,
-                                };
-                            }),
+                        stocks.map((r) => {
+                            const lot = catalogByLotId.get(r.stock.lotId)!;
+                            const reserved = outstandingReservations(
+                                reservationsByLotLocation.get(
+                                    `${r.stock.lotId}:${r.stock.locationId}`,
+                                ) ?? [],
+                            );
+                            return {
+                                lot: lot.lot.lotNumber,
+                                location: r.location,
+                                onhand: r.stock.qtyOnHand,
+                                reserved,
+                                available: quantityString(
+                                    quantityUnits(r.stock.qtyOnHand) - quantityUnits(reserved),
+                                ),
+                                uom: lot.uom,
+                            };
+                        }),
                     ),
                 );
-                const transfers = await tx
-                    .select({
-                        id: stockTransferLines.transferLineId,
-                        number: stockTransfers.transferNumber,
-                    })
-                    .from(stockTransferLines)
-                    .innerJoin(
-                        stockTransfers,
-                        eq(stockTransfers.transferId, stockTransferLines.transferId),
-                    );
-                const deliveries = await tx
-                    .select({
-                        id: deliveryOrderLines.deliveryOrderLineId,
-                        number: deliveryOrders.deliveryOrderNumber,
-                    })
-                    .from(deliveryOrderLines)
-                    .innerJoin(
-                        deliveryOrders,
-                        eq(deliveryOrders.deliveryOrderId, deliveryOrderLines.deliveryOrderId),
-                    );
                 result.sections.push(
                     section(
                         'Complete lot movement history',
@@ -485,16 +587,19 @@ export async function getOperationalReport(q: OperationalReportQuery, database: 
                         ledger
                             .filter((t) => selected.has(t.lotId))
                             .map((t) => {
-                                const lot = catalog.find((l) => l.lot.lotId === t.lotId)!;
+                                const lot = catalogByLotId.get(t.lotId)!;
                                 return {
                                     lot: lot.lot.lotNumber,
                                     type: t.transactionType,
                                     quantity: t.qtyChange,
                                     uom: lot.uom,
                                     reference:
-                                        transfers.find((r) => r.id === t.transferLineId)?.number ??
-                                        deliveries.find((r) => r.id === t.deliveryOrderLineId)
-                                            ?.number ??
+                                        (t.transferLineId !== null
+                                            ? transferByLineId.get(t.transferLineId)
+                                            : undefined) ??
+                                        (t.deliveryOrderLineId !== null
+                                            ? deliveryByLineId.get(t.deliveryOrderLineId)
+                                            : undefined) ??
                                         t.referenceId,
                                     at: date(t.createdAt),
                                 };

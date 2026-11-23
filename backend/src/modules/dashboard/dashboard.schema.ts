@@ -36,6 +36,11 @@ export const dashboardSummarySchema = z.object({
     activeTransfersCount: z.number().int().nonnegative(),
     lowStockItemsCount: z.number().int().nonnegative(),
     expiringLotsCount: z.number().int().nonnegative(),
+    openSalesOrdersCount: z.number().int().nonnegative().optional(),
+    confirmedSalesOrdersCount: z.number().int().nonnegative().optional(),
+    activeDeliveriesCount: z.number().int().nonnegative().optional(),
+    inTransitDeliveriesCount: z.number().int().nonnegative().optional(),
+    completedDeliveriesCount: z.number().int().nonnegative().optional(),
 });
 
 export const dashboardStockByTypeSchema = z.object({

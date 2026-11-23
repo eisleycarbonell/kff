@@ -20,6 +20,11 @@ there are no frontend mock rows or browser-storage stock substitutes.
    It adds nullable item-label and customer-PO references without dropping
    orders, lots, reservations, stock or ledger records. A unique current BOM
    label can establish the initial association; otherwise select it in Items.
+   Then run `npm run db:migrate:vat` from `backend/` for the
+   [VAT migration](../backend/supabase/migrations/20261119000000_add_vat/migration.sql),
+   which adds `company_settings.vat_rate_percent` (`12.00`), `items.is_vatable`,
+   and historical `'0.00'`-default `vat_rate_percent` snapshots on purchase and
+   sales order lines without altering saved ledger or lot cost history.
 4. For an existing dedicated demo dataset only, set `KFF_ALLOW_TEST_DATA=true`
    and run `npm run db:upgrade:demo`. The guarded metadata upgrade recognizes
    known former demo records and changes matching old SKU/name/contact/role/
@@ -70,7 +75,12 @@ Concurrent imports are serialized and only one populates an empty database.
 ## Realistic catalog
 
 Company: **Kusina Filipino Food Trading & Packing**, PHP, default reorder level
-10 and expiry horizon 30 days. Fictional suppliers: **Davao Harvest Spice
+10, expiry horizon 30 days, and default VAT rate 12.00%. Unprocessed raw spice
+imports (`RM-PEPPER`, `RM-GARLIC`, `RM-CAYENNE`, `RM-NATA`, `RM-KAONG`, `RM-LAUREL`,
+`RM-CHILI`, `RM-ONION`) start VAT-exempt (`isVatable: false`, `0.00%` VAT on PO lines),
+while processed `RM-NOODLES`, all packaging hardware, all labels, and all finished
+goods start VATable (`isVatable: true`, `12.00%` VAT on PO and SO lines).
+Fictional suppliers: **Davao Harvest Spice
 Trading**, **Laguna Pantry Ingredients**, **Metro Manila Food Packaging**.
 Fictional customers: **Lutong Bahay Restaurant**, **Barangay Fresh Mart**.
 
@@ -89,9 +99,9 @@ Every formula additionally consumes one matching printed label and one seal.
 Bulk SKUs include `RM-GARLIC`; hardware includes `PKG-POUCH-100`, `PKG-SEAL`.
 `RM-ONION` intentionally has no stock for Low Stock. All eight finished goods
 select their label through `labelItemId`; no Brands records are created.
-Item Packaging defines box ratios/barcodes. Assigning a label does not edit
-the formula: prepare and independently release Formula Revisions for changes.
-`/bom` inspects published formulas. Historical orders retain saved snapshots.
+Item Packaging defines box ratios/barcodes. Assigning a label pre-populates new
+formulas in `/bom` without silently changing existing BOMs. Manage formulas
+directly at `/bom`; historical orders retain saved snapshots.
 
 ## Prepared operational records
 
@@ -108,7 +118,7 @@ the formula: prepare and independently release Formula Revisions for changes.
 | `PK-<ingredient>-DONE`, `FG-<ingredient>` | Completed packing and traceable finished lots |
 | `TR-PEPPER`, `TR-GARLIC`, `TR-CAYENNE`, `TR-NATA` | Completed, In Transit, partial receipt and Draft transfers |
 | `SCRAP-REVIEW` | Submitted 0.2500 kg expired-chili disposal for a different reviewer |
-| `FORMULA-REVIEW` | Submitted garlic revision one |
+| `FORMULA-REVIEW` | Historical garlic revision one (read-only retired workflow example) |
 
 Customer PO references include `LB-PO-2026-0001` and `BFM-PO-2026-0002`.
 The draft shortage quantities apply to fresh imports. Existing quantities are

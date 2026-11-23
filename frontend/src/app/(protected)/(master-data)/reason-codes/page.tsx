@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic"
 import Link from "next/link"
 import { Plus } from "lucide-react"
+import { BulkImportActions } from "@/components/shared/bulk-import-actions"
 import { PageHeader } from "@/components/shared/page-header"
 import { RecordTable, type RecordColumn } from "@/components/shared/record-table"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -38,17 +39,15 @@ export default function Page() {
                 title="Reason Codes"
                 description="Configure active Inventory Adjustment reasons for stock corrections and non-adjustment reasons for scrap and disposal."
                 actions={
-                    <div className="flex gap-2">
-                        <Button variant="outline" onClick={f.refresh} disabled={f.isFetching}>
-                            Refresh
-                        </Button>
-                        {f.canManage && (
+                    f.canManage ? (
+                        <>
+                            <BulkImportActions moduleKey="reason-codes" disabled={f.busy} />
                             <Button className="gap-2" onClick={() => f.openForm()} disabled={f.busy}>
                                 <Plus className="size-4" />
                                 Add reason code
                             </Button>
-                        )}
-                    </div>
+                        </>
+                    ) : undefined
                 }
             />
             {f.loadStatus === "signed-out" && (
@@ -87,22 +86,22 @@ export default function Page() {
             {f.loadStatus === "loading" && <Skeleton className="h-64" />}
             {f.loadStatus === "ready" && (
                 <>
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                        <div className="rounded-xl border bg-card p-5">
-                            <p className="text-sm text-muted-foreground">Total reason codes</p>
-                            <p className="text-3xl font-semibold">{totalCount}</p>
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                        <div className="rounded-xl border bg-card p-3.5">
+                            <p className="text-xs font-medium text-muted-foreground">Total reason codes</p>
+                            <p className="mt-1 text-xl font-semibold sm:text-2xl">{totalCount}</p>
                         </div>
-                        <div className="rounded-xl border bg-card p-5">
-                            <p className="text-sm text-muted-foreground">Active codes</p>
-                            <p className="text-3xl font-semibold">{activeCount}</p>
+                        <div className="rounded-xl border bg-card p-3.5">
+                            <p className="text-xs font-medium text-muted-foreground">Active codes</p>
+                            <p className="mt-1 text-xl font-semibold sm:text-2xl">{activeCount}</p>
                         </div>
-                        <div className="rounded-xl border bg-card p-5">
-                            <p className="text-sm text-muted-foreground">Inventory Adjustment</p>
-                            <p className="text-3xl font-semibold">{adjustmentCount}</p>
+                        <div className="rounded-xl border bg-card p-3.5">
+                            <p className="text-xs font-medium text-muted-foreground">Inventory Adjustment</p>
+                            <p className="mt-1 text-xl font-semibold sm:text-2xl">{adjustmentCount}</p>
                         </div>
-                        <div className="rounded-xl border bg-card p-5">
-                            <p className="text-sm text-muted-foreground">Scrap &amp; Disposal</p>
-                            <p className="text-3xl font-semibold">{scrapCount}</p>
+                        <div className="rounded-xl border bg-card p-3.5">
+                            <p className="text-xs font-medium text-muted-foreground">Scrap &amp; Disposal</p>
+                            <p className="mt-1 text-xl font-semibold sm:text-2xl">{scrapCount}</p>
                         </div>
                     </div>
                     <RecordTable

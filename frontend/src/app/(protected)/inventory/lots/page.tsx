@@ -5,6 +5,7 @@ import Link from "next/link"
 
 import { LotStatistics } from "@/components/modules/lots/lot-statistics"
 import { LotTable } from "@/components/modules/lots/lot-table"
+import { BulkImportActions } from "@/components/shared/bulk-import-actions"
 import { PageHeader } from "@/components/shared/page-header"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -52,6 +53,14 @@ export default function LotsPage() {
             <PageHeader
                 title="Lots / Batches"
                 description="Trace each lot to its source document, stock locations, and inventory movements."
+                actions={
+                    canManage ? (
+                        <BulkImportActions
+                            moduleKey="lots"
+                            disabled={isSaving || loadStatus !== "ready"}
+                        />
+                    ) : undefined
+                }
             />
             {loadStatus === "signed-out" && (
                 <Alert>

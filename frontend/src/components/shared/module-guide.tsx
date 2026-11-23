@@ -4,13 +4,13 @@ import type { ModuleGuide as ModuleGuideContent } from "@/lib/module-guides"
 
 export function ModuleGuide({ guide }: { guide: ModuleGuideContent }) {
     return (
-        <details className="group rounded-xl border bg-card" aria-label={`${guide.title} guide`}>
-            <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-xl px-4 py-3 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 [&::-webkit-details-marker]:hidden">
-                <BookOpen className="size-4 shrink-0 text-primary" aria-hidden="true" />
+        <details className="group rounded-lg border bg-card" aria-label={`${guide.title} guide`}>
+            <summary className="flex min-h-8 cursor-pointer list-none items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 [&::-webkit-details-marker]:hidden">
+                <BookOpen className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
                 <span className="min-w-0 flex-1">How to use this module</span>
-                <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180 motion-reduce:transition-none" aria-hidden="true" />
+                <ChevronDown className="size-3.5 shrink-0 text-muted-foreground transition-transform group-open:rotate-180 motion-reduce:transition-none" aria-hidden="true" />
             </summary>
-            <div className="space-y-4 border-t px-4 py-4 text-sm">
+            <div className="space-y-3 border-t px-3 py-3 text-xs sm:text-sm">
                 <section aria-label={`Steps to use ${guide.title}`}>
                     <h2 className="font-semibold">How to use {guide.title}</h2>
                     <ol className="mt-2 list-decimal space-y-2 pl-5 leading-relaxed text-muted-foreground">

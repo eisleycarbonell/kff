@@ -1,4 +1,4 @@
-import { asc, desc, eq, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, isNull, sql } from 'drizzle-orm';
 import { db } from '../../db/index.ts';
 import {
     lots,
@@ -17,51 +17,75 @@ import type { UpdateLotInput } from './lot.schema.ts';
 import { assertLotMetadataChange, lotQuantityString, lotQuantityUnits } from './lot.rules.ts';
 
 type Reader = Pick<typeof db, 'select'>;
-const onHand = sql`coalesce((select sum(${inventoryStock.qtyOnHand}) from ${inventoryStock} where ${inventoryStock.lotId}=${lots.lotId}),0)`;
-const reserved = sql`coalesce((select sum(${inventoryReservations.qtyReserved}-${inventoryReservations.qtyConsumed}) from ${inventoryReservations} where ${inventoryReservations.lotId}=${lots.lotId} and ${inventoryReservations.releasedAt} is null),0)`;
-const lotFields = {
-    lotId: lots.lotId,
-    lotNumber: lots.lotNumber,
-    supplierLotNumber: lots.supplierLotNumber,
-    itemId: lots.itemId,
-    itemSku: items.sku,
-    itemName: items.name,
-    itemType: items.itemType,
-    primaryUomId: items.primaryUomId,
-    primaryUomName: uoms.name,
-    manufactureDate: lots.manufactureDate,
-    expirationDate: lots.expirationDate,
-    qcStatus: lots.qcStatus,
-    unitCost: lots.unitCost,
-    poLineId: lots.poLineId,
-    poId: purchaseOrders.poId,
-    poNumber: purchaseOrders.poNumber,
-    supplierId: suppliers.supplierId,
-    supplierName: suppliers.name,
-    packingOrderId: lots.packingOrderId,
-    packingOrderNumber: packingOrders.packingOrderNumber,
-    sourceType: sql<
-        'Purchased' | 'Packed' | 'Opening Balance'
-    >`case when ${lots.poLineId} is not null then 'Purchased' when ${lots.packingOrderId} is not null then 'Packed' else 'Opening Balance' end`,
-    qtyOnHand: sql<string>`${onHand}::text`,
-    qtyReserved: sql<string>`${reserved}::text`,
-    qtyAvailable: sql<string>`(${onHand}-${reserved})::text`,
-    locationCount: sql<number>`(select count(*) from ${inventoryStock} where ${inventoryStock.lotId}=${lots.lotId})::integer`,
-    createdBy: lots.createdBy,
-    createdAt: lots.createdAt,
-    updatedBy: lots.updatedBy,
-    updatedAt: lots.updatedAt,
-};
-const lotQuery = (database: Reader) =>
-    database
-        .select(lotFields)
+const lotQuery = (database: Reader) => {
+    const lotStock = database
+        .select({
+            lotId: inventoryStock.lotId,
+            qtyOnHand: sql<string>`sum(${inventoryStock.qtyOnHand})`.as('qty_on_hand'),
+            locationCount: sql<number>`count(*)::integer`.as('location_count'),
+        })
+        .from(inventoryStock)
+        .groupBy(inventoryStock.lotId)
+        .as('lot_stock');
+    const lotRes = database
+        .select({
+            lotId: inventoryReservations.lotId,
+            qtyReserved:
+                sql<string>`sum(${inventoryReservations.qtyReserved} - ${inventoryReservations.qtyConsumed})`.as(
+                    'qty_reserved',
+                ),
+        })
+        .from(inventoryReservations)
+        .where(isNull(inventoryReservations.releasedAt))
+        .groupBy(inventoryReservations.lotId)
+        .as('lot_res');
+    const onHand = sql`coalesce(${lotStock.qtyOnHand}, 0)`;
+    const reserved = sql`coalesce(${lotRes.qtyReserved}, 0)`;
+
+    return database
+        .select({
+            lotId: lots.lotId,
+            lotNumber: lots.lotNumber,
+            supplierLotNumber: lots.supplierLotNumber,
+            itemId: lots.itemId,
+            itemSku: items.sku,
+            itemName: items.name,
+            itemType: items.itemType,
+            primaryUomId: items.primaryUomId,
+            primaryUomName: uoms.name,
+            manufactureDate: lots.manufactureDate,
+            expirationDate: lots.expirationDate,
+            qcStatus: lots.qcStatus,
+            unitCost: lots.unitCost,
+            poLineId: lots.poLineId,
+            poId: purchaseOrders.poId,
+            poNumber: purchaseOrders.poNumber,
+            supplierId: suppliers.supplierId,
+            supplierName: suppliers.name,
+            packingOrderId: lots.packingOrderId,
+            packingOrderNumber: packingOrders.packingOrderNumber,
+            sourceType: sql<
+                'Purchased' | 'Packed' | 'Opening Balance'
+            >`case when ${lots.poLineId} is not null then 'Purchased' when ${lots.packingOrderId} is not null then 'Packed' else 'Opening Balance' end`,
+            qtyOnHand: sql<string>`${onHand}::text`,
+            qtyReserved: sql<string>`${reserved}::text`,
+            qtyAvailable: sql<string>`(${onHand}-${reserved})::text`,
+            locationCount: sql<number>`coalesce(${lotStock.locationCount}, 0)::integer`,
+            createdBy: lots.createdBy,
+            createdAt: lots.createdAt,
+            updatedBy: lots.updatedBy,
+            updatedAt: lots.updatedAt,
+        })
         .from(lots)
         .innerJoin(items, eq(lots.itemId, items.itemId))
         .innerJoin(uoms, eq(items.primaryUomId, uoms.uomId))
+        .leftJoin(lotStock, eq(lotStock.lotId, lots.lotId))
+        .leftJoin(lotRes, eq(lotRes.lotId, lots.lotId))
         .leftJoin(purchaseOrderLines, eq(lots.poLineId, purchaseOrderLines.poLineId))
         .leftJoin(purchaseOrders, eq(purchaseOrderLines.poId, purchaseOrders.poId))
         .leftJoin(suppliers, eq(purchaseOrders.supplierId, suppliers.supplierId))
         .leftJoin(packingOrders, eq(lots.packingOrderId, packingOrders.packingOrderId));
+};
 const normalized = <T extends { qtyOnHand: string; qtyReserved: string; qtyAvailable: string }>(
     row: T,
 ) => ({
@@ -78,7 +102,19 @@ export async function listLots(database: Reader = db) {
 export async function getLot(id: number, database: Reader = db) {
     const [row] = await lotQuery(database).where(eq(lots.lotId, id)).limit(1);
     if (!row) return null;
-    const stockReserved = sql`coalesce((select sum(${inventoryReservations.qtyReserved}-${inventoryReservations.qtyConsumed}) from ${inventoryReservations} where ${inventoryReservations.lotId}=${inventoryStock.lotId} and ${inventoryReservations.locationId}=${inventoryStock.locationId} and ${inventoryReservations.releasedAt} is null),0)`;
+    const stockRes = database
+        .select({
+            locationId: inventoryReservations.locationId,
+            qtyReserved:
+                sql<string>`sum(${inventoryReservations.qtyReserved} - ${inventoryReservations.qtyConsumed})`.as(
+                    'qty_reserved',
+                ),
+        })
+        .from(inventoryReservations)
+        .where(and(eq(inventoryReservations.lotId, id), isNull(inventoryReservations.releasedAt)))
+        .groupBy(inventoryReservations.locationId)
+        .as('stock_res');
+    const stockReserved = sql`coalesce(${stockRes.qtyReserved}, 0)`;
     const [stocks, transactions] = await Promise.all([
         database
             .select({
@@ -95,6 +131,7 @@ export async function getLot(id: number, database: Reader = db) {
             })
             .from(inventoryStock)
             .innerJoin(locations, eq(inventoryStock.locationId, locations.locationId))
+            .leftJoin(stockRes, eq(stockRes.locationId, inventoryStock.locationId))
             .where(eq(inventoryStock.lotId, id))
             .orderBy(asc(locations.name), asc(inventoryStock.stockId)),
         database

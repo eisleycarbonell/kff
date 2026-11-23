@@ -6,6 +6,7 @@ import { AppError } from '../../errors/app-error.ts';
 import type { CreateFormulaInput, UpdateFormulaInput } from './packing-formula.schema.ts';
 
 type Reader = Pick<typeof db, 'select'>;
+type FormulaTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 const component = alias(items, 'formula_component');
 const label = alias(items, 'formula_label');
@@ -113,7 +114,10 @@ export async function listFormulas(database: Reader = db, itemId?: number) {
     }
     return [...groups.values()];
 }
-export async function getFormula(id: number, database: Reader = db) {
+export async function getFormula(
+    id: number,
+    database: Reader = db,
+): Promise<Awaited<ReturnType<typeof listFormulas>>[number] | null> {
     return (await listFormulas(database, id))[0] ?? null;
 }
 export async function getFormulaOptions(database: Reader = db) {
@@ -124,6 +128,7 @@ export async function getFormulaOptions(database: Reader = db) {
                 sku: items.sku,
                 name: items.name,
                 primaryUomName: uoms.name,
+                labelItemId: items.labelItemId,
                 hasFormula: sql<boolean>`exists(select 1 from ${billOfMaterials} where ${billOfMaterials.parentItemId}=${items.itemId})`,
             })
             .from(items)
@@ -135,6 +140,7 @@ export async function getFormulaOptions(database: Reader = db) {
                 itemId: items.itemId,
                 sku: items.sku,
                 name: items.name,
+                itemType: items.itemType,
                 primaryUomId: items.primaryUomId,
                 uomClassId: uoms.uomClassId,
             })
@@ -163,21 +169,122 @@ export async function getFormulaOptions(database: Reader = db) {
     ]);
     return { products, components, uoms: units };
 }
+async function replaceFormulaRows(
+    tx: FormulaTransaction,
+    itemId: number,
+    components: CreateFormulaInput['components'],
+    actorId: number,
+    mode: 'create' | 'update',
+): Promise<boolean> {
+    const [product] = await tx.select().from(items).where(eq(items.itemId, itemId)).for('update');
+    if (mode === 'update' && !product) return false;
+    const existing = await tx
+        .select({
+            bomId: billOfMaterials.bomId,
+            createdBy: billOfMaterials.createdBy,
+            createdAt: billOfMaterials.createdAt,
+        })
+        .from(billOfMaterials)
+        .where(eq(billOfMaterials.parentItemId, itemId))
+        .orderBy(asc(billOfMaterials.bomId));
+    if (mode === 'create' && existing.length > 0)
+        throw new AppError(409, 'A packing formula already exists for this product. Edit it instead.');
+    if (mode === 'update' && existing.length === 0) return false;
+    if (!product?.isActive || product.itemType !== 'Finished Good')
+        throw new AppError(400, 'Choose an active finished product.');
+
+    const componentIds = [...new Set(components.map((row) => row.componentItemId))].sort(
+        (a, b) => a - b,
+    );
+    const materials = componentIds.length
+        ? await tx
+            .select()
+            .from(items)
+            .where(inArray(items.itemId, componentIds))
+            .orderBy(asc(items.itemId))
+            .for('key share')
+        : [];
+    const unitIds = [
+        ...new Set([
+            ...components.map((row) => row.uomId),
+            ...materials.map((row) => row.primaryUomId),
+        ]),
+    ].sort((a, b) => a - b);
+    const units = unitIds.length
+        ? await tx
+            .select()
+            .from(uoms)
+            .where(inArray(uoms.uomId, unitIds))
+            .orderBy(asc(uoms.uomId))
+            .for('share')
+        : [];
+    for (const row of components) {
+        const material = materials.find((entry) => entry.itemId === row.componentItemId);
+        const unit = units.find((entry) => entry.uomId === row.uomId);
+        const primary = units.find((entry) => entry.uomId === material?.primaryUomId);
+        if (
+            !material?.isActive ||
+            material.itemType === 'Finished Good' ||
+            material.itemId === itemId ||
+            !unit ||
+            !primary ||
+            unit.uomClassId !== primary.uomClassId
+        )
+            throw new AppError(
+                400,
+                'Every formula component must be active, distinct from its product, and use a compatible unit.',
+            );
+    }
+
+    if (mode === 'update')
+        await tx.delete(billOfMaterials).where(eq(billOfMaterials.parentItemId, itemId));
+
+    const now = new Date();
+    const createdBy = existing[0]?.createdBy ?? actorId;
+    const createdAt = existing[0]?.createdAt ?? now;
+    await tx.insert(billOfMaterials).values(
+        components.map((row) => ({
+            parentItemId: itemId,
+            componentItemId: row.componentItemId,
+            quantity: row.quantity,
+            uomId: row.uomId,
+            revisionId: null,
+            createdBy,
+            createdAt,
+            updatedBy: actorId,
+            updatedAt: now,
+        })),
+    );
+    return true;
+}
 export async function createFormula(
-    _input: CreateFormulaInput,
-    _actorId: number,
-    _database: typeof db = db,
+    input: CreateFormulaInput,
+    actorId: number,
+    database: typeof db = db,
 ): Promise<NonNullable<Awaited<ReturnType<typeof getFormula>>>> {
-    throw new AppError(409, 'Create and release a Formula Revision before using a new formula.');
+    return database.transaction(async (tx) => {
+        await replaceFormulaRows(tx, input.itemId, input.components, actorId, 'create');
+        return (await getFormula(input.itemId, tx))!;
+    });
 }
 export async function updateFormula(
-    _id: number,
-    _input: UpdateFormulaInput,
-    _actorId: number,
-    _database: typeof db = db,
+    id: number,
+    input: UpdateFormulaInput,
+    actorId: number,
+    database: typeof db = db,
 ): Promise<Awaited<ReturnType<typeof getFormula>>> {
-    throw new AppError(409, 'Prepare a Formula Revision to change a released formula.');
+    return database.transaction(async (tx) => {
+        const updated = await replaceFormulaRows(tx, id, input.components, actorId, 'update');
+        return updated ? await getFormula(id, tx) : null;
+    });
 }
-export async function removeFormula(_id: number, _database: typeof db = db): Promise<boolean> {
-    throw new AppError(409, 'Prepare a Retire revision to remove a released formula.');
+export async function removeFormula(id: number, database: typeof db = db): Promise<boolean> {
+    return database.transaction(async (tx) => {
+        await tx.select().from(items).where(eq(items.itemId, id)).for('update');
+        const deleted = await tx
+            .delete(billOfMaterials)
+            .where(eq(billOfMaterials.parentItemId, id))
+            .returning({ bomId: billOfMaterials.bomId });
+        return deleted.length > 0;
+    });
 }

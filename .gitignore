@@ -32,6 +32,7 @@ out/
 *.env
 !.env.example
 !.env.sample
+backend/.env.example
 
 # ==========================================
 # Logs
@@ -89,35 +90,35 @@ Desktop.ini
 # ==========================================
 # Local Database & Uploads
 # ==========================================
-*.db
-uploads/
-storage/
-*/uploads/
-*/storage/
+# *.db
+# uploads/
+# storage/
+# */uploads/
+# */storage/
 
 # ==========================================
 # AI Documentation, Agents & Markdown
 # ==========================================
-*.md
-docs/
-*/docs/
-.agents/
-*/.agents/
-.aider*
-*/.aider*
-.claude*
-*/.claude*
-.cursor*
-*/.cursor*
-.gemini*
-*/.gemini*
-.codex*
-*/.codex*
-.windsurf*
-*/.windsurf*
-.copilot*
-*/.copilot*
-AGENTS.md
-CLAUDE.md
-GEMINI.md
+# *.md
+# docs/
+# */docs/
+# .agents/
+# */.agents/
+# .aider*
+# */.aider*
+# .claude*
+# */.claude*
+# .cursor*
+# */.cursor*
+# .gemini*
+# */.gemini*
+# .codex*
+# */.codex*
+# .windsurf*
+# */.windsurf*
+# .copilot*
+# */.copilot*
+# AGENTS.md
+# CLAUDE.md
+# GEMINI.md
 

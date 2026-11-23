@@ -792,3 +792,25 @@ test("number preparation rejects malformed responses and exposes allocation fail
   };
   await assert.rejects(api.requestPurchaseOrderNumber(), /Unable to reach/);
 });
+
+test("PO schema and VAT calculator separate Net, Input VAT, and Gross on mixed VATable and exempt lines", () => {
+  const breakdown = schema.calculatePurchaseOrderTaxSummary([
+    { qtyOrdered: "10", unitPrice: "100", vatRatePercent: "12.00" },
+    { qtyOrdered: "5", unitPrice: "200", vatRatePercent: "0.00" },
+  ]);
+  assert.deepEqual(breakdown, {
+    netAmount: "2000.00000000",
+    vatAmount: "120.00000000",
+    totalAmount: "2120.00000000",
+  });
+  const parsed = schema.purchaseOrderInputSchema.parse({
+    supplierId: 4,
+    orderDate: "2026-10-28T00:00:00.000Z",
+    lines: [
+      { itemId: 10, uomId: 1, qtyOrdered: "10", unitPrice: "100", vatRatePercent: "12.00" },
+      { itemId: 11, uomId: 1, qtyOrdered: "5", unitPrice: "200", vatRatePercent: "0.00" },
+    ],
+  });
+  assert.equal(parsed.lines[0].vatRatePercent, "12.00");
+  assert.equal(parsed.lines[1].vatRatePercent, "0.00");
+});

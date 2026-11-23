@@ -246,53 +246,35 @@ export const moduleGuides = {
         purpose:
             "Define each bulk ingredient, packaging material, printed label and finished product once, with its primary stock unit.",
         steps: [
-            "Create the item with its SKU, name, type, primary unit, reference cost and active status.",
-            "Create printed labels as Packaging - Label items, then select the matching material in a Finished Good's Labels field.",
-            "Save purchased materials and link their suppliers before selecting them on supplier POs.",
-            "Prepare and release a finished product's formula with the correct ingredients, hardware, label and seal before packing.",
+            "Choose what you are adding (Finished Good, ingredient, packaging, or label), enter its name, SKU, and main unit.",
+            "For Finished Goods, pick the optional printed label so Packing Formulas can pre-include it automatically.",
+            "Use 'Save & add components' on a new Finished Good to set its recipe immediately in Packing Formulas.",
+            "For purchased materials, link their suppliers in the Suppliers column before creating Purchase Orders.",
         ],
         workflow: [
             { label: "Units of Measure", href: "/uom" },
             { label: "Suppliers", href: "/suppliers" },
-            { label: "Formula Revisions", href: "/formula-revisions" },
+            { label: "Packing Formulas", href: "/bom" },
             { label: "Inventory Stock", href: "/inventory" },
         ],
-        note: "Inventory access is required for catalog changes. Creating an item adds no stock. Selecting a label does not change its consumption formula; used item types and units are protected.",
+        note: "Inventory access is required for catalog changes. Creating an item adds no stock. Selecting a label pre-fills Packing Formulas; used item types and units are protected.",
     },
     "/bom": {
         title: "Packing Formulas",
         purpose:
-            "Inspect the released material quantities needed to pack one unit of each finished product.",
+            "Set and maintain the ingredients, pouches, seals, and labels needed to pack one unit of each finished product.",
         steps: [
-            "Find the finished product and open its formula details.",
-            "Review each ingredient, packaging item, printed label and its quantity per finished unit.",
-            "Check that the units and matching label describe the product you intend to pack.",
-            "Use Formula Revisions for a change, or create a Packing Order to save these requirements for a production run.",
+            "Click Create formula (or 'Copy from existing product') and select the finished product.",
+            "Verify the pre-added printed label and pick the spice, pouch, seal, and compatible unit for 1 pack.",
+            "Need to split a bulk batch? Use the 'From batch' calculator on any material row.",
+            "Save changes directly—new Packing Orders immediately snapshot the updated formula while existing orders keep their saved requirements.",
         ],
         workflow: [
             { label: "Items / Products", href: "/items" },
-            { label: "Formula Revisions", href: "/formula-revisions" },
             { label: "Packing Orders", href: "/packing-orders" },
+            { label: "Sales Orders", href: "/sales-orders" },
         ],
-        note: "Formula changes require Packing access and an independent release review. Existing packing orders keep their own saved material requirements.",
-    },
-    "/formula-revisions": {
-        title: "Formula Revisions",
-        purpose:
-            "Prepare and independently release a dated replacement or retirement of a finished product's packing formula.",
-        steps: [
-            "Create a revision for the finished product, choose Replace or Retire and set its effective date.",
-            "For a replacement, enter the materials, compatible units and quantities required per one finished unit, including the matching printed label.",
-            "Review the complete revision and submit it for approval.",
-            "Have a different authorized reviewer release it on or after the effective date.",
-            "Verify the published Packing Formula before creating future Packing Orders.",
-        ],
-        workflow: [
-            { label: "Items / Products", href: "/items" },
-            { label: "Packing Formulas", href: "/bom" },
-            { label: "Packing Orders", href: "/packing-orders" },
-        ],
-        note: "Packing access is required to prepare revisions. The reviewer also needs Users & roles access. Release is manual; older orders retain their saved requirements and reservations.",
+        note: "Packing access is required to create, update, or remove formulas. Existing packing orders keep their own saved material requirements.",
     },
     "/item-packaging": {
         title: "Item Packaging",
@@ -308,7 +290,7 @@ export const moduleGuides = {
             { label: "Items / Products", href: "/items" },
             { label: "Units of Measure", href: "/uom" },
             { label: "Purchase Orders", href: "/purchase-orders" },
-            { label: "Formula Revisions", href: "/formula-revisions" },
+            { label: "Packing Formulas", href: "/bom" },
         ],
         note: "Inventory access is required. This item-specific ratio takes precedence over the unit's general conversion. Used ratios are protected so existing records keep their meaning.",
     },
@@ -528,11 +510,11 @@ export const moduleGuides = {
             "Create or edit a role with a clear name and description of its responsibilities.",
             "Choose only the management permissions the role needs and save it.",
             "Assign the role to the intended users and have them verify their available actions.",
-            "Provide separate authorized preparers and reviewers for formula releases and disposal, while keeping administrator access.",
+            "Provide separate authorized preparers and reviewers for scrap disposal, while keeping administrator access.",
         ],
         workflow: [
             { label: "Users", href: "/users" },
-            { label: "Formula Revisions", href: "/formula-revisions" },
+            { label: "Packing Formulas", href: "/bom" },
             { label: "Scrap & Disposal", href: "/inventory/scrap" },
         ],
         note: "Users & roles access is required. Sales uses Inventory access, and customer deliveries use Transfers access; those permissions also allow their other related management actions.",
@@ -553,6 +535,109 @@ export const moduleGuides = {
             { label: "Inventory Reports", href: "/reports/inventory" },
         ],
         note: "Users & roles access is required for changes. Currency is protected after pricing history exists, and saved item reorder levels take precedence over the company default.",
+    },
+    "/accounting": {
+        title: "Accounting Overview & P&L",
+        purpose:
+            "Review financial KPIs, the Profit & Loss income statement, working capital, and inventory-to-profit cost flows.",
+        steps: [
+            "Filter by fiscal period (MTD, 30D, YTD, or custom dates) to scope flows and P&L statements.",
+            "Inspect summary KPIs for Inventory Asset Value, PO Commitments, Delivered Revenue, COGS, and Scrap Losses.",
+            "Review the Income Statement (P&L) table to reconcile gross profit, shrinkage, and net operating contribution.",
+            "Navigate into General Ledger, Valuation, Production Costing, Receivables, or Payables for transaction-level detail.",
+        ],
+        workflow: [
+            { label: "General Ledger", href: "/accounting/general-ledger" },
+            { label: "Inventory Valuation", href: "/accounting/valuation" },
+            { label: "Receivables & Margin", href: "/accounting/receivables-margins" },
+            { label: "Payables & POs", href: "/accounting/payables" },
+        ],
+        note: "Accounting access is required. Read-only financial oversight: operational stock, packing, and delivery writes stay under their authorized operational roles.",
+    },
+    "/accounting/general-ledger": {
+        title: "General Ledger & Trial Balance",
+        purpose:
+            "Audit the Chart of Accounts, confirm Trial Balance debits equal credits, and inspect double-entry journal postings.",
+        steps: [
+            "Check the Trial Balance summary cards and footer to verify that Total Debits equal Total Credits across all accounts.",
+            "Review individual Asset, Liability, Equity Clearing, Revenue, COGS, and Shrinkage account balances.",
+            "Filter the Double-Entry Journal table by movement type or GL account to audit how each stock event posted.",
+            "Export the Trial Balance or Journal CSV for external accounting reconciliation.",
+        ],
+        workflow: [
+            { label: "Overview & P&L", href: "/accounting" },
+            { label: "Inventory Valuation", href: "/accounting/valuation" },
+            { label: "Stock Movements", href: "/inventory/transactions" },
+        ],
+        note: "Journal entries derive deterministically from append-only inventory movements paired with batch unit costs.",
+    },
+    "/accounting/valuation": {
+        title: "Inventory & Lot Valuation",
+        purpose:
+            "Inspect live perpetual inventory asset values across item categories, warehouse locations, and individual batches.",
+        steps: [
+            "Compare raw materials, packaging hardware/labels, and finished goods asset totals at the top.",
+            "Review Stock Asset Value by Location to see capital tied up in warehouses, branches, stores, and In Transit.",
+            "Filter Lot Costing by item type or cost basis (Purchase Actual, Packing Roll-Up, Catalog Reference).",
+            "Audit unit cost variances between actual lot costs and item catalog reference costs, then export CSV if needed.",
+        ],
+        workflow: [
+            { label: "General Ledger", href: "/accounting/general-ledger" },
+            { label: "Lots / Batches", href: "/inventory/lots" },
+            { label: "Inventory Stock", href: "/inventory" },
+        ],
+        note: "On-hand valuation always reflects live perpetual balances multiplied by each batch's effective unit cost.",
+    },
+    "/accounting/production-costing": {
+        title: "Production Cost Roll-Up",
+        purpose:
+            "Trace how raw spices, packaging hardware, and labels rolled up into the unit cost of each packed finished product.",
+        steps: [
+            "Filter packing runs by status or search for a finished SKU, packing order number, or finished lot.",
+            "Expand any packing order row to inspect consumed component quantities, lot unit costs, and subtotal material cost.",
+            "Compare the rolled-up unit cost against catalog reference cost to spot ingredient or packaging price variances.",
+            "Export production cost roll-up data for margin and manufacturing cost analysis.",
+        ],
+        workflow: [
+            { label: "Inventory Valuation", href: "/accounting/valuation" },
+            { label: "Packing Orders", href: "/packing-orders" },
+            { label: "Packing Formulas", href: "/bom" },
+        ],
+        note: "Finished lot unit costs lock based on actual component lot consumption at the time packing completes.",
+    },
+    "/accounting/receivables-margins": {
+        title: "Receivables & Gross Margin",
+        purpose:
+            "Monitor customer billing receivables, booked sales backlog, delivered batch COGS, and gross profit margins.",
+        steps: [
+            "Review Customer Account Profitability to compare booked demand, recognized delivery billing, and remaining backlog.",
+            "Inspect delivered batch COGS alongside delivered revenue to verify true gross margin by customer and order.",
+            "Search or filter Sales Orders by status to spot pending fulfillment backlog or low-margin orders.",
+            "Export Customer Summary or Order Detail CSVs for billing reconciliation.",
+        ],
+        workflow: [
+            { label: "Overview & P&L", href: "/accounting" },
+            { label: "Sales Orders", href: "/sales-orders" },
+            { label: "Delivery Orders", href: "/delivery-orders" },
+        ],
+        note: "Revenue and COGS are recognized when customer delivery orders reach Completed status.",
+    },
+    "/accounting/payables": {
+        title: "Payables & PO Commitments",
+        purpose:
+            "Track accrued Accounts Payable for received supplier goods (GRNI) alongside open purchasing commitments.",
+        steps: [
+            "Compare Total PO Commitments against Accrued AP (Goods Received) and Open Remaining Commitment.",
+            "Review the Supplier AP Summary to see liabilities and receipt completion percentage per vendor.",
+            "Filter the Purchase Order Commitment table by status to inspect partially received or open orders.",
+            "Export vendor or PO commitment CSVs to coordinate supplier payments and cash flow planning.",
+        ],
+        workflow: [
+            { label: "General Ledger", href: "/accounting/general-ledger" },
+            { label: "Purchase Orders", href: "/purchase-orders" },
+            { label: "Receiving", href: "/receiving" },
+        ],
+        note: "PO commitments become accrued GRNI liability once physical receipts are recorded in Receiving.",
     },
 } as const satisfies Record<string, ModuleGuide>
 

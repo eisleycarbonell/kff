@@ -1,7 +1,7 @@
 "use client"
 
+import dynamic from "next/dynamic"
 import Link from "next/link"
-import { RefreshCw } from "lucide-react"
 
 import { DashboardActiveOrders } from "@/components/modules/dashboard/dashboard-active-orders"
 import { DashboardAlerts } from "@/components/modules/dashboard/dashboard-alerts"
@@ -15,6 +15,22 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useDashboard } from "@/hooks/modules/dashboard/use-dashboard"
+
+const DashboardCharts = dynamic(
+    () =>
+        import("@/components/modules/dashboard/dashboard-charts").then(
+            (mod) => mod.DashboardCharts,
+        ),
+    {
+        ssr: false,
+        loading: () => (
+            <div className="grid gap-6 lg:grid-cols-2">
+                <Skeleton className="h-80 rounded-xl" />
+                <Skeleton className="h-80 rounded-xl" />
+            </div>
+        ),
+    },
+)
 
 export default function DashboardPage() {
     const {
@@ -31,7 +47,6 @@ export default function DashboardPage() {
         loadError,
         isFetching,
         retry,
-        refetch,
     } = useDashboard()
 
     return (
@@ -45,20 +60,6 @@ export default function DashboardPage() {
             <PageHeader
                 title="Dashboard"
                 description="High-level operational overview of spice stock levels, active production runs, open procurement, and alerts."
-                actions={
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-9 gap-2 text-xs font-medium"
-                        onClick={() => void refetch()}
-                        disabled={isFetching}
-                    >
-                        <RefreshCw
-                            className={`size-3.5 ${isFetching ? "animate-spin text-primary" : ""}`}
-                        />
-                        {isFetching ? "Refreshing..." : "Refresh"}
-                    </Button>
-                }
             />
 
             {loadStatus === "signed-out" && (
@@ -93,6 +94,10 @@ export default function DashboardPage() {
                         ))}
                     </div>
                     <div className="grid gap-6 lg:grid-cols-2">
+                        <Skeleton className="h-80 rounded-xl" />
+                        <Skeleton className="h-80 rounded-xl" />
+                    </div>
+                    <div className="grid gap-6 lg:grid-cols-2">
                         <Skeleton className="h-96 rounded-xl" />
                         <Skeleton className="h-96 rounded-xl" />
                     </div>
@@ -112,6 +117,15 @@ export default function DashboardPage() {
                     {/* Operational KPI Metric Cards */}
                     <DashboardOverviewCards summary={summary} />
 
+                    {/* Visual Analytics (shadcn Charts) */}
+                    <DashboardCharts
+                        summary={summary}
+                        stockByType={stockByType}
+                        stockByLocation={stockByLocation}
+                        pendingPurchaseOrders={pendingPurchaseOrders}
+                        recentActivity={recentActivity}
+                    />
+
                     {/* Mid Section: Stock Distribution & Active Orders */}
                     <div className="grid gap-6 lg:grid-cols-2">
                         <DashboardStockDistribution
@@ -127,7 +141,7 @@ export default function DashboardPage() {
                     </div>
 
                     {/* Lower Section: Inventory Alerts & In-Transit Transfers */}
-                    <div className="grid gap-6 lg:grid-cols-2">
+                    <div className="grid gap-6 lg:grid-cols-2 [content-visibility:auto] [contain-intrinsic-size:auto_none_auto_24rem]">
                         <DashboardAlerts
                             expiringLots={expiringLots}
                             lowStockItems={lowStockItems}
@@ -136,7 +150,9 @@ export default function DashboardPage() {
                     </div>
 
                     {/* Bottom: Real-Time Ledger Feed */}
-                    <DashboardRecentActivityCard activity={recentActivity} />
+                    <div className="[content-visibility:auto] [contain-intrinsic-size:auto_none_auto_20rem]">
+                        <DashboardRecentActivityCard activity={recentActivity} />
+                    </div>
                 </div>
             )}
         </div>

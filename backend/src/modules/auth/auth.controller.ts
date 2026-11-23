@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 import type * as authService from './auth.service.ts';
-import type { loginRequestSchema } from './auth.schema.ts';
+import type { loginRequestSchema, SessionUser } from './auth.schema.ts';
 import type { ValidatedResponse } from '../../middleware/validate-request.ts';
 import { AppError } from '../../errors/app-error.ts';
 import { generateToken } from '../../utils/jwtHandler.ts';
@@ -47,6 +47,14 @@ export function createAuthController(service: AuthService) {
         },
         session(_request: Request, response: Response) {
             return sendSuccessResponse(response, response.locals.session);
+        },
+        async socketToken(_request: Request, response: Response) {
+            const session = response.locals.session as SessionUser;
+            const token = await generateToken(
+                { id: String(session.userId), purpose: 'socket' },
+                '10m',
+            );
+            return sendSuccessResponse(response, { token });
         },
     };
 }

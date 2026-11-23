@@ -51,6 +51,75 @@ export function fixedDecimal(value: bigint, places: number): string {
     const absolute = negative ? -value : value;
     return `${negative ? '-' : ''}${absolute / scale}.${(absolute % scale).toString().padStart(places, '0')}`;
 }
+export function vatBasisPoints(ratePercent: string | undefined): bigint {
+    const text = (ratePercent ?? '0').trim();
+    if (!/^\d{1,3}(?:\.\d{1,2})?$/.test(text))
+        throw new AppError(400, 'Enter a VAT rate percentage between 0 and 100.');
+    const [whole, fraction = ''] = text.split('.');
+    const bp = BigInt(whole!) * 100n + BigInt(fraction.padEnd(2, '0'));
+    if (bp > 10_000n) throw new AppError(400, 'VAT rate percentage cannot exceed 100.');
+    return bp;
+}
+export function normalizeVatRate(ratePercent: string): string {
+    const bp = vatBasisPoints(ratePercent);
+    return `${bp / 100n}.${(bp % 100n).toString().padStart(2, '0')}`;
+}
+export function purchaseOrderTaxSummary(
+    lines: readonly {
+        qtyOrdered: string;
+        qtyReceived: string;
+        unitPrice: string;
+        vatRatePercent?: string;
+    }[],
+) {
+    let netOrdered = 0n;
+    let vatOrdered = 0n;
+    let netReceived = 0n;
+    let vatReceived = 0n;
+    for (const line of lines) {
+        const bp = vatBasisPoints(line.vatRatePercent);
+        const priceUnits = decimal4Units(line.unitPrice);
+        const lineOrderedNet = decimal4Units(line.qtyOrdered) * priceUnits;
+        const lineReceivedNet = decimal4Units(line.qtyReceived) * priceUnits;
+        const lineOrderedVat = (lineOrderedNet * bp + 5_000n) / 10_000n;
+        const lineReceivedVat = (lineReceivedNet * bp + 5_000n) / 10_000n;
+        netOrdered += lineOrderedNet;
+        vatOrdered += lineOrderedVat;
+        netReceived += lineReceivedNet;
+        vatReceived += lineReceivedVat;
+    }
+    const grossOrdered = netOrdered + vatOrdered;
+    const grossReceived = netReceived + vatReceived;
+    return {
+        netAmount: fixedDecimal(netOrdered, 8),
+        vatAmount: fixedDecimal(vatOrdered, 8),
+        totalAmount: fixedDecimal(grossOrdered, 8),
+        receivedNetAmount: fixedDecimal(netReceived, 8),
+        receivedVatAmount: fixedDecimal(vatReceived, 8),
+        receivedAmount: fixedDecimal(grossReceived, 8),
+        outstandingAmount: fixedDecimal(grossOrdered - grossReceived, 8),
+    };
+}
+export function purchaseOrderLineTaxBreakdown(line: {
+    qtyOrdered: string;
+    qtyReceived: string;
+    unitPrice: string;
+    vatRatePercent?: string;
+}) {
+    const bp = vatBasisPoints(line.vatRatePercent);
+    const netUnits = decimal4Units(line.qtyOrdered) * decimal4Units(line.unitPrice);
+    const vatUnits = (netUnits * bp + 5_000n) / 10_000n;
+    return {
+        qtyRemaining: fixedDecimal(
+            decimal4Units(line.qtyOrdered) - decimal4Units(line.qtyReceived),
+            4,
+        ),
+        vatRatePercent: `${bp / 100n}.${(bp % 100n).toString().padStart(2, '0')}`,
+        netAmount: fixedDecimal(netUnits, 8),
+        vatAmount: fixedDecimal(vatUnits, 8),
+        lineTotal: fixedDecimal(netUnits + vatUnits, 8),
+    };
+}
 export function purchaseOrderAmounts(
     lines: readonly { qtyOrdered: string; qtyReceived: string; unitPrice: string }[],
 ) {

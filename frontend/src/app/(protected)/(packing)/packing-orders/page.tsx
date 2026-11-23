@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic"
 import Link from "next/link"
 import { Plus } from "lucide-react"
+import { BulkImportActions } from "@/components/shared/bulk-import-actions"
 import { PageHeader } from "@/components/shared/page-header"
 import { PackingOrderStatistics } from "@/components/modules/packing-orders/packing-order-statistics"
 import { PackingOrderTable } from "@/components/modules/packing-orders/packing-order-table"
@@ -33,14 +34,20 @@ export default function PackingOrdersPage() {
                 description="Plan production, protect required materials and record finished goods."
                 actions={
                     feature.canManage && (
-                        <Button
-                            className="h-10 gap-2 px-4"
-                            onClick={feature.openAdd}
-                            disabled={feature.isSaving || feature.isActing}
-                        >
-                            <Plus />
-                            Create packing order
-                        </Button>
+                        <>
+                            <BulkImportActions
+                                moduleKey="packing-orders"
+                                disabled={feature.isSaving || feature.isActing}
+                            />
+                            <Button
+                                className="h-10 gap-2 px-4"
+                                onClick={feature.openAdd}
+                                disabled={feature.isSaving || feature.isActing}
+                            >
+                                <Plus />
+                                Create packing order
+                            </Button>
+                        </>
                     )
                 }
             />

@@ -22,6 +22,8 @@
         "start": "node dist/src/index.js",
         "start:test": "node dist/src/start-test.js",
         "db:migrate:customer-planning": "node --experimental-strip-types src/db/migrate-customer-planning.ts",
+        "db:migrate:vat": "node --experimental-strip-types src/db/migrate-vat.ts",
+        "db:migrate:indexes": "tsx src/db/migrate-indexes.ts",
         "db:upgrade:demo": "node --experimental-strip-types src/db/upgrade-demo-data.ts"
     },
     "devDependencies": {
@@ -47,6 +49,7 @@
         "pino": "^10.3.1",
         "pino-http": "^11.0.0",
         "postgres": "^3.4.9",
+        "socket.io": "^4.8.4",
         "zod": "^4.6.7"
     },
     "keywords": [],

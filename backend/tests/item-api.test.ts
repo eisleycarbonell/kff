@@ -31,6 +31,7 @@ const item: Awaited<ReturnType<ItemService['createItem']>> = {
     netWeightG: null,
     shelfLifeDays: null,
     requiresQc: false,
+    isVatable: true,
     isActive: true,
     isInUse: false,
     createdBy: 7,

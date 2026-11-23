@@ -20,8 +20,21 @@ test('item creation normalizes identifiers and applies create-only defaults', ()
         primaryUomId: 1,
         unitCost: '0',
         requiresQc: false,
+        isVatable: true,
         isActive: true,
     });
+});
+test('item creation preserves explicit VAT-exempt status (isVatable: false)', () => {
+    const parsed = createItemSchema.parse({
+        sku: 'RM-PEPPER',
+        name: 'Whole black pepper',
+        itemType: 'Raw Material - Bulk',
+        primaryUomId: 1,
+        isVatable: false,
+    });
+    assert.equal(parsed.isVatable, false);
+});
+test('all item types remain accepted on create schema', () => {
     for (const itemType of ITEM_TYPES)
         assert.equal(createItemSchema.safeParse({ ...input, itemType }).success, true);
 });

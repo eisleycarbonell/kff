@@ -1,10 +1,12 @@
 import { AppError } from '../../errors/app-error.ts';
 import { quantityUnits, quantityString } from '../inventory-stocks/inventory-stock.rules.ts';
 export function assertActiveControlKind(kind: string) {
-    if (kind !== 'Scrap' && kind !== 'Formula')
+    if (kind !== 'Scrap')
         throw new AppError(
             409,
-            'Count Sessions, QC Decisions and Stock Dispositions have been removed. Historical requests are read-only.',
+            kind === 'Formula'
+                ? 'Formula Revisions have been removed. Edit packing formulas directly at Packing Formulas.'
+                : 'Count Sessions, QC Decisions and Stock Dispositions have been removed. Historical requests are read-only.',
         );
 }
 export function assertReview(

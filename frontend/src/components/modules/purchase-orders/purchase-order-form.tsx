@@ -5,8 +5,8 @@ import { useId, useRef, useState, type FormEvent } from "react";
 import { Plus, Trash2 } from "lucide-react";
 
 import {
-  calculatePurchaseOrderLineTotal,
-  calculatePurchaseOrderTotal,
+  calculatePurchaseOrderLineVatBreakdown,
+  calculatePurchaseOrderTaxSummary,
   createEmptyPurchaseOrderLine,
   formatPurchaseOrderDecimal,
   localTodayDate,
@@ -39,23 +39,29 @@ import {
   FieldSet,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { ComboboxSelect } from "@/components/shared/combobox-select";
+import { NumericInput } from "@/components/shared/numeric-input";
+import { PriceCurrencyInput } from "@/components/shared/price-currency-input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { useCompanySettings } from "@/hooks/modules/company-settings/use-company-settings";
 import { usePurchaseOrderDetail } from "@/hooks/modules/purchase-orders/use-purchase-orders";
+import {
+  convertCurrencyAmount,
+  getExchangeRateLabel,
+  isForeignCurrency,
+  normalizeCurrencyCode,
+  resolveBaseEntryCurrency,
+  validateExchangeRate,
+  type EntryCurrencyCode,
+} from "@/lib/price-currency";
 
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   order: PurchaseOrder | null;
   defaultPoNumber: string;
+  initialDraft?: Partial<PurchaseOrderFormValues> | null;
   orders: PurchaseOrder[];
   options: PurchaseOrderOptions;
   optionsReady: boolean;
@@ -69,7 +75,10 @@ type Props = {
   isSaving: boolean;
   saveError: string | null;
 };
-type DraftLine = PurchaseOrderLineFormValues & { uiKey: string };
+type DraftLine = PurchaseOrderLineFormValues & {
+  uiKey: string;
+  priceCurrency: EntryCurrencyCode | null;
+};
 type DraftValues = Omit<PurchaseOrderFormValues, "lines"> & {
   lines: DraftLine[];
 };
@@ -92,6 +101,7 @@ function PurchaseOrderFormContent({
   onOpenChange,
   order,
   defaultPoNumber,
+  initialDraft,
   orders,
   options,
   onSave,
@@ -103,26 +113,82 @@ function PurchaseOrderFormContent({
 }: ContentProps) {
   const id = useId();
   const nextKey = useRef(0);
+  const { settings } = useCompanySettings();
+  const baseCurrency = normalizeCurrencyCode(settings?.currencyCode);
+  const defaultCurrency = resolveBaseEntryCurrency(baseCurrency);
+  const [exchangeRate, setExchangeRate] = useState("");
+  const [exchangeRateError, setExchangeRateError] = useState<string>();
   const [values, setValues] = useState<DraftValues>(() => {
+    const resolvedDraftLines = initialDraft?.lines?.length
+      ? initialDraft.lines.map((draftLine) => {
+        const item = options.items.find(
+          (candidate) => candidate.itemId === draftLine.itemId,
+        );
+        const quote = options.supplierItems.find(
+          (candidate) =>
+            candidate.supplierId === (initialDraft.supplierId ?? null) &&
+            candidate.itemId === draftLine.itemId &&
+            candidate.isActive,
+        );
+        const hasQty = draftLine.qtyOrdered.trim() !== "";
+        const quotedUnit = quote?.defaultUomId ?? item?.primaryUomId ?? null;
+        const compatibleQuote = options.uoms.some(
+          (unit) =>
+            unit.uomId === quotedUnit && unit.uomClassId === item?.uomClassId,
+        );
+        const resolvedUomId =
+          draftLine.uomId ??
+          (hasQty
+            ? (item?.primaryUomId ?? null)
+            : compatibleQuote
+              ? quotedUnit
+              : (item?.primaryUomId ?? null));
+        const quoteMatchesResolvedUnit =
+          Boolean(quote) &&
+          (quote?.defaultUomId ?? item?.primaryUomId ?? null) === resolvedUomId;
+        const fallbackCost =
+          item?.unitCost && /[1-9]/.test(item.unitCost) ? item.unitCost : "";
+        return {
+          itemId: draftLine.itemId,
+          uomId: resolvedUomId,
+          qtyOrdered: draftLine.qtyOrdered,
+          unitPrice:
+            draftLine.unitPrice ||
+            (quoteMatchesResolvedUnit
+              ? (quote?.defaultPrice ?? fallbackCost)
+              : fallbackCost),
+          vatRatePercent: item
+            ? (item.isVatable ?? true)
+              ? (options.defaultVatRatePercent ?? "12.00")
+              : "0.00"
+            : "0.00",
+        };
+      })
+      : [createEmptyPurchaseOrderLine()];
     const initial: PurchaseOrderFormValues = order
       ? toPurchaseOrderFormValues(order)
       : {
-          poNumber: defaultPoNumber,
-          supplierId: null,
-          orderDate: localTodayDate(),
-          expectedDeliveryDate: "",
-          notes: "",
-          lines: [createEmptyPurchaseOrderLine()],
-        };
+        poNumber: initialDraft?.poNumber ?? defaultPoNumber,
+        supplierId: initialDraft?.supplierId ?? null,
+        orderDate: initialDraft?.orderDate ?? localTodayDate(),
+        expectedDeliveryDate: initialDraft?.expectedDeliveryDate ?? "",
+        notes: initialDraft?.notes ?? "",
+        lines: resolvedDraftLines,
+      };
     return {
       ...initial,
       lines: initial.lines.map((line, index) => ({
         ...line,
         uiKey: `initial-${index}`,
+        priceCurrency: null,
       })),
     };
   });
   const [errors, setErrors] = useState<PurchaseOrderFormErrors>({});
+  const [suppressedSaveError, setSuppressedSaveError] = useState<string | null | undefined>(null);
+  const activeSaveError =
+    saveError && saveError !== suppressedSaveError ? saveError : undefined;
+  const poNumberError = errors.poNumber ?? activeSaveError;
   const supplierItems = options.suppliers
     .filter(
       (supplier) =>
@@ -133,13 +199,39 @@ function PurchaseOrderFormContent({
       label: supplier.name + (supplier.isActive ? "" : " (inactive)"),
       isActive: supplier.isActive,
     }));
-  const total = calculatePurchaseOrderTotal(values.lines);
+  const foreignCurrencies = values.lines
+    .map((line) => line.priceCurrency ?? defaultCurrency)
+    .filter((currency) => isForeignCurrency(currency, baseCurrency));
+  const hasForeignLine = foreignCurrencies.length > 0;
+  function resolveLineUnitPrice(line: DraftLine): string | null {
+    const lineCurrency = line.priceCurrency ?? defaultCurrency;
+    if (!isForeignCurrency(lineCurrency, baseCurrency)) {
+      return line.unitPrice;
+    }
+    return convertCurrencyAmount({
+      amount: line.unitPrice,
+      fromCurrency: lineCurrency,
+      baseCurrency,
+      exchangeRate,
+    });
+  }
+  const taxSummary = calculatePurchaseOrderTaxSummary(
+    values.lines.map((line) => ({
+      qtyOrdered: line.qtyOrdered,
+      unitPrice: resolveLineUnitPrice(line) ?? "",
+      vatRatePercent: line.vatRatePercent ?? "0.00",
+    })),
+  );
 
+  function clearSaveError() {
+    if (saveError) setSuppressedSaveError(saveError);
+  }
   function updateHeader<
     Key extends keyof Omit<PurchaseOrderFormValues, "lines">,
   >(key: Key, value: PurchaseOrderFormValues[Key]) {
     setValues((current) => ({ ...current, [key]: value }));
     setErrors((current) => ({ ...current, [key]: undefined }));
+    clearSaveError();
   }
   function changeSupplier(supplierId: number | null) {
     if (supplierId === values.supplierId) return;
@@ -147,7 +239,9 @@ function PurchaseOrderFormContent({
     setValues((current) => ({
       ...current,
       supplierId,
-      lines: [{ ...createEmptyPurchaseOrderLine(), uiKey }],
+      lines: [
+        { ...createEmptyPurchaseOrderLine(), uiKey, priceCurrency: null },
+      ],
     }));
     setErrors((current) => ({
       ...current,
@@ -155,27 +249,30 @@ function PurchaseOrderFormContent({
       lines: undefined,
       lineErrors: undefined,
     }));
+    clearSaveError();
   }
-  function updateLine<Key extends keyof PurchaseOrderLineFormValues>(
-    uiKey: string,
-    key: Key,
-    value: PurchaseOrderLineFormValues[Key],
-  ) {
+  function updateLine<
+    Key extends keyof Pick<
+      DraftLine,
+      "itemId" | "uomId" | "qtyOrdered" | "unitPrice" | "vatRatePercent" | "priceCurrency"
+    >,
+  >(uiKey: string, key: Key, value: DraftLine[Key]) {
     setValues((current) => ({
       ...current,
       lines: current.lines.map((line) =>
         line.uiKey === uiKey
           ? {
-              ...line,
-              [key]: value,
-              ...(key === "uomId" && line.uomId !== value
-                ? { unitPrice: "" }
-                : {}),
-            }
+            ...line,
+            [key]: value,
+            ...(key === "uomId" && line.uomId !== value
+              ? { unitPrice: "", priceCurrency: null }
+              : {}),
+          }
           : line,
       ),
     }));
     setErrors((current) => ({ ...current, lineErrors: undefined }));
+    clearSaveError();
   }
   function changeItem(uiKey: string, itemId: number | null) {
     const item = options.items.find((candidate) => candidate.itemId === itemId);
@@ -190,32 +287,47 @@ function PurchaseOrderFormContent({
       (unit) =>
         unit.uomId === quotedUnit && unit.uomClassId === item?.uomClassId,
     );
+    const fallbackCost =
+      item?.unitCost && /[1-9]/.test(item.unitCost) ? item.unitCost : "";
     setValues((current) => ({
       ...current,
       lines: current.lines.map((line) =>
         line.uiKey === uiKey
           ? {
-              ...line,
-              itemId,
-              uomId: compatibleQuote
-                ? quotedUnit
-                : (item?.primaryUomId ?? null),
-              qtyOrdered: "",
-              unitPrice: compatibleQuote ? (quote?.defaultPrice ?? "") : "",
-            }
+            ...line,
+            itemId,
+            uomId: compatibleQuote
+              ? quotedUnit
+              : (item?.primaryUomId ?? null),
+            qtyOrdered: "",
+            unitPrice: compatibleQuote
+              ? (quote?.defaultPrice ?? fallbackCost)
+              : fallbackCost,
+            vatRatePercent: item
+              ? (item.isVatable ?? true)
+                ? (options.defaultVatRatePercent ?? "12.00")
+                : "0.00"
+              : "0.00",
+            priceCurrency: null,
+          }
           : line,
       ),
     }));
     setErrors((current) => ({ ...current, lineErrors: undefined }));
+    clearSaveError();
   }
   function addLine() {
     if (isSaving || values.lines.length >= 100) return;
     const uiKey = `new-${nextKey.current++}`;
     setValues((current) => ({
       ...current,
-      lines: [...current.lines, { ...createEmptyPurchaseOrderLine(), uiKey }],
+      lines: [
+        ...current.lines,
+        { ...createEmptyPurchaseOrderLine(), uiKey, priceCurrency: null },
+      ],
     }));
     setErrors((current) => ({ ...current, lines: undefined }));
+    clearSaveError();
   }
   function removeLine(uiKey: string) {
     if (isSaving || values.lines.length <= 1) return;
@@ -228,21 +340,31 @@ function PurchaseOrderFormContent({
       lines: undefined,
       lineErrors: undefined,
     }));
+    clearSaveError();
   }
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (isSaving) return;
+    setSuppressedSaveError(null);
+    const rateIssue = hasForeignLine
+      ? validateExchangeRate(exchangeRate)
+      : undefined;
+    setExchangeRateError(rateIssue);
+    const convertedByLine = values.lines.map((line) =>
+      resolveLineUnitPrice(line),
+    );
     const normalized: PurchaseOrderFormValues = {
       poNumber: values.poNumber.trim().toUpperCase(),
       supplierId: values.supplierId,
       orderDate: values.orderDate,
       expectedDeliveryDate: values.expectedDeliveryDate,
       notes: values.notes.trim(),
-      lines: values.lines.map((line) => ({
+      lines: values.lines.map((line, index) => ({
         itemId: line.itemId,
         uomId: line.uomId,
         qtyOrdered: line.qtyOrdered.trim(),
-        unitPrice: line.unitPrice.trim(),
+        unitPrice: (convertedByLine[index] ?? line.unitPrice).trim(),
+        vatRatePercent: line.vatRatePercent ?? "0.00",
       })),
     };
     const nextErrors = validatePurchaseOrder(
@@ -251,7 +373,29 @@ function PurchaseOrderFormContent({
       orders,
       order,
     );
+    if (!rateIssue) {
+      values.lines.forEach((line, index) => {
+        const lineCurrency = line.priceCurrency ?? defaultCurrency;
+        if (
+          isForeignCurrency(lineCurrency, baseCurrency) &&
+          convertedByLine[index] === null &&
+          line.unitPrice.trim() !== "" &&
+          !nextErrors.lineErrors?.[index]?.unitPrice
+        ) {
+          const lineErrors = nextErrors.lineErrors ? [...nextErrors.lineErrors] : [];
+          lineErrors[index] = {
+            ...lineErrors[index],
+            unitPrice: `Converted amount exceeds 10 whole digits in ${baseCurrency}.`,
+          };
+          nextErrors.lineErrors = lineErrors;
+        }
+      });
+    }
     setErrors(nextErrors);
+    if (rateIssue) {
+      document.getElementById(`${id}-exchangeRate`)?.focus();
+      return;
+    }
     const headerField = (
       [
         "poNumber",
@@ -337,7 +481,7 @@ function PurchaseOrderFormContent({
       >
         <FieldGroup className="grid gap-4 sm:grid-cols-2">
           <Field
-            data-invalid={Boolean(errors.poNumber)}
+            data-invalid={Boolean(poNumberError)}
             data-disabled={isSaving}
           >
             <FieldLabel htmlFor={`${id}-poNumber`}>PO number</FieldLabel>
@@ -351,7 +495,7 @@ function PurchaseOrderFormContent({
               onChange={(event) => updateHeader("poNumber", event.target.value)}
               disabled={isSaving}
               className="h-10"
-              aria-invalid={Boolean(errors.poNumber)}
+              aria-invalid={Boolean(poNumberError)}
               aria-describedby={`${id}-poNumber-help ${id}-poNumber-error`}
             />
             <FieldDescription id={`${id}-poNumber-help`}>
@@ -360,7 +504,7 @@ function PurchaseOrderFormContent({
                 : "Use the generated number or enter your own unique PO number."}
             </FieldDescription>
             <FieldError id={`${id}-poNumber-error`}>
-              {errors.poNumber}
+              {poNumberError}
             </FieldError>
           </Field>
           <Field
@@ -368,37 +512,20 @@ function PurchaseOrderFormContent({
             data-disabled={isSaving}
           >
             <FieldLabel htmlFor={`${id}-supplierId`}>Supplier</FieldLabel>
-            <Select
-              items={supplierItems}
+            <ComboboxSelect
+              id={`${id}-supplierId`}
+              items={supplierItems.map((supplier) => ({
+                ...supplier,
+                disabled: !supplier.isActive,
+              }))}
               value={values.supplierId}
               disabled={isSaving}
               onValueChange={changeSupplier}
-            >
-              <SelectTrigger
-                id={`${id}-supplierId`}
-                className="w-full data-[size=default]:h-10"
-                aria-invalid={Boolean(errors.supplierId)}
-                aria-describedby={`${id}-supplier-help`}
-              >
-                <SelectValue
-                  className="min-w-0"
-                  placeholder="Select a supplier"
-                />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {supplierItems.map((supplier) => (
-                    <SelectItem
-                      key={supplier.value}
-                      value={supplier.value}
-                      disabled={!supplier.isActive}
-                    >
-                      {supplier.label}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+              placeholder="Select a supplier"
+              aria-invalid={Boolean(errors.supplierId)}
+              aria-describedby={`${id}-supplier-help`}
+              className="h-10 w-full"
+            />
             <div id={`${id}-supplier-help`}>
               <FieldDescription>
                 Changing the supplier clears all order lines.
@@ -513,6 +640,39 @@ function PurchaseOrderFormContent({
                 </AlertDescription>
               </Alert>
             )}
+          {hasForeignLine && (
+            <Field
+              className="max-w-xs"
+              data-invalid={Boolean(exchangeRateError)}
+              data-disabled={isSaving}
+            >
+              <FieldLabel htmlFor={`${id}-exchangeRate`}>
+                {getExchangeRateLabel(baseCurrency, foreignCurrencies)}
+              </FieldLabel>
+              <NumericInput
+                id={`${id}-exchangeRate`}
+                name="exchangeRate"
+                maxWholeDigits={10}
+                maxDecimalPlaces={4}
+                placeholder="58.00"
+                value={exchangeRate}
+                disabled={isSaving}
+                onValueChange={(next) => {
+                  setExchangeRate(next);
+                  setExchangeRateError(undefined);
+                }}
+                className="h-10"
+                aria-invalid={Boolean(exchangeRateError)}
+                aria-describedby={`${id}-exchangeRate-error`}
+              />
+              <FieldDescription>
+                Converts non-{baseCurrency} line prices to {baseCurrency}.
+              </FieldDescription>
+              <FieldError id={`${id}-exchangeRate-error`}>
+                {exchangeRateError}
+              </FieldError>
+            </Field>
+          )}
           <FieldError>{errors.lines}</FieldError>
           {values.lines.map((line, index) => {
             const selected = options.items.find(
@@ -548,10 +708,14 @@ function PurchaseOrderFormContent({
               .filter((unit) => unit.uomClassId === selected?.uomClassId)
               .map((unit) => ({ value: unit.uomId, label: unit.name }));
             const lineErrors = errors.lineErrors?.[index] ?? {};
-            const lineTotal = calculatePurchaseOrderLineTotal(
+            const lineCurrency = line.priceCurrency ?? defaultCurrency;
+            const resolvedLineUnitPrice = resolveLineUnitPrice(line);
+            const lineTax = calculatePurchaseOrderLineVatBreakdown(
               line.qtyOrdered,
-              line.unitPrice,
+              resolvedLineUnitPrice ?? "",
+              line.vatRatePercent ?? "0.00",
             );
+            const lineTotal = lineTax?.lineTotal ?? null;
             const prefix = `${id}-${line.uiKey}`;
             return (
               <FieldSet
@@ -576,7 +740,7 @@ function PurchaseOrderFormContent({
                     Remove
                   </Button>
                 </FieldLegend>
-                <FieldGroup className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+                <FieldGroup className="grid gap-4 sm:grid-cols-2 lg:grid-cols-7">
                   <Field
                     className="min-w-0 lg:col-span-2"
                     data-invalid={Boolean(lineErrors.itemId)}
@@ -585,37 +749,20 @@ function PurchaseOrderFormContent({
                     <FieldLabel htmlFor={`${prefix}-itemId`}>
                       Material
                     </FieldLabel>
-                    <Select
-                      items={itemItems}
+                    <ComboboxSelect
+                      id={`${prefix}-itemId`}
+                      items={itemItems.map((item) => ({
+                        ...item,
+                        disabled: !item.available,
+                      }))}
                       value={line.itemId}
                       disabled={isSaving || !values.supplierId}
                       onValueChange={(value) => changeItem(line.uiKey, value)}
-                    >
-                      <SelectTrigger
-                        id={`${prefix}-itemId`}
-                        className="w-full data-[size=default]:h-10"
-                        aria-invalid={Boolean(lineErrors.itemId)}
-                        aria-describedby={`${prefix}-itemId-error`}
-                      >
-                        <SelectValue
-                          className="min-w-0"
-                          placeholder="Select a material"
-                        />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectGroup>
-                          {itemItems.map((item) => (
-                            <SelectItem
-                              key={item.value}
-                              value={item.value}
-                              disabled={!item.available}
-                            >
-                              {item.label}
-                            </SelectItem>
-                          ))}
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
+                      placeholder="Select a material"
+                      aria-invalid={Boolean(lineErrors.itemId)}
+                      aria-describedby={`${prefix}-itemId-error`}
+                      className="h-10 w-full"
+                    />
                     <FieldError id={`${prefix}-itemId-error`}>
                       {lineErrors.itemId}
                     </FieldError>
@@ -628,32 +775,19 @@ function PurchaseOrderFormContent({
                     <FieldLabel htmlFor={`${prefix}-uomId`}>
                       Purchase unit
                     </FieldLabel>
-                    <Select
+                    <ComboboxSelect
+                      id={`${prefix}-uomId`}
                       items={unitItems}
                       value={line.uomId}
                       disabled={isSaving || !selected}
                       onValueChange={(value) =>
                         updateLine(line.uiKey, "uomId", value)
                       }
-                    >
-                      <SelectTrigger
-                        id={`${prefix}-uomId`}
-                        className="w-full data-[size=default]:h-10"
-                        aria-invalid={Boolean(lineErrors.uomId)}
-                        aria-describedby={`${prefix}-uomId-error`}
-                      >
-                        <SelectValue placeholder="Select unit" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectGroup>
-                          {unitItems.map((unit) => (
-                            <SelectItem key={unit.value} value={unit.value}>
-                              {unit.label}
-                            </SelectItem>
-                          ))}
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
+                      placeholder="Select unit"
+                      aria-invalid={Boolean(lineErrors.uomId)}
+                      aria-describedby={`${prefix}-uomId-error`}
+                      className="h-10 w-full"
+                    />
                     <FieldError id={`${prefix}-uomId-error`}>
                       {lineErrors.uomId}
                     </FieldError>
@@ -665,16 +799,17 @@ function PurchaseOrderFormContent({
                     <FieldLabel htmlFor={`${prefix}-qtyOrdered`}>
                       Ordered quantity
                     </FieldLabel>
-                    <Input
+                    <NumericInput
                       id={`${prefix}-qtyOrdered`}
                       name={`line-${index}-quantity`}
-                      inputMode="decimal"
+                      maxWholeDigits={10}
+                      maxDecimalPlaces={4}
                       maxLength={15}
                       required
                       value={line.qtyOrdered}
                       disabled={isSaving}
-                      onChange={(event) =>
-                        updateLine(line.uiKey, "qtyOrdered", event.target.value)
+                      onValueChange={(next) =>
+                        updateLine(line.uiKey, "qtyOrdered", next)
                       }
                       className="h-10"
                       aria-invalid={Boolean(lineErrors.qtyOrdered)}
@@ -685,24 +820,41 @@ function PurchaseOrderFormContent({
                     </FieldError>
                   </Field>
                   <Field
+                    className="min-w-0 sm:col-span-2"
                     data-invalid={Boolean(lineErrors.unitPrice)}
                     data-disabled={isSaving}
                   >
                     <FieldLabel htmlFor={`${prefix}-unitPrice`}>
                       Unit price
                     </FieldLabel>
-                    <Input
+                    <PriceCurrencyInput
                       id={`${prefix}-unitPrice`}
                       name={`line-${index}-price`}
-                      inputMode="decimal"
-                      maxLength={15}
-                      required
                       value={line.unitPrice}
-                      disabled={isSaving}
-                      onChange={(event) =>
-                        updateLine(line.uiKey, "unitPrice", event.target.value)
+                      currency={lineCurrency}
+                      baseCurrency={baseCurrency}
+                      convertedValue={resolvedLineUnitPrice}
+                      onValueChange={(nextValue) =>
+                        updateLine(line.uiKey, "unitPrice", nextValue)
                       }
-                      className="h-10"
+                      onCurrencyChange={(nextCurrency) => {
+                        updateLine(line.uiKey, "priceCurrency", nextCurrency);
+                        if (!isForeignCurrency(nextCurrency, baseCurrency)) {
+                          const stillForeign = values.lines.some(
+                            (other) =>
+                              other.uiKey !== line.uiKey &&
+                              isForeignCurrency(
+                                other.priceCurrency ?? defaultCurrency,
+                                baseCurrency,
+                              ),
+                          );
+                          if (!stillForeign) setExchangeRateError(undefined);
+                        }
+                      }}
+                      disabled={isSaving}
+                      required
+                      maxLength={15}
+                      currencyAriaLabel={`Line ${index + 1} price currency`}
                       aria-invalid={Boolean(lineErrors.unitPrice)}
                       aria-describedby={`${prefix}-unitPrice-error`}
                     />
@@ -710,13 +862,46 @@ function PurchaseOrderFormContent({
                       {lineErrors.unitPrice}
                     </FieldError>
                   </Field>
+                  <Field className="min-w-0">
+                    <FieldLabel htmlFor={`${prefix}-vatRate`}>VAT</FieldLabel>
+                    <ComboboxSelect
+                      id={`${prefix}-vatRate`}
+                      items={(() => {
+                        const stdRate = options.defaultVatRatePercent ?? "12.00";
+                        const curRate = line.vatRatePercent ?? "0.00";
+                        const baseOpts = [
+                          { value: "0.00", label: "No VAT (0%)" },
+                          ...(Number(stdRate) > 0
+                            ? [{ value: stdRate, label: `VATable (${stdRate}%)` }]
+                            : []),
+                        ];
+                        return baseOpts.some((opt) => opt.value === curRate)
+                          ? baseOpts
+                          : [...baseOpts, { value: curRate, label: `Custom VAT (${curRate}%)` }];
+                      })()}
+                      value={line.vatRatePercent ?? "0.00"}
+                      onValueChange={(value) => {
+                        if (value) updateLine(line.uiKey, "vatRatePercent", value);
+                      }}
+                      disabled={isSaving}
+                      searchable={false}
+                      className="h-10 w-full"
+                    />
+                  </Field>
                 </FieldGroup>
-                <p className="break-words text-right text-sm text-muted-foreground">
-                  Line value{" "}
-                  <span className="ml-2 font-medium text-foreground tabular-nums">
-                    {lineTotal === null
-                      ? "—"
-                      : formatPurchaseOrderDecimal(lineTotal)}
+                <p className="flex flex-wrap items-center justify-between gap-2 break-words text-sm text-muted-foreground">
+                  <span>
+                    {lineTax
+                      ? `Net ${formatPurchaseOrderDecimal(lineTax.netAmount)} + Input VAT ${formatPurchaseOrderDecimal(lineTax.vatAmount)}`
+                      : ""}
+                  </span>
+                  <span>
+                    Line value{" "}
+                    <span className="ml-2 font-medium text-foreground tabular-nums">
+                      {lineTotal === null
+                        ? "—"
+                        : formatPurchaseOrderDecimal(lineTotal)}
+                    </span>
                   </span>
                 </p>
               </FieldSet>
@@ -746,11 +931,6 @@ function PurchaseOrderFormContent({
           />
           <FieldError id={`${id}-notes-error`}>{errors.notes}</FieldError>
         </Field>
-        {saveError && (
-          <Alert variant="destructive">
-            <AlertDescription>{saveError}</AlertDescription>
-          </Alert>
-        )}
         <DialogFooter className="sticky bottom-0 bg-popover">
           <div className="mr-auto flex min-w-0 items-center gap-3">
             <span className="text-sm text-muted-foreground">Order value</span>
@@ -758,7 +938,9 @@ function PurchaseOrderFormContent({
               className="min-w-0 break-words text-lg font-semibold tabular-nums"
               aria-live="polite"
             >
-              {total === null ? "—" : formatPurchaseOrderDecimal(total)}
+              {taxSummary === null
+                ? "—"
+                : `Net ${formatPurchaseOrderDecimal(taxSummary.netAmount)} + Input VAT ${formatPurchaseOrderDecimal(taxSummary.vatAmount)} = ${formatPurchaseOrderDecimal(taxSummary.totalAmount)}`}
             </span>
           </div>
           <Button

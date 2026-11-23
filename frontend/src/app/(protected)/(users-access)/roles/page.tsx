@@ -2,7 +2,8 @@
 
 import dynamic from "next/dynamic"
 import Link from "next/link"
-import { Plus, RefreshCw } from "lucide-react"
+import { Plus } from "lucide-react"
+import { BulkImportActions } from "@/components/shared/bulk-import-actions"
 import { PageHeader } from "@/components/shared/page-header"
 import { RoleStatistics } from "@/components/modules/roles/role-statistics"
 import { RoleTable } from "@/components/modules/roles/role-table"
@@ -36,21 +37,13 @@ export default function RolesPage() {
                 description="Define what your team can manage and review who has access."
                 actions={
                     roles.canManage && (
-                        <div className="flex flex-wrap gap-3">
-                            <Button
-                                variant="outline"
-                                className="h-10"
-                                onClick={roles.retry}
-                                disabled={roles.isFetching}
-                            >
-                                <RefreshCw />
-                                {roles.isFetching ? "Refreshing..." : "Refresh"}
-                            </Button>
+                        <>
+                            <BulkImportActions moduleKey="roles" />
                             <Button className="h-10" onClick={roles.openAdd}>
                                 <Plus />
                                 Add role
                             </Button>
-                        </div>
+                        </>
                     )
                 }
             />

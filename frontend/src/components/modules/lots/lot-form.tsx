@@ -23,13 +23,7 @@ import {
 } from "@/components/ui/dialog"
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
+import { ComboboxSelect } from "@/components/shared/combobox-select"
 import { Skeleton } from "@/components/ui/skeleton"
 
 type Props = {
@@ -57,6 +51,10 @@ function LotFormContent({
         qcStatus: lot.qcStatus,
     }))
     const [errors, setErrors] = useState<LotFormErrors>({})
+    const [suppressedSaveError, setSuppressedSaveError] = useState<string | null>(null)
+    const activeSaveError =
+        saveError && saveError !== suppressedSaveError ? saveError : undefined
+    const supplierLotError = errors.supplierLotNumber ?? activeSaveError
     const locked = lotHasReservations(lot)
     const lockedValuesChanged =
         values.manufactureDate !== (lot.manufactureDate ?? "") ||
@@ -65,10 +63,12 @@ function LotFormContent({
     function update<Key extends keyof LotFormValues>(key: Key, value: LotFormValues[Key]) {
         setValues((current) => ({ ...current, [key]: value }))
         setErrors((current) => ({ ...current, [key]: undefined }))
+        if (saveError) setSuppressedSaveError(saveError)
     }
     async function submit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault()
         if (isSaving) return
+        setSuppressedSaveError(null)
         const nextErrors = validateLot(values, lot)
         setErrors(nextErrors)
         const first = Object.keys(nextErrors)[0]
@@ -129,7 +129,7 @@ function LotFormContent({
                 </Alert>
             )}
             <FieldGroup className="gap-4">
-                <Field data-invalid={Boolean(errors.supplierLotNumber)}>
+                <Field data-invalid={Boolean(supplierLotError)}>
                     <FieldLabel htmlFor={`${id}-supplierLotNumber`}>
                         Supplier lot reference{" "}
                         <span className="font-normal text-muted-foreground">(optional)</span>
@@ -143,11 +143,11 @@ function LotFormContent({
                         disabled={isSaving}
                         autoComplete="off"
                         className="h-10"
-                        aria-invalid={Boolean(errors.supplierLotNumber)}
+                        aria-invalid={Boolean(supplierLotError)}
                         aria-describedby={`${id}-supplierLotNumber-error`}
                     />
                     <FieldError id={`${id}-supplierLotNumber-error`}>
-                        {errors.supplierLotNumber}
+                        {supplierLotError}
                     </FieldError>
                 </Field>
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -180,30 +180,18 @@ function LotFormContent({
                     <FieldLabel htmlFor={`${id}-qcStatus`}>
                         Quality status
                     </FieldLabel>
-                    <Select
+                    <ComboboxSelect
+                        id={`${id}-qcStatus`}
                         items={qualityItems}
                         value={values.qcStatus}
                         disabled={isSaving || locked}
                         onValueChange={(value) => {
                             if (value !== null) update("qcStatus", value)
                         }}
-                    >
-                        <SelectTrigger
-                            id={`${id}-qcStatus`}
-                            className="w-full data-[size=default]:h-10"
-                            aria-invalid={Boolean(errors.qcStatus)}
-                            aria-describedby={`${id}-qcStatus-error`}
-                        >
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {qualityItems.map((item) => (
-                                <SelectItem key={item.value} value={item.value}>
-                                    {item.label}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                        aria-invalid={Boolean(errors.qcStatus)}
+                        aria-describedby={`${id}-qcStatus-error`}
+                        className="h-10 w-full"
+                    />
                     <FieldDescription>
                         New lots start Approved. Change the quality status here when needed;
                         changes apply across all locations and are blocked while stock is reserved.
@@ -211,11 +199,6 @@ function LotFormContent({
                     <FieldError id={`${id}-qcStatus-error`}>{errors.qcStatus}</FieldError>
                 </Field>
             </FieldGroup>
-            {saveError && (
-                <Alert variant="destructive">
-                    <AlertDescription>{saveError}</AlertDescription>
-                </Alert>
-            )}
             <DialogFooter>
                 <Button
                     type="button"

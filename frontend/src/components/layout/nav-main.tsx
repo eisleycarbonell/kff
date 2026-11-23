@@ -21,6 +21,7 @@ import {
     SidebarMenuSub,
     SidebarMenuSubButton,
     SidebarMenuSubItem,
+    useSidebar,
 } from "@/components/ui/sidebar";
 
 type NavSubItem = {
@@ -42,6 +43,7 @@ type NavMainProps = {
 
 export function NavMain({ items }: NavMainProps) {
     const pathname = usePathname();
+    const { isMobile, setOpenMobile } = useSidebar();
 
     const isRouteMatch = (url: string) =>
         url !== "#" &&
@@ -67,11 +69,14 @@ export function NavMain({ items }: NavMainProps) {
 
     const [previousPathname, setPreviousPathname] = useState(pathname);
 
-    // Reopen the active group on navigation while preserving other open groups.
+    // Reopen the active group on navigation while preserving other open groups, and close mobile drawer.
     if (pathname !== previousPathname) {
         setPreviousPathname(pathname);
         if (activeGroup && !openGroups.includes(activeGroup)) {
             setOpenGroups([...openGroups, activeGroup]);
+        }
+        if (isMobile) {
+            setOpenMobile(false);
         }
     }
 
@@ -103,7 +108,14 @@ export function NavMain({ items }: NavMainProps) {
                         return (
                             <SidebarMenuItem key={item.title}>
                                 <SidebarMenuButton
-                                    render={<Link href={item.url} />}
+                                    render={
+                                        <Link
+                                            href={item.url}
+                                            onClick={() => {
+                                                if (isMobile) setOpenMobile(false);
+                                            }}
+                                        />
+                                    }
                                     tooltip={item.title}
                                     isActive={isActive}
                                     aria-current={isActive ? "page" : undefined}
@@ -159,6 +171,9 @@ export function NavMain({ items }: NavMainProps) {
                                                     render={
                                                         <Link
                                                             href={subItem.url}
+                                                            onClick={() => {
+                                                                if (isMobile) setOpenMobile(false);
+                                                            }}
                                                         />
                                                     }
                                                     isActive={isSubActive}

@@ -8,6 +8,7 @@ import { SalesOrderStatistics } from "@/components/modules/sales-orders/sales-or
 import { SalesOrderTable } from "@/components/modules/sales-orders/sales-order-table"
 import { SalesOrderStatus } from "@/components/modules/sales-orders/sales-order-table-columns"
 import { formatSalesDecimal } from "@/components/modules/sales-orders/sales-order.schema"
+import { BulkImportActions } from "@/components/shared/bulk-import-actions"
 import { PageHeader } from "@/components/shared/page-header"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import {
@@ -58,14 +59,20 @@ export default function SalesOrdersPage() {
                 description="Record customer POs, check material shortages, then pack and deliver finished products."
                 actions={
                     feature.canManage && (
-                        <Button
-                            className="h-10 gap-2 px-4"
-                            onClick={feature.openAdd}
-                            disabled={feature.loadStatus !== "ready"}
-                        >
-                            <Plus />
-                            Create sales order
-                        </Button>
+                        <>
+                            <BulkImportActions
+                                moduleKey="sales-orders"
+                                disabled={feature.loadStatus !== "ready"}
+                            />
+                            <Button
+                                className="h-10 gap-2 px-4"
+                                onClick={feature.openAdd}
+                                disabled={feature.loadStatus !== "ready"}
+                            >
+                                <Plus />
+                                Create sales order
+                            </Button>
+                        </>
                     )
                 }
             />
@@ -210,8 +217,8 @@ export default function SalesOrdersPage() {
                             {feature.isActionPending
                                 ? "Saving..."
                                 : feature.actionSelection?.action === "confirm"
-                                  ? "Confirm order"
-                                  : "Cancel order"}
+                                    ? "Confirm order"
+                                    : "Cancel order"}
                         </Button>
                     </AlertDialogFooter>
                 </AlertDialogContent>
@@ -288,6 +295,7 @@ export default function SalesOrdersPage() {
                                         </TableHead>
                                         <TableHead>Unit price</TableHead>
                                         <TableHead>Line total</TableHead>
+                                <TableHead>VAT</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -319,13 +327,20 @@ export default function SalesOrdersPage() {
                                                     {formatSalesDecimal(value)}
                                                 </TableCell>
                                             ))}
+                                            <TableCell className="tabular-nums text-muted-foreground">
+                                                {Number(line.vatRatePercent ?? 0) > 0
+                                                    ? `${line.vatRatePercent}% (${formatSalesDecimal(line.vatAmount ?? "0")})`
+                                                    : "No VAT"}
+                                            </TableCell>
                                         </TableRow>
                                     ))}
                                 </TableBody>
                             </Table>
                             <p className="text-right font-medium tabular-nums">
                                 Order total:{" "}
-                                {formatSalesDecimal(viewed.totalAmount)}
+                                {viewed.netAmount && viewed.vatAmount
+                                    ? `Net ${formatSalesDecimal(viewed.netAmount)} + VAT ${formatSalesDecimal(viewed.vatAmount)} = ${formatSalesDecimal(viewed.totalAmount)}`
+                                    : formatSalesDecimal(viewed.totalAmount)}
                             </p>
                             <p className="text-sm text-muted-foreground">
                                 Allocated quantities belong to draft or

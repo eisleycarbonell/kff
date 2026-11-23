@@ -28,13 +28,7 @@ import {
     FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
+import { ComboboxSelect } from "@/components/shared/combobox-select"
 
 type UserFormProps = {
     open: boolean
@@ -225,7 +219,8 @@ function UserFormContent({
                     </Field>
                     <Field data-invalid={Boolean(errors.roleId)}>
                         <FieldLabel htmlFor={`${id}-role`}>Role</FieldLabel>
-                        <Select
+                        <ComboboxSelect
+                            id={`${id}-role`}
                             name="roleId"
                             items={availableRoles}
                             value={values.roleId || null}
@@ -234,23 +229,11 @@ function UserFormContent({
                                 if (value !== null) updateField("roleId", value)
                             }}
                             required
-                        >
-                            <SelectTrigger
-                                id={`${id}-role`}
-                                aria-invalid={Boolean(errors.roleId)}
-                                aria-describedby={errors.roleId ? `${id}-role-error` : undefined}
-                                className="h-9 w-full"
-                            >
-                                <SelectValue placeholder="Select a role" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {availableRoles.map((role) => (
-                                    <SelectItem key={role.value} value={role.value}>
-                                        {role.label}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                            placeholder="Select a role"
+                            aria-invalid={Boolean(errors.roleId)}
+                            aria-describedby={errors.roleId ? `${id}-role-error` : undefined}
+                            className="h-9 w-full"
+                        />
                         <FieldError id={`${id}-role-error`}>{errors.roleId}</FieldError>
                     </Field>
                     <Field orientation="horizontal" className="rounded-lg border p-3">

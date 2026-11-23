@@ -180,6 +180,40 @@ test('formula inputs validate and use authenticated audit identities', async () 
             );
             assert.equal(invalid.status, 400);
             await invalid.json();
+            let updatedActor = 0;
+            provided.formulaService.updateFormula = async (id, _body, actorId) => {
+                updatedActor = actorId;
+                return id === 10 ? formula : null;
+            };
+            provided.formulaService.removeFormula = async (id) => id === 10;
+            const patched = await fetch(
+                base + '/packing-formulas/10',
+                request('PATCH', token, {
+                    components: [{ componentItemId: 1, uomId: 1, quantity: '0.2' }],
+                }),
+            );
+            assert.equal(patched.status, 200);
+            await patched.json();
+            assert.equal(updatedActor, 7);
+            assert.equal(
+                (
+                    await fetch(
+                        base + '/packing-formulas/999',
+                        request('PATCH', token, {
+                            components: [{ componentItemId: 1, uomId: 1, quantity: '0.2' }],
+                        }),
+                    )
+                ).status,
+                404,
+            );
+            assert.equal(
+                (await fetch(base + '/packing-formulas/10', request('DELETE', token))).status,
+                204,
+            );
+            assert.equal(
+                (await fetch(base + '/packing-formulas/999', request('DELETE', token))).status,
+                404,
+            );
         },
         provided,
     );

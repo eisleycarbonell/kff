@@ -28,6 +28,9 @@ export const salesOrderLineSchema = z.object({
     qtyRemaining: decimal,
     qtyAllocated: decimal,
     unitPrice: decimal,
+    vatRatePercent: z.string().optional(),
+    netAmount: amount.optional(),
+    vatAmount: amount.optional(),
     lineTotal: amount,
 })
 export const salesOrderSchema = z.object({
@@ -41,6 +44,8 @@ export const salesOrderSchema = z.object({
     requestedDeliveryDate: z.iso.date().nullable(),
     notes: z.string().nullable(),
     status: z.enum(SALES_ORDER_STATUSES),
+    netAmount: amount.optional(),
+    vatAmount: amount.optional(),
     totalAmount: amount,
     lineCount: z.int().nonnegative(),
     lines: z.array(salesOrderLineSchema),
@@ -68,10 +73,20 @@ export const salesOrderOptionsSchema = z.object({
             name: z.string(),
             primaryUomId: id,
             primaryUomName: z.string(),
+            isVatable: z.boolean().optional(),
             isActive: z.boolean(),
+            unitCost: decimal.optional(),
         }),
     ),
+    defaultVatRatePercent: z.string().optional(),
 })
+const vatRate = z
+    .string()
+    .trim()
+    .regex(
+        /^(?:100(?:\.00?)?|\d{1,2}(?:\.\d{1,2})?)$/,
+        "Enter a VAT percentage between 0 and 100 (up to 2 decimals).",
+    )
 export const salesOrderInputSchema = z
     .strictObject({
         salesOrderNumber: z
@@ -92,6 +107,7 @@ export const salesOrderInputSchema = z
                     uomId: id,
                     qtyOrdered: positive,
                     unitPrice: decimal,
+                    vatRatePercent: vatRate.optional(),
                 }),
             )
             .min(1, "Add at least one item.")
@@ -134,6 +150,7 @@ export type SalesOrderFormValues = {
         uomId: number | null
         qtyOrdered: string
         unitPrice: string
+        vatRatePercent?: string
     }[]
 }
 export type SalesOrderFormErrors = Record<string, string>
@@ -187,9 +204,9 @@ export function compareSalesDecimals(left: string, right: string): number {
         b = scaled(right)
     return a === b ? 0 : a < b ? -1 : 1
 }
-export function previewSalesTotal(
+export function previewSalesTaxSummary(
     lines: SalesOrderFormValues["lines"],
-): string | null {
+): { netAmount: string; vatAmount: string; totalAmount: string } | null {
     if (
         lines.some(
             (line) =>
@@ -198,16 +215,91 @@ export function previewSalesTotal(
         )
     )
         return null
-    const total = lines.reduce(
-        (sum, line) =>
-            sum +
+    let netTotal = BigInt(0)
+    let vatTotal = BigInt(0)
+    for (const line of lines) {
+        const net =
             (scaled(line.qtyOrdered, 4) * scaled(line.unitPrice, 4) +
                 BigInt(5000)) /
-                BigInt(10000),
-        BigInt(0),
-    )
-    const digits = total.toString().padStart(5, "0")
-    return `${digits.slice(0, -4)}.${digits.slice(-4)}`
+            BigInt(10000)
+        const rate = (line.vatRatePercent ?? "0.00").trim()
+        const bps = /^\d{1,3}(?:\.\d{1,2})?$/.test(rate)
+            ? scaled(rate, 2)
+            : BigInt(0)
+        const clampedBps = bps > BigInt(10000) ? BigInt(10000) : bps
+        const vat =
+            (net * clampedBps + BigInt(5000)) / BigInt(10000)
+        netTotal += net
+        vatTotal += vat
+    }
+    return {
+        netAmount: formatSalesUnits4(netTotal),
+        vatAmount: formatSalesUnits4(vatTotal),
+        totalAmount: formatSalesUnits4(netTotal + vatTotal),
+    }
+}
+export function previewSalesTotal(
+    lines: SalesOrderFormValues["lines"],
+): string | null {
+    return previewSalesTaxSummary(lines)?.totalAmount ?? null
+}
+
+export type LineStockCoverage = {
+    available: string
+    onHand: string
+    reserved: string
+    fromStock: string | null
+    toPack: string | null
+    isCovered: boolean | null
+}
+
+export function formatSalesUnits4(units: bigint): string {
+    const negative = units < BigInt(0)
+    const abs = negative ? -units : units
+    const digits = abs.toString().padStart(5, "0")
+    return `${negative ? "-" : ""}${digits.slice(0, -4)}.${digits.slice(-4)}`
+}
+
+export function parseStockUnits4(value: string): bigint {
+    const trimmed = value.trim()
+    if (!/^-?\d+(?:\.\d{1,4})?$/.test(trimmed)) return BigInt(0)
+    const negative = trimmed.startsWith("-")
+    const unsigned = negative ? trimmed.slice(1) : trimmed
+    const units = scaled(unsigned, 4)
+    return negative ? -units : units
+}
+
+export function summarizeLineStockCoverage(
+    qtyOrdered: string,
+    availableUnits: bigint,
+    onHandUnits: bigint,
+    reservedUnits: bigint,
+): LineStockCoverage {
+    const clampedAvailable = availableUnits < BigInt(0) ? BigInt(0) : availableUnits
+    const orderedUnits = positive.safeParse(qtyOrdered.trim()).success
+        ? scaled(qtyOrdered.trim(), 4)
+        : null
+    if (orderedUnits === null) {
+        return {
+            available: formatSalesDecimal(formatSalesUnits4(clampedAvailable)),
+            onHand: formatSalesDecimal(formatSalesUnits4(onHandUnits)),
+            reserved: formatSalesDecimal(formatSalesUnits4(reservedUnits)),
+            fromStock: null,
+            toPack: null,
+            isCovered: null,
+        }
+    }
+    const fromStockUnits =
+        clampedAvailable < orderedUnits ? clampedAvailable : orderedUnits
+    const toPackUnits = orderedUnits - fromStockUnits
+    return {
+        available: formatSalesDecimal(formatSalesUnits4(clampedAvailable)),
+        onHand: formatSalesDecimal(formatSalesUnits4(onHandUnits)),
+        reserved: formatSalesDecimal(formatSalesUnits4(reservedUnits)),
+        fromStock: formatSalesDecimal(formatSalesUnits4(fromStockUnits)),
+        toPack: formatSalesDecimal(formatSalesUnits4(toPackUnits)),
+        isCovered: toPackUnits === BigInt(0),
+    }
 }
 
 function formInput(values: SalesOrderFormValues) {
@@ -216,11 +308,14 @@ function formInput(values: SalesOrderFormValues) {
         customerPoNumber: values.customerPoNumber.trim() || null,
         requestedDeliveryDate: values.requestedDeliveryDate.trim() || null,
         notes: values.notes.trim() || null,
-        lines: values.lines.map(({ itemId, uomId, qtyOrdered, unitPrice }) => ({
+        lines: values.lines.map(({ itemId, uomId, qtyOrdered, unitPrice, vatRatePercent }) => ({
             itemId,
             uomId,
             qtyOrdered: qtyOrdered.trim(),
             unitPrice: unitPrice.trim(),
+            ...(vatRatePercent !== undefined && vatRatePercent.trim() !== ""
+                ? { vatRatePercent: vatRatePercent.trim() }
+                : {}),
         })),
     }
 }

@@ -1,5 +1,6 @@
 "use client"
 import dynamic from "next/dynamic"
+import { BulkImportActions } from "@/components/shared/bulk-import-actions"
 import { PageHeader } from "@/components/shared/page-header"
 import { RecordTable, type RecordColumn } from "@/components/shared/record-table"
 import { Button } from "@/components/ui/button"
@@ -29,25 +30,23 @@ export default function Page() {
                 title={LABELS.Scrap}
                 description="Prepare requests, preserve evidence and apply approved changes with a separate reviewer."
                 actions={
-                    <div className="flex gap-2">
-                        <Button variant="outline" onClick={f.refresh}>
-                            Refresh
-                        </Button>
-                        {f.canManage && (
+                    f.canManage ? (
+                        <>
+                            <BulkImportActions moduleKey="scrap" />
                             <Button onClick={() => f.openForm()}>Prepare request</Button>
-                        )}
-                    </div>
+                        </>
+                    ) : undefined
                 }
             />
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-3">
                 {[
                     ["Requests", f.rows.length],
                     ["Awaiting review", f.rows.filter((r) => r.status === "Submitted").length],
                     ["Approved", f.rows.filter((r) => r.status === "Approved").length],
                 ].map(([label, value]) => (
-                    <div className="rounded-xl border bg-card p-5" key={label}>
-                        <p className="text-sm text-muted-foreground">{label}</p>
-                        <p className="text-3xl font-semibold">{value}</p>
+                    <div className="rounded-xl border bg-card p-3.5" key={label}>
+                        <p className="text-xs font-medium text-muted-foreground">{label}</p>
+                        <p className="mt-1 text-xl font-semibold sm:text-2xl">{value}</p>
                     </div>
                 ))}
             </div>

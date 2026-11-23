@@ -20,13 +20,7 @@ import {
 } from "@/components/modules/sales-orders/sales-order-table-columns"
 import { SalesOrderTableToolbar } from "@/components/modules/sales-orders/sales-order-table-toolbar"
 import { Button } from "@/components/ui/button"
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
+import { ComboboxSelect } from "@/components/shared/combobox-select"
 import {
     Table,
     TableBody,
@@ -226,30 +220,15 @@ export const SalesOrderTable = memo(function SalesOrderTable({
                         <span className="text-muted-foreground">
                             Rows per page
                         </span>
-                        <Select
+                        <ComboboxSelect
+                            aria-label="Rows per page"
                             items={pageSizeItems}
                             value={String(pageSize)}
                             onValueChange={(value) => {
                                 if (value) table.setPageSize(Number(value))
                             }}
-                        >
-                            <SelectTrigger
-                                aria-label="Rows per page"
-                                className="w-16"
-                            >
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {pageSizeItems.map((item) => (
-                                    <SelectItem
-                                        key={item.value}
-                                        value={item.value}
-                                    >
-                                        {item.label}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                            className="w-16"
+                        />
                     </div>
                     <span className="text-sm tabular-nums">
                         Page {pageIndex + 1} of {pageCount}

@@ -1,9 +1,17 @@
 "use client"
 import { useState, useId, type FormEvent } from "react"
 import { settingsInputSchema, type Settings, type SettingsInput } from "./company-setting.schema"
+import { ComboboxSelect } from "@/components/shared/combobox-select"
+import { NumericInput } from "@/components/shared/numeric-input"
+import { ENTRY_CURRENCIES } from "@/lib/price-currency"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Field, FieldLabel } from "@/components/ui/field"
+
+const CURRENCY_SETTING_OPTIONS = ENTRY_CURRENCIES.map((currency) => ({
+    value: currency.value,
+    label: `${currency.value} · ${currency.name} (${currency.symbol})`,
+}))
 export default function SettingsForm({
     settings,
     busy,
@@ -23,6 +31,8 @@ export default function SettingsForm({
             address: settings.address ?? "",
             email: settings.email ?? "",
             phone: settings.phone ?? "",
+            expiryWarningDays: String(settings.expiryWarningDays),
+            vatRatePercent: settings.vatRatePercent ?? "12.00",
         }),
         [validation, setValidation] = useState("")
     async function submit(e: FormEvent) {
@@ -36,7 +46,9 @@ export default function SettingsForm({
             phone: v.phone || null,
             currencyCode: v.currencyCode,
             defaultReorderLevel: v.defaultReorderLevel,
-            expiryWarningDays: Number(v.expiryWarningDays),
+            expiryWarningDays:
+                v.expiryWarningDays.trim() === "" ? Number.NaN : Number(v.expiryWarningDays),
+            vatRatePercent: v.vatRatePercent,
         })
         if (!parsed.success) {
             setValidation(parsed.error.issues.map((r) => r.message).join(" "))
@@ -45,8 +57,16 @@ export default function SettingsForm({
         setValidation("")
         try {
             await onSave(parsed.data)
-        } catch {}
+        } catch { }
     }
+    const currencyItems = CURRENCY_SETTING_OPTIONS.some(
+        (option) => option.value === v.currencyCode,
+    )
+        ? CURRENCY_SETTING_OPTIONS
+        : [
+            ...CURRENCY_SETTING_OPTIONS,
+            { value: v.currencyCode, label: v.currencyCode },
+        ]
     return (
         <form onSubmit={submit} className="space-y-5 rounded-xl border bg-card p-5">
             <fieldset disabled={busy || !canManage} className="grid gap-5 sm:grid-cols-2">
@@ -59,6 +79,7 @@ export default function SettingsForm({
                         "currencyCode",
                         "defaultReorderLevel",
                         "expiryWarningDays",
+                        "vatRatePercent",
                     ] as const
                 ).map((key) => (
                     <Field key={key}>
@@ -69,31 +90,70 @@ export default function SettingsForm({
                                     address: "Address",
                                     email: "Email",
                                     phone: "Phone",
-                                    currencyCode: "Currency (ISO code)",
+                                    currencyCode: "Operating currency",
                                     defaultReorderLevel:
                                         "Default reorder level in each primary UOM",
                                     expiryWarningDays: "Expiry warning horizon (days)",
+                                    vatRatePercent: "Default VAT rate (%)",
                                 }[key]
                             }
                         </FieldLabel>
-                        <Input
-                            id={id + key}
-                            value={v[key]}
-                            type={
-                                key === "email"
-                                    ? "email"
-                                    : key === "expiryWarningDays"
-                                      ? "number"
-                                      : "text"
-                            }
-                            onChange={(e) => set((v) => ({ ...v, [key]: e.target.value }))}
-                        />
+                        {key === "currencyCode" ? (
+                            <ComboboxSelect
+                                id={id + key}
+                                items={currencyItems}
+                                value={v.currencyCode}
+                                onValueChange={(next) => {
+                                    if (next) set((curr) => ({ ...curr, currencyCode: next }))
+                                }}
+                                disabled={busy || !canManage}
+                                searchable={false}
+                                className="h-9 w-full"
+                            />
+                        ) : key === "defaultReorderLevel" ||
+                          key === "expiryWarningDays" ||
+                          key === "vatRatePercent" ? (
+                            <NumericInput
+                                id={id + key}
+                                value={v[key]}
+                                allowDecimal={key !== "expiryWarningDays"}
+                                maxWholeDigits={
+                                    key === "vatRatePercent"
+                                        ? 3
+                                        : key === "expiryWarningDays"
+                                          ? 4
+                                          : 10
+                                }
+                                maxDecimalPlaces={
+                                    key === "vatRatePercent"
+                                        ? 2
+                                        : key === "defaultReorderLevel"
+                                          ? 4
+                                          : 0
+                                }
+                                placeholder={key === "vatRatePercent" ? "12.00" : undefined}
+                                onValueChange={(next) =>
+                                    set((curr) => ({ ...curr, [key]: next }))
+                                }
+                            />
+                        ) : (
+                            <Input
+                                id={id + key}
+                                value={v[key]}
+                                autoComplete={key === "phone" ? "tel" : undefined}
+                                type={
+                                    key === "email" ? "email" : key === "phone" ? "tel" : "text"
+                                }
+                                onChange={(e) => set((v) => ({ ...v, [key]: e.target.value }))}
+                            />
+                        )}
                     </Field>
                 ))}
             </fieldset>
             <p className="text-sm text-muted-foreground">
                 Currency is fixed after priced operational records exist. Reorder overrides take
-                precedence over the default.
+                precedence over the default, and the VAT rate pre-fills VATable items on new
+                orders without modifying existing documents.
             </p>
             {(validation || error) && (
                 <p className="text-destructive" role="alert">

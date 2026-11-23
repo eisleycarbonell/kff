@@ -26,13 +26,8 @@ import {
 } from "@/components/ui/dialog"
 import { Field, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
+import { ComboboxSelect } from "@/components/shared/combobox-select"
+import { NumericInput } from "@/components/shared/numeric-input"
 import { Textarea } from "@/components/ui/textarea"
 
 type Props = {
@@ -72,6 +67,10 @@ function FormContent({
             })) ?? [],
     }))
     const [errors, setErrors] = useState<DeliveryOrderFormErrors>({})
+    const [suppressedSaveError, setSuppressedSaveError] = useState<string | undefined>(undefined)
+    const activeSaveError =
+        saveError && saveError !== suppressedSaveError ? saveError : undefined
+    const numberError = errors.deliveryOrderNumber ?? activeSaveError
     const salesOrder = options.salesOrders.find((row) => row.salesOrderId === values.salesOrderId)
     const orderItems = options.salesOrders.map((row) => ({
         value: row.salesOrderId,
@@ -88,6 +87,7 @@ function FormContent({
     ) {
         setValues((current) => ({ ...current, [key]: value }))
         setErrors((current) => ({ ...current, [key]: undefined }))
+        if (saveError) setSuppressedSaveError(saveError)
     }
     function updateLine(index: number, changes: Partial<DeliveryOrderFormValues["lines"][number]>) {
         update(
@@ -100,6 +100,7 @@ function FormContent({
     async function submit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault()
         if (isSaving) return
+        setSuppressedSaveError(undefined)
         const normalized = {
             ...values,
             deliveryOrderNumber: values.deliveryOrderNumber.trim(),
@@ -124,7 +125,7 @@ function FormContent({
         <form onSubmit={submit} className="space-y-5" aria-busy={isSaving}>
             <fieldset disabled={isSaving} className="space-y-5">
                 <div className="grid gap-4 sm:grid-cols-2">
-                    <Field data-invalid={Boolean(errors.deliveryOrderNumber)}>
+                    <Field data-invalid={Boolean(numberError)}>
                         <FieldLabel htmlFor={`${id}-number`}>Delivery number</FieldLabel>
                         <Input
                             id={`${id}-number`}
@@ -132,9 +133,9 @@ function FormContent({
                             maxLength={30}
                             value={values.deliveryOrderNumber}
                             onChange={(event) => update("deliveryOrderNumber", event.target.value)}
-                            aria-invalid={Boolean(errors.deliveryOrderNumber)}
+                            aria-invalid={Boolean(numberError)}
                         />
-                        <FieldError>{errors.deliveryOrderNumber}</FieldError>
+                        <FieldError>{numberError}</FieldError>
                     </Field>
                     <Field data-invalid={Boolean(errors.deliveryDate)}>
                         <FieldLabel htmlFor={`${id}-date`}>Delivery date</FieldLabel>
@@ -151,7 +152,8 @@ function FormContent({
                 </div>
                 <Field data-invalid={Boolean(errors.salesOrderId)}>
                     <FieldLabel htmlFor={`${id}-sales-order`}>Sales order</FieldLabel>
-                    <Select
+                    <ComboboxSelect
+                        id={`${id}-sales-order`}
                         items={orderItems}
                         value={values.salesOrderId}
                         onValueChange={(value) => {
@@ -159,22 +161,10 @@ function FormContent({
                             update("lines", [])
                         }}
                         required
-                    >
-                        <SelectTrigger
-                            id={`${id}-sales-order`}
-                            className="w-full"
-                            aria-invalid={Boolean(errors.salesOrderId)}
-                        >
-                            <SelectValue placeholder="Select a confirmed sales order" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {orderItems.map((item) => (
-                                <SelectItem key={item.value} value={item.value}>
-                                    {item.label}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                        placeholder="Select a confirmed sales order"
+                        aria-invalid={Boolean(errors.salesOrderId)}
+                        className="w-full"
+                    />
                     <FieldError>{errors.salesOrderId}</FieldError>
                     {orderItems.length === 0 && (
                         <p className="text-sm text-muted-foreground">
@@ -184,7 +174,8 @@ function FormContent({
                 </Field>
                 <Field data-invalid={Boolean(errors.sourceLocationId)}>
                     <FieldLabel htmlFor={`${id}-source`}>Source location</FieldLabel>
-                    <Select
+                    <ComboboxSelect
+                        id={`${id}-source`}
                         items={sources}
                         value={values.sourceLocationId}
                         onValueChange={(value) => {
@@ -192,22 +183,10 @@ function FormContent({
                             update("lines", [])
                         }}
                         required
-                    >
-                        <SelectTrigger
-                            id={`${id}-source`}
-                            className="w-full"
-                            aria-invalid={Boolean(errors.sourceLocationId)}
-                        >
-                            <SelectValue placeholder="Select a warehouse, branch or store" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {sources.map((item) => (
-                                <SelectItem key={item.value} value={item.value}>
-                                    {item.label}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                        placeholder="Select a warehouse, branch or store"
+                        aria-invalid={Boolean(errors.sourceLocationId)}
+                        className="w-full"
+                    />
                     <FieldError>{errors.sourceLocationId}</FieldError>
                 </Field>
                 <div className="space-y-3">
@@ -268,7 +247,8 @@ function FormContent({
                                         <FieldLabel htmlFor={`${id}-line-${index}`}>
                                             Product
                                         </FieldLabel>
-                                        <Select
+                                        <ComboboxSelect
+                                            id={`${id}-line-${index}`}
                                             items={lineItems}
                                             value={line.salesOrderLineId || null}
                                             onValueChange={(value) =>
@@ -277,62 +257,40 @@ function FormContent({
                                                     lotId: 0,
                                                 })
                                             }
-                                        >
-                                            <SelectTrigger
-                                                id={`${id}-line-${index}`}
-                                                className="w-full"
-                                            >
-                                                <SelectValue placeholder="Select product" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {lineItems.map((item) => (
-                                                    <SelectItem key={item.value} value={item.value}>
-                                                        {item.label}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
+                                            placeholder="Select product"
+                                            className="w-full"
+                                        />
                                     </Field>
                                     <Field>
                                         <FieldLabel htmlFor={`${id}-lot-${index}`}>
                                             Finished-product lot
                                         </FieldLabel>
-                                        <Select
+                                        <ComboboxSelect
+                                            id={`${id}-lot-${index}`}
                                             items={lotItems}
                                             value={line.lotId || null}
                                             onValueChange={(value) =>
                                                 updateLine(index, { lotId: value ?? 0 })
                                             }
                                             disabled={!selectedLine}
-                                        >
-                                            <SelectTrigger
-                                                id={`${id}-lot-${index}`}
-                                                className="w-full"
-                                            >
-                                                <SelectValue placeholder="Select lot" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {lotItems.map((item) => (
-                                                    <SelectItem key={item.value} value={item.value}>
-                                                        {item.label}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
+                                            placeholder="Select lot"
+                                            className="w-full"
+                                        />
                                     </Field>
                                     <Field>
                                         <FieldLabel htmlFor={`${id}-qty-${index}`}>
                                             Quantity{" "}
                                             {selectedLine ? `(${selectedLine.uomName})` : ""}
                                         </FieldLabel>
-                                        <Input
+                                        <NumericInput
                                             id={`${id}-qty-${index}`}
-                                            inputMode="decimal"
+                                            maxWholeDigits={10}
+                                            maxDecimalPlaces={4}
                                             required
                                             value={line.qtyDelivered}
-                                            onChange={(event) =>
+                                            onValueChange={(next) =>
                                                 updateLine(index, {
-                                                    qtyDelivered: event.target.value,
+                                                    qtyDelivered: next,
                                                 })
                                             }
                                         />
@@ -405,12 +363,6 @@ function FormContent({
                     <FieldError>{errors.notes}</FieldError>
                 </Field>
             </fieldset>
-            {saveError && (
-                <Alert variant="destructive">
-                    <AlertTitle>Unable to save delivery</AlertTitle>
-                    <AlertDescription>{saveError}</AlertDescription>
-                </Alert>
-            )}
             <DialogFooter>
                 <Button
                     type="button"

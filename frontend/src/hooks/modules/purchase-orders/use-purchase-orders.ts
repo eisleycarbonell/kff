@@ -104,8 +104,13 @@ export type PurchaseOrderTransitionTarget = { order: PurchaseOrder; action: "sen
 const usePurchaseOrderDialogs = createDialogStore<
     PurchaseOrder,
     PurchaseOrderTransitionTarget,
-    { viewingOrder: PurchaseOrder | null; detailOpen: boolean; defaultPoNumber: string }
->({ viewingOrder: null, detailOpen: false, defaultPoNumber: "" })
+    {
+        viewingOrder: PurchaseOrder | null
+        detailOpen: boolean
+        defaultPoNumber: string
+        prefillDraft: Partial<PurchaseOrderFormValues> | null
+    }
+>({ viewingOrder: null, detailOpen: false, defaultPoNumber: "", prefillDraft: null })
 
 export function usePurchaseOrderDetail(poId: number | null) {
     const session = useSession()
@@ -113,7 +118,7 @@ export function usePurchaseOrderDetail(poId: number | null) {
         queryKey: [...PURCHASE_ORDER_DETAIL_QUERY_KEY, poId, session.data?.userId],
         queryFn: ({ signal }) => getPurchaseOrder(poId!, signal),
         enabled: Boolean(session.data) && poId !== null,
-        staleTime: 0,
+        staleTime: 15_000,
     })
     const loadError = query.error ?? session.error
     const { refetch } = query
@@ -146,6 +151,7 @@ export function usePurchaseOrders() {
         viewingOrder,
         detailOpen,
         defaultPoNumber,
+        prefillDraft,
         getState,
         openForm,
         setFormOpen,
@@ -157,19 +163,19 @@ export function usePurchaseOrders() {
         queryFn: ({ signal }) => getPurchaseOrders(signal),
         enabled: Boolean(session.data),
     })
-    // Options are only needed by the form, so they load when it opens.
+    // Options are needed by the form and replenishment requisitions panel.
     const optionsQuery = useQuery({
         queryKey: [...PURCHASE_ORDER_OPTIONS_QUERY_KEY, session.data?.userId],
         queryFn: ({ signal }) => getPurchaseOrderOptions(signal),
-        enabled: Boolean(session.data) && canManage && formOpen,
-        staleTime: 0,
+        enabled: Boolean(session.data) && canManage,
+        staleTime: 30_000,
     })
     // Expired sessions (HTTP 401) are signed out once by QueryProvider.
     const loadError = ordersQuery.error ?? session.error
     const optionsError = optionsQuery.error
 
     function cacheOrder(saved: PurchaseOrderDetail) {
-        for (const key of ["receiving-options", "operational-reports", "dashboard"])
+        for (const key of ["receiving-options", "operational-reports", "dashboard", "accounting"])
             void client.invalidateQueries({ queryKey: [key] })
         const row = purchaseOrderSchema.parse(saved)
         client.setQueryData<PurchaseOrder[]>(queryKey, (current = []) =>
@@ -185,9 +191,6 @@ export function usePurchaseOrders() {
         void client.invalidateQueries({
             queryKey: [...PURCHASE_ORDER_DETAIL_QUERY_KEY, saved.poId],
         })
-        void client.invalidateQueries({ queryKey: ["suppliers"] })
-        void client.invalidateQueries({ queryKey: ["items"] })
-        void client.invalidateQueries({ queryKey: ["uoms"] })
     }
     function mutationError(error: Error) {
         if (error instanceof ApiError && error.status === 403)
@@ -232,6 +235,7 @@ export function usePurchaseOrders() {
                 : createPurchaseOrder(toPurchaseOrderInput(values))
         },
         onSuccess: (saved, { order }) => {
+            patch({ prefillDraft: null })
             cacheOrder(saved)
             showToast({
                 type: "success",
@@ -277,13 +281,23 @@ export function usePurchaseOrders() {
     const openAdd = useCallback(() => {
         if (isPreparingNumber || isSaving || isTransitioning) return
         resetSave()
+        patch({ prefillDraft: null })
         prepareOrderNumber()
-    }, [isPreparingNumber, isSaving, isTransitioning, resetSave, prepareOrderNumber])
+    }, [isPreparingNumber, isSaving, isTransitioning, resetSave, patch, prepareOrderNumber])
+    const openAddWithPrefill = useCallback(
+        (draft: Partial<PurchaseOrderFormValues>) => {
+            if (!canManage || isPreparingNumber || isSaving || isTransitioning) return
+            resetSave()
+            patch({ prefillDraft: draft })
+            prepareOrderNumber()
+        },
+        [canManage, isPreparingNumber, isSaving, isTransitioning, resetSave, patch, prepareOrderNumber],
+    )
     const openEdit = useCallback(
         (order: PurchaseOrder) => {
             resetSave()
             // Editing from the detail dialog closes it before the form opens.
-            patch({ detailOpen: false })
+            patch({ detailOpen: false, prefillDraft: null })
             openForm(order)
         },
         [resetSave, patch, openForm],
@@ -344,8 +358,10 @@ export function usePurchaseOrders() {
         formRequested,
         editingOrder,
         defaultPoNumber,
+        prefillDraft,
         isPreparingNumber,
         openAdd,
+        openAddWithPrefill,
         openEdit,
         viewingOrder,
         detailOpen,

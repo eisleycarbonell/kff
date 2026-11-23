@@ -171,9 +171,9 @@ export function RecordTable<T extends object>({
     }
     return (
         <div className="min-w-0 overflow-hidden rounded-xl border bg-card">
-            <div className="flex flex-wrap items-center gap-3 border-b p-4">
+            <div className="flex flex-wrap items-center gap-2 border-b p-2.5 sm:gap-2.5 sm:p-3">
                 <Input
-                    className="h-10 max-w-sm"
+                    className="h-10 w-full sm:max-w-sm"
                     aria-label={"Search " + name}
                     placeholder="Search records…"
                     value={String(table.state.globalFilter ?? "")}
@@ -250,7 +250,7 @@ export function RecordTable<T extends object>({
                             data-state={r.getIsSelected() ? "selected" : undefined}
                         >
                             {r.getVisibleCells().map((c) => (
-                                <TableCell key={c.id} className="px-4 py-3">
+                                <TableCell key={c.id} className="px-3 py-2 text-xs sm:text-sm">
                                     <table.FlexRender cell={c} />
                                 </TableCell>
                             ))}
@@ -268,13 +268,13 @@ export function RecordTable<T extends object>({
                     )}
                 </TableBody>
             </Table>
-            <div className="flex flex-wrap items-center justify-between gap-3 border-t p-4 text-sm">
+            <div className="flex flex-col gap-2.5 border-t p-2.5 text-xs sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:p-3 sm:text-sm">
                 <span>
                     {table.getFilteredRowModel().rows.length} records ·{" "}
                     {table.getFilteredSelectedRowModel().rows.length} selected · Page{" "}
                     {table.state.pagination.pageIndex + 1} of {Math.max(1, table.getPageCount())}
                 </span>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                     <Button
                         variant="outline"
                         disabled={!table.getCanPreviousPage()}

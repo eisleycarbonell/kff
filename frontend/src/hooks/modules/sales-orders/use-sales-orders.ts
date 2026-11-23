@@ -193,6 +193,7 @@ export function useSalesOrders() {
             ["delivery-orders"],
             ["delivery-order-options"],
             ["dashboard"],
+            ["accounting"],
             ["sales-order-material-plan"],
         ])
             void client.invalidateQueries({ queryKey: key })

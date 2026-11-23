@@ -11,6 +11,14 @@ export const userRoleSchema = z.object({
         canManagePacking: z.boolean().default(false),
         canManageTransfers: z.boolean().default(false),
         canManageUsers: z.boolean().default(false),
+        canManageAccounting: z.boolean().default(false),
+        notifyInventory: z.boolean().default(false),
+        notifyPurchasing: z.boolean().default(false),
+        notifyPacking: z.boolean().default(false),
+        notifyTransfers: z.boolean().default(false),
+        notifySales: z.boolean().default(false),
+        notifyAccounting: z.boolean().default(false),
+        notifyUsers: z.boolean().default(false),
     }),
 })
 export type UserRole = z.output<typeof userRoleSchema>

@@ -2,7 +2,7 @@
 
 import { useId } from "react"
 import Link from "next/link"
-import { RefreshCw } from "lucide-react"
+import { RefreshCw, ShoppingCart } from "lucide-react"
 import {
     formatSalesDecimal,
     type SalesMaterialPlan,
@@ -19,13 +19,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog"
 import { Field, FieldLabel } from "@/components/ui/field"
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
+import { ComboboxSelect } from "@/components/shared/combobox-select"
 import {
     Table,
     TableBody,
@@ -49,6 +43,42 @@ type Props = {
     loading: boolean
     refresh: () => void
 }
+function ceilQtyTo4Decimals(value: string): string {
+    const trimmed = value.trim()
+    if (!/^\d+(?:\.\d+)?$/.test(trimmed)) return ""
+    const [whole = "0", frac = ""] = trimmed.split(".")
+    let units4: bigint
+    if (frac.length <= 4) {
+        units4 = BigInt(whole) * BigInt(10000) + BigInt(frac.padEnd(4, "0"))
+    } else {
+        units4 =
+            BigInt(whole) * BigInt(10000) +
+            BigInt(frac.slice(0, 4)) +
+            (/[1-9]/.test(frac.slice(4)) ? BigInt(1) : BigInt(0))
+    }
+    if (units4 <= BigInt(0)) return ""
+    const wholePart = units4 / BigInt(10000)
+    const fracPart = (units4 % BigInt(10000)).toString().padStart(4, "0").replace(/0+$/, "")
+    return fracPart ? `${wholePart}.${fracPart}` : `${wholePart}`
+}
+
+function buildSupplierRequisitionHref(
+    plan: SalesMaterialPlan,
+    supplierId: number,
+    items: { itemId: number; qtyShortage: string }[],
+): string {
+    const params = new URLSearchParams({
+        source: "sales-order",
+        soNumber: plan.salesOrderNumber,
+        supplierId: String(supplierId),
+        items: items
+            .map((item) => `${item.itemId}:${ceilQtyTo4Decimals(item.qtyShortage)}`)
+            .join(","),
+    })
+    if (plan.customerPoNumber) params.set("customerPo", plan.customerPoNumber)
+    return `/purchase-orders?${params.toString()}`
+}
+
 export function SalesMaterialPlanDialog({
     open,
     onClose,
@@ -71,6 +101,29 @@ export function SalesMaterialPlanDialog({
             label: location.code + " · " + location.name,
         }))
     const issues = plan?.products.filter((product) => product.issue) ?? []
+    const shortagesBySupplier = (() => {
+        if (!plan) return []
+        const map = new Map<
+            number,
+            { supplierId: number; name: string; items: { itemId: number; qtyShortage: string }[] }
+        >()
+        for (const material of plan.materials) {
+            if (!/[1-9]/.test(material.qtyShortage)) continue
+            for (const supplier of material.suppliers) {
+                const entry = map.get(supplier.supplierId) ?? {
+                    supplierId: supplier.supplierId,
+                    name: supplier.name,
+                    items: [],
+                }
+                entry.items.push({
+                    itemId: material.itemId,
+                    qtyShortage: material.qtyShortage,
+                })
+                map.set(supplier.supplierId, entry)
+            }
+        }
+        return Array.from(map.values())
+    })()
     return (
         <Dialog
             open={open}
@@ -94,29 +147,15 @@ export function SalesMaterialPlanDialog({
                     <FieldLabel htmlFor={id}>
                         Material source warehouse / packing location
                     </FieldLabel>
-                    <Select
+                    <ComboboxSelect
+                        id={id}
                         value={sourceLocationId}
                         items={sources}
                         disabled={!optionsReady}
                         onValueChange={onSourceChange}
-                    >
-                        <SelectTrigger
-                            id={id}
-                            className="w-full data-[size=default]:h-10"
-                        >
-                            <SelectValue placeholder="Select where materials will be packed from" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {sources.map((source) => (
-                                <SelectItem
-                                    key={source.value}
-                                    value={source.value}
-                                >
-                                    {source.label}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                        placeholder="Select where materials will be packed from"
+                        className="h-10 w-full"
+                    />
                 </Field>
                 {optionsError && (
                     <Alert variant="destructive">
@@ -306,7 +345,7 @@ export function SalesMaterialPlanDialog({
                                                         className={
                                                             "tabular-nums " +
                                                             (index === 2 &&
-                                                            /[1-9]/.test(qty)
+                                                                /[1-9]/.test(qty)
                                                                 ? "font-medium text-destructive"
                                                                 : "")
                                                         }
@@ -318,19 +357,77 @@ export function SalesMaterialPlanDialog({
                                                     </TableCell>
                                                 ))}
                                                 <TableCell>
-                                                    {material.suppliers.length
-                                                        ? material.suppliers
-                                                              .map(
-                                                                  (supplier) =>
-                                                                      supplier.name,
-                                                              )
-                                                              .join(", ")
-                                                        : "Link an active supplier in Suppliers"}
+                                                    {material.suppliers.length ? (
+                                                        /[1-9]/.test(material.qtyShortage) ? (
+                                                            <div className="flex flex-wrap gap-1.5">
+                                                                {material.suppliers.map((supplier) => (
+                                                                    <Button
+                                                                        key={supplier.supplierId}
+                                                                        size="xs"
+                                                                        variant="outline"
+                                                                        render={
+                                                                            <Link
+                                                                                href={buildSupplierRequisitionHref(
+                                                                                    plan,
+                                                                                    supplier.supplierId,
+                                                                                    [
+                                                                                        {
+                                                                                            itemId: material.itemId,
+                                                                                            qtyShortage:
+                                                                                                material.qtyShortage,
+                                                                                        },
+                                                                                    ],
+                                                                                )}
+                                                                            />
+                                                                        }
+                                                                        nativeButton={false}
+                                                                    >
+                                                                        <ShoppingCart className="size-3" />
+                                                                        {supplier.name}
+                                                                    </Button>
+                                                                ))}
+                                                            </div>
+                                                        ) : (
+                                                            material.suppliers
+                                                                .map((supplier) => supplier.name)
+                                                                .join(", ")
+                                                        )
+                                                    ) : (
+                                                        "Link an active supplier in Suppliers"
+                                                    )}
                                                 </TableCell>
                                             </TableRow>
                                         ))}
                                     </TableBody>
                                 </Table>
+                            )}
+                            {shortagesBySupplier.length > 0 && plan && (
+                                <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-3">
+                                    <span className="text-xs font-medium text-foreground">
+                                        Replenishment requisitions:
+                                    </span>
+                                    {shortagesBySupplier.map((entry) => (
+                                        <Button
+                                            key={entry.supplierId}
+                                            size="sm"
+                                            variant="secondary"
+                                            render={
+                                                <Link
+                                                    href={buildSupplierRequisitionHref(
+                                                        plan,
+                                                        entry.supplierId,
+                                                        entry.items,
+                                                    )}
+                                                />
+                                            }
+                                            nativeButton={false}
+                                        >
+                                            <ShoppingCart className="size-3.5" />
+                                            Prepare PO · {entry.name} ({entry.items.length}{" "}
+                                            {entry.items.length === 1 ? "item" : "items"})
+                                        </Button>
+                                    ))}
+                                </div>
                             )}
                             {plan.materials.length > 0 && (
                                 <p

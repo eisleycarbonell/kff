@@ -56,6 +56,7 @@ test('sample accounts have assigned roles with the existing sales and delivery p
                 canManagePacking: true,
                 canManageTransfers: true,
                 canManageUsers: true,
+                canManageAccounting: true,
             },
         ],
         [
@@ -63,13 +64,14 @@ test('sample accounts have assigned roles with the existing sales and delivery p
             { canManageInventory: true, canManagePacking: true, canManageTransfers: true },
         ],
         ['Purchasing', { canManagePurchasing: true }],
+        ['Accounting', { canManageAccounting: true }],
         ['Viewer', {}],
         ['Sales', { canManageInventory: true }],
         ['Delivery', { canManageTransfers: true }],
     ]);
-    assert.equal(sampleRoles.length, 6);
-    assert.equal(sampleAccounts.length, 6);
-    assert.equal(new Set(sampleAccounts.map((account) => account.email)).size, 6);
+    assert.equal(sampleRoles.length, 7);
+    assert.equal(sampleAccounts.length, 7);
+    assert.equal(new Set(sampleAccounts.map((account) => account.email)).size, 7);
     const rolesByName = new Map(sampleRoles.map((role) => [role.name, role]));
     for (const role of sampleRoles)
         assert.deepEqual(role.settings, expectedPermissions.get(role.name));
@@ -110,7 +112,7 @@ test(
     { skip: !testDatabaseUrl },
     async () => {
         // Never fall back to DATABASE_URL. All work is isolated in a random schema.
-        const client = postgres(testDatabaseUrl!, { max: 3, onnotice: () => {} });
+        const client = postgres(testDatabaseUrl!, { max: 3, onnotice: () => { } });
         const database = drizzle({ client });
         const schemaName = `kff_sample_${randomBytes(8).toString('hex')}`;
         const { seedSampleData, SAMPLE_ADMIN_EMAIL, SAMPLE_PASSWORD } =

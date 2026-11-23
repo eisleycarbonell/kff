@@ -6,6 +6,14 @@ const decimal = z
     .trim()
     .regex(/^\d{1,10}(?:\.\d{1,4})?$/, 'Use at most 10 whole digits and four decimal places.');
 const positive = decimal.refine((value) => /[1-9]/.test(value), 'Quantity must be positive.');
+const vatRate = z
+    .string()
+    .trim()
+    .regex(/^\d{1,3}(?:\.\d{1,2})?$/, 'Use a VAT percentage between 0 and 100.')
+    .refine((value) => {
+        const num = Number(value);
+        return Number.isFinite(num) && num >= 0 && num <= 100;
+    }, 'VAT rate must be between 0% and 100%.');
 const fields = {
     salesOrderNumber: z.string().trim().toUpperCase().min(1).max(30),
     customerId: id,
@@ -26,7 +34,15 @@ const fields = {
         .nullable()
         .optional(),
     lines: z
-        .array(z.strictObject({ itemId: id, uomId: id, qtyOrdered: positive, unitPrice: decimal }))
+        .array(
+            z.strictObject({
+                itemId: id,
+                uomId: id,
+                qtyOrdered: positive,
+                unitPrice: decimal,
+                vatRatePercent: vatRate.optional(),
+            }),
+        )
         .min(1)
         .max(100)
         .refine(

@@ -19,14 +19,8 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog"
 import { Field, FieldError, FieldLabel } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
+import { ComboboxSelect } from "@/components/shared/combobox-select"
+import { NumericInput } from "@/components/shared/numeric-input"
 
 type Action = "dispatch" | "receive" | "cancel"
 type Props = {
@@ -177,26 +171,15 @@ function ActionForm({
             {action === "dispatch" && (
                 <Field>
                     <FieldLabel htmlFor={`${id}-transit`}>In Transit location</FieldLabel>
-                    <Select
+                    <ComboboxSelect
+                        id={`${id}-transit`}
                         items={transitOptions}
                         value={transitId}
                         disabled={pending || props.optionsLoading}
                         onValueChange={setTransitId}
-                    >
-                        <SelectTrigger
-                            id={`${id}-transit`}
-                            className="w-full data-[size=default]:h-10"
-                        >
-                            <SelectValue placeholder="Select In Transit location" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {transitOptions.map((row) => (
-                                <SelectItem key={row.value} value={row.value}>
-                                    {row.label}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                        placeholder="Select In Transit location"
+                        className="h-10 w-full"
+                    />
                     <p className="text-xs text-muted-foreground">
                         Goods remain in company inventory until destination receipt is confirmed.
                     </p>
@@ -227,9 +210,10 @@ function ActionForm({
                                 {action === "dispatch" ? "Ship" : "Receive now"} (
                                 {line.primaryUomName})
                             </FieldLabel>
-                            <Input
+                            <NumericInput
                                 id={`${id}-qty-${line.transferLineId}`}
-                                inputMode="decimal"
+                                maxWholeDigits={10}
+                                maxDecimalPlaces={4}
                                 required
                                 value={
                                     action === "receive" &&
@@ -243,10 +227,10 @@ function ActionForm({
                                     (action === "receive" &&
                                         decimalUnits(line.qtyOutstanding) === BigInt(0))
                                 }
-                                onChange={(event) => {
+                                onValueChange={(next) => {
                                     setQuantities((current) => ({
                                         ...current,
-                                        [line.transferLineId]: event.target.value,
+                                        [line.transferLineId]: next,
                                     }))
                                     setValidationError(undefined)
                                 }}

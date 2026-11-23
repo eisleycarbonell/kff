@@ -84,7 +84,7 @@ test(
                 async () => {
                     const before = await baseline();
                     const history =
-                        await client`select request_id,kind from review_requests where kind in ('Count','QC','Disposition')`;
+                        await client`select request_id,kind from review_requests where kind in ('Count','QC','Disposition','Formula')`;
                     assert.ok(history.length);
                     for (const row of history) {
                         const saved = await getControl(row.request_id, database);
@@ -215,7 +215,7 @@ test(
                 },
             );
             await t.test(
-                'formula releases are dated, preserve historical orders, and use item-specific packaging ratios',
+                'direct formula updates preserve historical orders and use item-specific packaging ratios',
                 async () => {
                     const [product] =
                             await client`select item_id as id from items where sku like 'FG-GARLIC-%'`,
@@ -239,28 +239,9 @@ test(
                     const components = [
                         { componentItemId: pack!.id, uomId: box!.id, quantity: '1' },
                     ];
-                    const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
-                    const future = (await prepare({
-                        kind: 'Formula',
-                        itemId: product!.id,
-                        effectiveDate: tomorrow,
-                        changeType: 'Replace',
-                        components,
-                    }))!;
-                    await action(future.requestId, 'submit');
-                    await assert.rejects(
-                        action(future.requestId, 'approve', reviewer!.id),
-                        /effective date/i,
-                    );
-                    const revision = (await prepare({
-                        kind: 'Formula',
-                        itemId: product!.id,
-                        effectiveDate: new Date().toISOString().slice(0, 10),
-                        changeType: 'Replace',
-                        components,
-                    }))!;
-                    await action(revision.requestId, 'submit');
-                    await action(revision.requestId, 'approve', reviewer!.id);
+                    const { updateFormula, removeFormula } =
+                        await import('../src/modules/packing-formulas/packing-formula.service.ts');
+                    await updateFormula(product!.id, { components }, reviewer!.id, database);
                     assert.deepEqual(
                         await client`select packing_order_id,item_id,uom_id,required_qty from packing_order_materials order by packing_order_material_id`,
                         before,
@@ -287,15 +268,7 @@ test(
                         database,
                     );
                     assert.equal(preview.materials[0]!.requiredQty, '48.0000');
-                    const retire = (await prepare({
-                        kind: 'Formula',
-                        itemId: product!.id,
-                        effectiveDate: new Date().toISOString().slice(0, 10),
-                        changeType: 'Retire',
-                        components: [],
-                    }))!;
-                    await action(retire.requestId, 'submit');
-                    await action(retire.requestId, 'approve', reviewer!.id);
+                    assert.equal(await removeFormula(product!.id, database), true);
                     await assert.rejects(
                         previewPackingOrder(
                             { itemId: product!.id, targetQty: '2', sourceLocationId: location!.id },

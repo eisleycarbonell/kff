@@ -8,6 +8,7 @@ import {
     AlertDialogDescription,
     AlertDialogFooter,
 } from "@/components/ui/alert-dialog"
+import { BulkImportActions } from "@/components/shared/bulk-import-actions"
 import { PageHeader } from "@/components/shared/page-header"
 import { RecordTable, type RecordColumn } from "@/components/shared/record-table"
 import { Button } from "@/components/ui/button"
@@ -34,12 +35,12 @@ export default function Page() {
                 title="Item Packaging"
                 description="Maintain the data used by operational workflows and reports."
                 actions={
-                    <div className="flex gap-2">
-                        <Button variant="outline" onClick={f.refresh}>
-                            Refresh
-                        </Button>
-                        {f.canManage && <Button onClick={() => f.openForm()}>Add record</Button>}
-                    </div>
+                    f.canManage ? (
+                        <>
+                            <BulkImportActions moduleKey="item-packaging" />
+                            <Button onClick={() => f.openForm()}>Add record</Button>
+                        </>
+                    ) : undefined
                 }
             />
             <div className="rounded-xl border bg-card p-5">

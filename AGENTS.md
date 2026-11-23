@@ -118,6 +118,14 @@ form, permission, navigation, and report changes within the requested scope.
 Preserve existing implementation conventions unless the requested feature
 requires a coordinated change.
 
+- Always use the shared `ComboboxSelect` (`frontend/src/components/shared/combobox-select.tsx`)
+  or `Combobox` (`frontend/src/components/ui/combobox.tsx`) component on every dropdown,
+  form selector, filter selector, and pagination selector across the frontend — never
+  use native `<select>` elements or plain `<Select>` dropdowns.
+- Always build every module, page, table, toolbar, dialog, and form to be fully
+  mobile-responsive across phone, tablet, and desktop viewports (down to 320px width)
+  without horizontal page overflow, clipped controls, or inaccessible touch targets.
+
 ## Verification
 
 Follow the affected application's verification rules. For operational features,

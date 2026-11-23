@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { ArrowLeftRight, Boxes, Truck } from "lucide-react"
 import {
     formatPackingDecimal,
     reservationStatus,
@@ -95,10 +96,10 @@ export function PackingOrderDetail({
                                     ],
                                     ["Scheduled", order.scheduledDate ?? "Unscheduled"],
                                     [
-                                        "Formula revision request",
+                                        "Formula source",
                                         order.formulaRevisionId
-                                            ? String(order.formulaRevisionId)
-                                            : "Legacy published formula",
+                                            ? `Historical revision #${order.formulaRevisionId}`
+                                            : "Published packing formula",
                                     ],
                                     [
                                         "Material source",
@@ -318,6 +319,40 @@ export function PackingOrderDetail({
                                             </TableBody>
                                         </Table>
                                     </div>
+                                    {order.status === "Completed" && (
+                                        <div className="mt-4 flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-3">
+                                            <span className="text-xs font-medium text-muted-foreground">
+                                                Next step:
+                                            </span>
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                render={<Link href="/transfers" />}
+                                                nativeButton={false}
+                                            >
+                                                <ArrowLeftRight className="size-3.5" />
+                                                Transfer to Branch / Warehouse
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                render={<Link href="/delivery-orders" />}
+                                                nativeButton={false}
+                                            >
+                                                <Truck className="size-3.5" />
+                                                Deliver to Customer
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                render={<Link href="/inventory" />}
+                                                nativeButton={false}
+                                            >
+                                                <Boxes className="size-3.5" />
+                                                View in Inventory Stock
+                                            </Button>
+                                        </div>
+                                    )}
                                 </section>
                             )}
                         </div>

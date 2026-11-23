@@ -3,6 +3,7 @@
 import { useId, useState, type FormEvent } from "react"
 import {
     PERMISSIONS,
+    NOTIFICATION_TAGS,
     EMPTY_SETTINGS,
     validateRole,
     type Role,
@@ -25,7 +26,6 @@ import {
     FieldGroup,
     FieldLabel,
 } from "@/components/ui/field"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
@@ -55,9 +55,14 @@ function RoleFormContent({
         settings: { ...(role?.settings ?? EMPTY_SETTINGS) },
     }))
     const [errors, setErrors] = useState<RoleFormErrors>({})
+    const [suppressedSaveError, setSuppressedSaveError] = useState<Error | null>(null)
+    const activeSaveError =
+        saveError && saveError !== suppressedSaveError ? saveError.message : undefined
+    const nameError = errors.name ?? activeSaveError
     async function submit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault()
         if (isSaving) return
+        setSuppressedSaveError(null)
         const next = validateRole(values, roles, role)
         setErrors(next)
         const first = Object.keys(next)[0]
@@ -80,14 +85,8 @@ function RoleFormContent({
                 </DialogDescription>
             </DialogHeader>
             <form onSubmit={submit} aria-busy={isSaving} className="space-y-5">
-                {saveError && (
-                    <Alert variant="destructive">
-                        <AlertTitle>Role was not saved</AlertTitle>
-                        <AlertDescription>{saveError.message}</AlertDescription>
-                    </Alert>
-                )}
                 <FieldGroup className="gap-4">
-                    <Field data-invalid={Boolean(errors.name)}>
+                    <Field data-invalid={Boolean(nameError)}>
                         <FieldLabel htmlFor={`${id}-name`}>Role name</FieldLabel>
                         <Input
                             id={`${id}-name`}
@@ -96,14 +95,15 @@ function RoleFormContent({
                             disabled={isSaving}
                             required
                             className="h-10"
-                            aria-invalid={Boolean(errors.name)}
+                            aria-invalid={Boolean(nameError)}
                             aria-describedby={`${id}-name-error`}
                             onChange={(event) => {
                                 setValues((current) => ({ ...current, name: event.target.value }))
                                 setErrors((current) => ({ ...current, name: undefined }))
+                                if (saveError) setSuppressedSaveError(saveError)
                             }}
                         />
-                        <FieldError id={`${id}-name-error`}>{errors.name}</FieldError>
+                        <FieldError id={`${id}-name-error`}>{nameError}</FieldError>
                     </Field>
                     <Field data-invalid={Boolean(errors.description)}>
                         <FieldLabel htmlFor={`${id}-description`}>
@@ -166,6 +166,72 @@ function RoleFormContent({
                             </Field>
                         ))}
                         <FieldError>{errors.settings}</FieldError>
+                    </fieldset>
+                    <fieldset
+                        id={`${id}-notifications`}
+                        disabled={isSaving}
+                        className="space-y-3"
+                        aria-describedby={`${id}-notifications-help`}
+                    >
+                        <div className="flex items-center justify-between gap-2">
+                            <legend className="text-sm font-medium">
+                                Notification routing tags
+                            </legend>
+                            <Button
+                                type="button"
+                                size="xs"
+                                variant="ghost"
+                                disabled={isSaving}
+                                onClick={() => {
+                                    const allTagged = NOTIFICATION_TAGS.every(
+                                        ({ key }) => values.settings[key],
+                                    )
+                                    setValues((current) => {
+                                        const nextSettings = { ...current.settings }
+                                        for (const { key } of NOTIFICATION_TAGS) {
+                                            nextSettings[key] = !allTagged
+                                        }
+                                        return { ...current, settings: nextSettings }
+                                    })
+                                    setErrors((current) => ({ ...current, settings: undefined }))
+                                }}
+                            >
+                                {NOTIFICATION_TAGS.every(({ key }) => values.settings[key])
+                                    ? "Clear"
+                                    : "Tag all"}
+                            </Button>
+                        </div>
+                        <p id={`${id}-notifications-help`} className="text-sm text-muted-foreground">
+                            Tag which specific workflow notifications should be sent to this role.
+                            Data synchronization remains global for all users and roles.
+                        </p>
+                        {NOTIFICATION_TAGS.map(({ key, label, description }) => (
+                            <Field
+                                key={key}
+                                orientation="horizontal"
+                                className="rounded-lg border p-3"
+                            >
+                                <Checkbox
+                                    id={`${id}-${key}`}
+                                    checked={values.settings[key]}
+                                    disabled={isSaving}
+                                    onCheckedChange={(checked) => {
+                                        setValues((current) => ({
+                                            ...current,
+                                            settings: { ...current.settings, [key]: checked },
+                                        }))
+                                        setErrors((current) => ({
+                                            ...current,
+                                            settings: undefined,
+                                        }))
+                                    }}
+                                />
+                                <FieldContent>
+                                    <FieldLabel htmlFor={`${id}-${key}`}>{label}</FieldLabel>
+                                    <FieldDescription>{description}</FieldDescription>
+                                </FieldContent>
+                            </Field>
+                        ))}
                     </fieldset>
                 </FieldGroup>
                 <DialogFooter>

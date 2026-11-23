@@ -11,7 +11,7 @@ import {
     DialogFooter,
 } from "@/components/ui/dialog"
 import { Field, FieldLabel } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
+import { NumericInput } from "@/components/shared/numeric-input"
 import { Button } from "@/components/ui/button"
 
 type Props = {
@@ -35,11 +35,13 @@ function Content(p: Props) {
         return (
             <Field>
                 <FieldLabel htmlFor={uid + key}>{label}</FieldLabel>
-                <Input
+                <NumericInput
                     id={uid + key}
+                    maxWholeDigits={10}
+                    maxDecimalPlaces={4}
                     value={String(v[key])}
                     required={required}
-                    onChange={(e) => set((v) => ({ ...v, [key]: e.target.value }))}
+                    onValueChange={(next) => set((prev) => ({ ...prev, [key]: next }))}
                 />
             </Field>
         )

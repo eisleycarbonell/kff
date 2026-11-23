@@ -8,6 +8,15 @@ const decimal = z
         /^\d{1,10}(?:\.\d{1,4})?$/,
         'Use a non-negative decimal with at most 10 whole digits and 4 decimal places.',
     );
+export const vatRateSchema = z
+    .string()
+    .trim()
+    .regex(/^\d{1,3}(?:\.\d{1,2})?$/, 'Use a VAT percentage between 0 and 100.')
+    .refine((value) => {
+        const num = Number(value);
+        return Number.isFinite(num) && num >= 0 && num <= 100;
+    }, 'VAT rate must be between 0% and 100%.');
+
 export const purchaseOrderLineSchema = z.strictObject({
     itemId: id,
     uomId: id,
@@ -16,6 +25,7 @@ export const purchaseOrderLineSchema = z.strictObject({
         'Ordered quantity must be greater than zero.',
     ),
     unitPrice: decimal,
+    vatRatePercent: vatRateSchema.optional(),
 });
 const lines = z
     .array(purchaseOrderLineSchema)

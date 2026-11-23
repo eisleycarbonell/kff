@@ -2,6 +2,7 @@
 import dynamic from "next/dynamic"
 import Link from "next/link"
 import { Archive, Plus } from "lucide-react"
+import { BulkImportActions } from "@/components/shared/bulk-import-actions"
 import { PageHeader } from "@/components/shared/page-header"
 import { LocationStatistics } from "@/components/modules/locations/location-statistics"
 import { LocationTable } from "@/components/modules/locations/location-table"
@@ -36,14 +37,20 @@ export default function LocationsPage() {
                 description="Manage where inventory is stored, packed, and transferred."
                 actions={
                     catalog.canManage && (
-                        <Button
-                            className="h-10 gap-2 px-4"
-                            onClick={catalog.openAdd}
-                            disabled={catalog.loadStatus !== "ready"}
-                        >
-                            <Plus />
-                            Add location
-                        </Button>
+                        <>
+                            <BulkImportActions
+                                moduleKey="locations"
+                                disabled={catalog.loadStatus !== "ready"}
+                            />
+                            <Button
+                                className="h-10 gap-2 px-4"
+                                onClick={catalog.openAdd}
+                                disabled={catalog.loadStatus !== "ready"}
+                            >
+                                <Plus />
+                                Add location
+                            </Button>
+                        </>
                     )
                 }
             />
