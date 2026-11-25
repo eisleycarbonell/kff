@@ -2,17 +2,8 @@
 
 import type { ReactNode } from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
 import { create } from "zustand"
-import {
-    BookOpenCheck,
-    Boxes,
-    CalendarRange,
-    Factory,
-    LayoutDashboard,
-    Receipt,
-    Wallet,
-} from "lucide-react"
+import { CalendarRange } from "lucide-react"
 import {
     accountingFilterSchema,
     type AccountingFilters,
@@ -24,7 +15,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useAccounting } from "@/hooks/modules/accounting/use-accounting"
-import { cn } from "cn"
 
 const EMPTY_FILTERS: AccountingFilters = {
     fromDate: "",
@@ -76,15 +66,6 @@ export const useAccountingFilterStore = create<AccountingFilterStore>((set, get)
         }),
 }))
 
-export const ACCOUNTING_SUBMODULES = [
-    { label: "Overview & P&L", href: "/accounting", icon: LayoutDashboard },
-    { label: "General Ledger", href: "/accounting/general-ledger", icon: BookOpenCheck },
-    { label: "Inventory Valuation", href: "/accounting/valuation", icon: Boxes },
-    { label: "Production Costing", href: "/accounting/production-costing", icon: Factory },
-    { label: "Receivables & Margin", href: "/accounting/receivables-margins", icon: Receipt },
-    { label: "Payables & POs", href: "/accounting/payables", icon: Wallet },
-] as const
-
 function localIsoDate(date: Date): string {
     const year = date.getFullYear()
     const month = String(date.getMonth() + 1).padStart(2, "0")
@@ -103,7 +84,6 @@ export function AccountingShell({
     actions?: ReactNode
     children: (overview: AccountingOverview) => ReactNode
 }) {
-    const pathname = usePathname().replace(/\/+$/, "") || "/"
     const {
         draftFilters,
         appliedFilters,
@@ -129,32 +109,6 @@ export function AccountingShell({
         <div className="space-y-3.5">
             <PageHeader title={title} description={description} actions={actions} />
 
-            <nav
-                aria-label="Accounting sub-modules"
-                className="flex items-center gap-1.5 overflow-x-auto rounded-xl border bg-card p-1.5 sm:flex-wrap"
-            >
-                {ACCOUNTING_SUBMODULES.map((item) => {
-                    const Icon = item.icon
-                    const active = pathname === item.href
-                    return (
-                        <Button
-                            key={item.href}
-                            variant={active ? "default" : "ghost"}
-                            size="sm"
-                            className={cn(
-                                "h-8 shrink-0 gap-1.5 text-xs",
-                                !active && "text-muted-foreground hover:text-foreground",
-                            )}
-                            render={<Link href={item.href} />}
-                            nativeButton={false}
-                        >
-                            <Icon className="size-3.5" />
-                            {item.label}
-                        </Button>
-                    )
-                })}
-            </nav>
-
             {loadStatus === "signed-out" && (
                 <Alert>
                     <AlertTitle>Sign in to open Accounting</AlertTitle>
@@ -168,10 +122,10 @@ export function AccountingShell({
 
             {loadStatus === "forbidden" && (
                 <Alert>
-                    <AlertTitle>Accounting access required</AlertTitle>
+                    <AlertTitle>Accounting Portal access required</AlertTitle>
                     <AlertDescription>
-                        Your role does not include Accounting access. Sign in with an Accounting role
-                        or ask an Administrator to enable Accounting management permission.
+                        The standalone Accounting Portal is restricted to roles with Accounting
+                        access. Sign in with an Accounting account to view financial ledgers.
                     </AlertDescription>
                 </Alert>
             )}
@@ -194,27 +148,32 @@ export function AccountingShell({
 
             {loadStatus === "loading" && (
                 <div className="space-y-4">
-                    <Skeleton className="h-24 w-full rounded-xl" />
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <Skeleton className="h-20 w-full rounded-xl" />
+                    <div className="grid grid-cols-1 gap-3 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
+                        <Skeleton className="h-28 w-full rounded-xl" />
                         <Skeleton className="h-28 w-full rounded-xl" />
                         <Skeleton className="h-28 w-full rounded-xl" />
                         <Skeleton className="h-28 w-full rounded-xl" />
                     </div>
-                    <Skeleton className="h-80 w-full rounded-xl" />
+                    <div className="grid gap-4 sm:gap-5 @4xl/main:grid-cols-2">
+                        <Skeleton className="h-80 w-full rounded-xl" />
+                        <Skeleton className="h-80 w-full rounded-xl" />
+                        <Skeleton className="h-80 w-full rounded-xl" />
+                        <Skeleton className="h-80 w-full rounded-xl" />
+                    </div>
                 </div>
             )}
 
             {loadStatus === "ready" && overview && (
                 <div className="space-y-3.5">
-                    <div className="flex flex-col gap-2.5 rounded-xl border bg-card p-3 lg:flex-row lg:items-end lg:justify-between">
-                        <div className="space-y-0.5">
+                    <div className="flex flex-col gap-3 rounded-xl border bg-card p-3 @4xl/main:flex-row @4xl/main:items-end @4xl/main:justify-between">
+                        <div className="min-w-0 space-y-0.5">
                             <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
                                 <CalendarRange className="size-4 text-primary" />
-                                Fiscal Period Filter for P&amp;L &amp; Subledgers
+                                Date Range Filter
                             </div>
                             <p className="text-xs text-muted-foreground">
-                                Perpetual inventory asset balances reflect today&apos;s stock on hand; dates
-                                filter Journal Entries, Sales/COGS, Production, and Purchase activity.
+                                Current Stock Value always reflects what is on hand today; dates filter Sales, Expenses, Packing, and Reports.
                             </p>
                         </div>
                         <div className="flex flex-wrap items-end gap-2">
@@ -226,7 +185,7 @@ export function AccountingShell({
                                     className="h-7 px-2 text-xs"
                                     onClick={() => applyPreset(monthStartIso, todayIso)}
                                 >
-                                    MTD
+                                    This Month
                                 </Button>
                                 <Button
                                     type="button"
@@ -235,7 +194,7 @@ export function AccountingShell({
                                     className="h-7 px-2 text-xs"
                                     onClick={() => applyPreset(last30Iso, todayIso)}
                                 >
-                                    30D
+                                    Last 30 Days
                                 </Button>
                                 <Button
                                     type="button"
@@ -244,7 +203,7 @@ export function AccountingShell({
                                     className="h-7 px-2 text-xs"
                                     onClick={() => applyPreset(yearStartIso, todayIso)}
                                 >
-                                    YTD
+                                    This Year
                                 </Button>
                                 <Button
                                     type="button"
@@ -253,10 +212,10 @@ export function AccountingShell({
                                     className="h-7 px-2 text-xs"
                                     onClick={resetFilters}
                                 >
-                                    All
+                                    All Time
                                 </Button>
                             </div>
-                            <div className="grid w-full grid-cols-2 items-end gap-2 sm:flex sm:w-auto">
+                            <div className="grid w-full grid-cols-1 items-end gap-2 min-[380px]:grid-cols-2 sm:flex sm:w-auto">
                                 <div className="space-y-1">
                                     <label
                                         htmlFor="accounting-from-date"
@@ -301,7 +260,7 @@ export function AccountingShell({
                                     type="button"
                                     size="sm"
                                     onClick={applyFilters}
-                                    className="col-span-2 sm:col-span-1"
+                                    className="min-[380px]:col-span-2 sm:col-span-1"
                                 >
                                     Apply
                                 </Button>

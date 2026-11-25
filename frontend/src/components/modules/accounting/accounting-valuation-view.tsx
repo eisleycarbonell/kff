@@ -123,19 +123,19 @@ export function AccountingValuationView({ overview }: { overview: AccountingOver
             <AccountingKpiStrip
                 cards={[
                     {
-                        title: "Total Inventory Asset Value",
+                        title: "Total Stock Value",
                         value: formatCurrency(s.totalInventoryAssetValue, currency),
-                        badge: `${s.costedLotsCount} actual costed`,
-                        helper: `${s.uncostedLotsCount} lot(s) valued via catalog reference cost.`,
+                        badge: `${s.costedLotsCount} costed batches`,
+                        helper: `${s.uncostedLotsCount} batch(es) using catalog reference cost.`,
                         icon: Boxes,
                         color: "text-emerald-600 dark:text-emerald-400",
                         bg: "bg-emerald-500/10",
                     },
                     {
-                        title: "Raw Materials (Bulk Spices)",
+                        title: "Raw Spices",
                         value: formatCurrency(s.rawMaterialAssetValue, currency),
-                        badge: "Account 1210",
-                        helper: "Bulk raw spices valued at PO purchase actual or reference cost.",
+                        badge: "Bulk stock",
+                        helper: "Bulk spices valued at purchase price or catalog cost.",
                         icon: Layers,
                         color: "text-amber-600 dark:text-amber-400",
                         bg: "bg-amber-500/10",
@@ -143,17 +143,17 @@ export function AccountingValuationView({ overview }: { overview: AccountingOver
                     {
                         title: "Packaging & Labels",
                         value: formatCurrency(s.packagingAssetValue, currency),
-                        badge: "Account 1220",
-                        helper: "Hardware containers, pouches, jars, and printed labels.",
+                        badge: "Containers & labels",
+                        helper: "Pouches, jars, lids, seals, and printed labels.",
                         icon: Tag,
                         color: "text-sky-600 dark:text-sky-400",
                         bg: "bg-sky-500/10",
                     },
                     {
-                        title: "Finished Goods On Hand",
+                        title: "Finished Goods",
                         value: formatCurrency(s.finishedGoodsAssetValue, currency),
-                        badge: "Account 1230",
-                        helper: "Packed finished items valued via Packing BOM Roll-Up.",
+                        badge: "Ready to sell",
+                        helper: "Packed products valued from ingredients + packaging used.",
                         icon: Package,
                         color: "text-primary",
                         bg: "bg-primary/10",
@@ -161,30 +161,30 @@ export function AccountingValuationView({ overview }: { overview: AccountingOver
                 ]}
             />
 
-            <div className="grid gap-6 lg:grid-cols-2">
+            <div className="grid gap-4 sm:gap-6 @4xl/main:grid-cols-2 [&>*]:min-w-0">
                 <Card className="border shadow-xs">
                     <CardHeader className="pb-3">
                         <CardTitle className="text-base font-semibold">
-                            Asset Valuation by Item Category
+                            Stock Value by Item Type
                         </CardTitle>
                         <CardDescription className="text-xs">
-                            Portfolio share of inventory capital across material and product classes.
+                            How your current inventory value splits across materials and finished products.
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-2.5">
                         {overview.valuationByCategory.map((row) => (
                             <div
                                 key={row.itemType}
-                                className="flex items-center justify-between rounded-lg border bg-muted/20 px-3 py-2.5 text-xs"
+                                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-muted/20 px-3 py-2.5 text-xs"
                             >
-                                <div>
+                                <div className="min-w-0">
                                     <p className="font-medium text-foreground">{row.itemType}</p>
                                     <p className="text-muted-foreground">
                                         {row.itemCount} items · {row.lotCount} lots
                                         {row.sharePercent !== null ? ` · ${row.sharePercent}% share` : ""}
                                     </p>
                                 </div>
-                                <span className="font-mono text-sm font-semibold tabular-nums">
+                                <span className="shrink-0 font-mono text-sm font-semibold tabular-nums">
                                     {formatCurrency(row.assetValue, currency)}
                                 </span>
                             </div>
@@ -195,20 +195,20 @@ export function AccountingValuationView({ overview }: { overview: AccountingOver
                 <Card className="border shadow-xs">
                     <CardHeader className="pb-3">
                         <CardTitle className="flex items-center gap-2 text-base font-semibold">
-                            <MapPin className="size-4 text-muted-foreground" />
-                            Stock Asset Value by Location
+                            <MapPin className="size-4 shrink-0 text-muted-foreground" />
+                            Stock Value by Location
                         </CardTitle>
                         <CardDescription className="text-xs">
-                            Live perpetual valuation across warehouses, branches, stores, and In Transit.
+                            Current stock worth across warehouses, branches, stores, and In Transit.
                         </CardDescription>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="@container/val-loc">
                         {overview.valuationByLocation.length === 0 ? (
                             <p className="py-8 text-center text-xs text-muted-foreground">
                                 No stocked locations found.
                             </p>
                         ) : (
-                            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                            <div className="grid grid-cols-1 gap-2.5 @lg/val-loc:grid-cols-2">
                                 {overview.valuationByLocation.map((loc) => (
                                     <div
                                         key={loc.locationId}
@@ -236,23 +236,24 @@ export function AccountingValuationView({ overview }: { overview: AccountingOver
             <Card className="border shadow-xs">
                 <CardHeader className="gap-3 border-b pb-4">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
+                        <div className="min-w-0">
                             <CardTitle className="text-base font-semibold">
-                                Batch / Lot Costing &amp; Standard Variance Subledger
+                                Batch Stock Value &amp; Cost Comparison
                             </CardTitle>
                             <CardDescription className="text-xs">
-                                Specific batch valuation comparing Catalog Reference Cost against Purchase Actual or Packing Roll-Up cost.
+                                Compares each batch&apos;s reference cost against its actual purchase or packing unit cost.
                             </CardDescription>
                         </div>
                         <Button
                             type="button"
                             size="sm"
                             variant="outline"
+                            className="shrink-0 self-start sm:self-auto"
                             onClick={handleExportLots}
                             disabled={filteredLots.length === 0}
                         >
                             <Download className="mr-1.5 size-4" />
-                            Export Valuation CSV
+                            Export Stock Value CSV
                         </Button>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
@@ -277,6 +278,7 @@ export function AccountingValuationView({ overview }: { overview: AccountingOver
                                     setPageIndex(0)
                                 }}
                                 placeholder="Item type"
+                                className="w-full"
                             />
                         </div>
                         <div className="w-full sm:w-44">
@@ -288,6 +290,7 @@ export function AccountingValuationView({ overview }: { overview: AccountingOver
                                     setPageIndex(0)
                                 }}
                                 placeholder="Cost basis"
+                                className="w-full"
                             />
                         </div>
                     </div>

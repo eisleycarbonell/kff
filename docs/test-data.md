@@ -42,22 +42,25 @@ a database to repair an outdated schema or to rename demo rows.
 
 | Windows launcher | Action |
 | --- | --- |
-| [Rebuild test database](../rebuild-test-database.cmd) | Recreates KFF tables, enums, constraints, indexes and sequences. Deletes KFF records, including users and ledger history; requires `REBUILD`. |
-| [Load demo data](../load-sample-data.cmd) | Imports only when every application table is empty. Preserves existing data. |
-| [Start test backend](../start-test-backend.cmd) | Builds/starts; imports on first start only if the initialized database is empty. |
+| [Rebuild test database](../backend/rebuild-test-database.cmd) | Recreates KFF tables, enums, constraints, indexes and sequences. Deletes KFF records, including users and ledger history; requires `REBUILD`. |
+| [Load demo data](../backend/load-sample-data.cmd) | Imports only when every application table is empty. Preserves existing data. |
+| [Start test backend](../backend/start-test-backend.cmd) | Builds/starts; imports on first start only if the initialized database is empty. |
+| [Fresh start (no sample data)](../backend/fresh-start.cmd) | Recreates an empty schema with **no sample data**, optionally creates one Administrator account, and builds/starts the clean backend. |
 
 Launchers work from any current directory and retain their result. Initialize
 the current schema, then load the dataset. Rebuilds generate SQL from
 [schema.ts](../backend/src/db/schema.ts), preserving unrelated Supabase auth/
 storage objects; external dependencies block deletion rather than cascading.
 
-From `backend/` in PowerShell:
+From `backend/` in PowerShell (no test flags needed in `.env`):
 
 ```powershell
-$env:KFF_ALLOW_TEST_DATA = 'true'
 npm run db:seed                    # empty initialized database only
 npm run build
 npm run start:test                 # preserves populated data
+
+# Or rebuild empty with no sample data and start cleanly:
+npm run fresh-start
 ```
 
 Use `npm run dev:test` for development. Ordinary `npm start`/`npm run dev`
@@ -148,11 +151,12 @@ All use password `KffDemo123!` in the dedicated demo dataset only.
 
 | Username | Name | Role |
 | --- | --- | --- |
-| `demo@spice.local` | Elena Reyes | Administrator; all five permissions |
+| `demo@spice.local` | Elena Reyes | Administrator; all six permissions |
 | `warehouse@spice.local` | Maria Santos | Inventory, Packing, Transfers |
 | `purchasing@spice.local` | Carlo Mendoza | Purchasing |
 | `sales@spice.local` | Sofia Garcia | Inventory, including Sales Orders |
 | `delivery@spice.local` | Diego Ramos | Transfers, including Delivery Orders |
+| `accounting@spice.local` | Lucia Bautista | Accounting (signs directly into the standalone Accounting Portal at `/accounting`) |
 | `viewer@spice.local` | Ana Cruz | Read only |
 
 Sales writes reuse `canManageInventory`; delivery writes reuse
@@ -168,7 +172,7 @@ and every module's actions. The [UI happy path](ui-setup-and-happy-path.md)
 provides an isolated 500-piece garlic exercise and ledger checkpoints.
 
 [Seed tests](../backend/tests/sample-data-seed.test.ts) run the actual importer
-against a transaction fake: labels, normal SKUs, customer POs, six roles, states,
+against a transaction fake: labels, normal SKUs, customer POs, seven roles, states,
 allocations, lot provenance, reservations, ledger/balance equality, populated
 data preservation and late-ledger rollback. [Database tests](../backend/tests/sample-data.test.ts)
 check static definitions and opt-in isolated PostgreSQL invariants/concurrent

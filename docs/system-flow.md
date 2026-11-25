@@ -12,7 +12,7 @@ for the stock columns, and section 22 for the successful operator flow. The
 into field-by-field instructions and numerical checkpoints. This document
 remains the single source of business rules.
 
-The [14 November module audit](module-audit-2026-11-14.md) records executable
+The [14 November module audit](archive/module-audit-2026-11-14.md) records executable
 coverage, corrected defects and the remaining browser-verification limits.
 
 ## 1. System Purpose
@@ -126,7 +126,7 @@ remain illustrative rather than fixed master data or promised feature coverage.
 | Packing Formula / BOM maintenance | Direct BOM creation, editing, copying, batch calculator, and removal at `/bom` | [Labels and Packing Formulas](brands-packing-formulas-modules.md) |
 | Inventory Reports | Stock by Location, Stock by Lot, Low Stock, Near Expiry and Inventory Movement with filters, exact unit totals and CSV export | [Inventory Reports](inventory-reports-module.md) |
 | Company Settings | Company/contact details, fixed currency after pricing history, default VAT rate (`vatRatePercent`), alert defaults and optimistic version checks | [Controls and Reports](inventory-controls-and-reports.md) |
-| Accounting | Ex-VAT inventory valuation, COGS, Gross Profit, AP/AR, creditable Input VAT (`1150`), Output VAT Payable (`2200`), Net VAT Payable, and balanced Trial Balance (`/accounting`) | [Controls and Reports](inventory-controls-and-reports.md) |
+| Accounting | Standalone simple Accounting Portal (**Dashboard** `/accounting`, **Sales & Invoices** with Customers & printable Invoice summaries, **Expenses & Bills**, **Financial Reports** CSV hub, **Stock Value**, and **Production Costs**) for Accounting-only roles, tracking Sales, Expenses, Net Profit, AP/AR, creditable Input VAT (`1150`), Output VAT Payable (`2200`), Net VAT to Pay, and balanced Trial Balance | [Controls and Reports](inventory-controls-and-reports.md), [Users and Roles](roles-users-module.md) |
 | Packaging, Reorder Levels and Reason Codes | Item-specific conversions/barcodes, saved thresholds and active reasons | [Controls and Reports](inventory-controls-and-reports.md) |
 | Scrap & Disposal | Independently reviewed permanent stock removal | [Controls and Reports](inventory-controls-and-reports.md) |
 | Former Count Sessions, QC Decisions, Stock Dispositions, and Formula Revisions | Removed from the active workflow; historical records remain read-only and `/formula-revisions` redirects to `/bom` | [Controls and Reports](inventory-controls-and-reports.md) |

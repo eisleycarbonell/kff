@@ -64,9 +64,9 @@ export function TransferDetailDialog({
                     </p>
                 )}
                 {transfer && (
-                    <div className="space-y-5">
+                    <div className="min-w-0 space-y-5">
                         <Badge variant="outline">{transfer.status}</Badge>
-                        <dl className="grid gap-4 rounded-lg border bg-muted/20 p-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
+                        <dl className="grid gap-4 rounded-lg border bg-muted/20 p-4 text-sm sm:grid-cols-2 lg:grid-cols-3 [&>*]:min-w-0">
                             {[
                                 [
                                     "Source",
@@ -94,18 +94,18 @@ export function TransferDetailDialog({
                                       ]
                                     : []),
                             ].map(([label, value]) => (
-                                <div key={label}>
+                                <div key={label} className="min-w-0">
                                     <dt className="text-muted-foreground">{label}</dt>
-                                    <dd className="mt-1 font-medium">{value}</dd>
+                                    <dd className="mt-1 break-words font-medium">{value}</dd>
                                 </div>
                             ))}
                         </dl>
                         {transfer.notes && (
-                            <p className="whitespace-pre-wrap text-sm text-muted-foreground">
+                            <p className="whitespace-pre-wrap break-words text-sm text-muted-foreground">
                                 {transfer.notes}
                             </p>
                         )}
-                        <div className="overflow-x-auto rounded-lg border">
+                        <div className="min-w-0 overflow-hidden rounded-lg border">
                             <Table>
                                 <TableHeader>
                                     <TableRow>

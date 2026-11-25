@@ -8,23 +8,26 @@
     "main": "dist/src/index.js",
     "scripts": {
         "dev": "tsx watch src/index.ts",
-        "format": "prettier --write \"src/**/*.{js,ts}\"",
-        "test": "node --experimental-strip-types --test tests/*.test.ts",
-        "typecheck": "tsc --noEmit",
-        "db:push": "npx drizzle-kit push",
-        "db:studio": "npx drizzle-kit studio",
-        "db:create-demo-user": "node src/db/create-demo-user.ts",
-        "db:migrate:controls": "node --experimental-strip-types src/db/migrate-controls.ts",
-        "db:seed": "node --experimental-strip-types src/db/seed.ts",
-        "db:rebuild": "node --experimental-strip-types src/db/rebuild.ts",
         "dev:test": "tsx watch src/start-test.ts",
         "build": "tsc",
         "start": "node dist/src/index.js",
         "start:test": "node dist/src/start-test.js",
+        "fresh-start": "npm run db:fresh-start && npm run build && npm start",
+        "fresh-start:dev": "npm run db:fresh-start && npm run dev",
+        "typecheck": "tsc --noEmit",
+        "test": "node --experimental-strip-types --test tests/*.test.ts",
+        "format": "prettier --write \"src/**/*.{js,ts}\"",
+        "db:fresh-start": "node --experimental-strip-types src/db/fresh-start.ts --allow",
+        "db:rebuild": "node --experimental-strip-types src/db/rebuild.ts --allow",
+        "db:seed": "node --experimental-strip-types src/db/seed.ts --allow",
+        "db:create-demo-user": "node --experimental-strip-types src/db/create-demo-user.ts",
+        "db:upgrade:demo": "node --experimental-strip-types src/db/upgrade-demo-data.ts --allow",
+        "db:push": "npx drizzle-kit push",
+        "db:studio": "npx drizzle-kit studio",
+        "db:migrate:controls": "node --experimental-strip-types src/db/migrate-controls.ts",
         "db:migrate:customer-planning": "node --experimental-strip-types src/db/migrate-customer-planning.ts",
         "db:migrate:vat": "node --experimental-strip-types src/db/migrate-vat.ts",
-        "db:migrate:indexes": "tsx src/db/migrate-indexes.ts",
-        "db:upgrade:demo": "node --experimental-strip-types src/db/upgrade-demo-data.ts"
+        "db:migrate:indexes": "tsx src/db/migrate-indexes.ts"
     },
     "devDependencies": {
         "@types/cors": "^2.8.19",
@@ -54,6 +57,11 @@
     },
     "keywords": [],
     "engines": {
-        "node": "24.x"
+        "node": ">=24"
+    },
+    "allowScripts": {
+        "argon2@0.45.1": true,
+        "esbuild@0.25.12": true,
+        "esbuild@0.28.2": true
     }
 }

@@ -2,13 +2,21 @@ import type { RequestHandler } from 'express';
 import { errors } from 'jose';
 import type { RoleSettings } from '../db/schema.ts';
 import type { AuthService } from '../modules/auth/auth.controller.ts';
+import {
+    SESSION_SLIDE_THROTTLE_SECONDS,
+    clearSessionCookie,
+    issueSessionCookie,
+} from '../modules/auth/session-cookie.ts';
 import { AppError } from '../errors/app-error.ts';
 import { verifyToken } from '../utils/jwtHandler.ts';
+
+const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 export function createAuthMiddleware(service: Pick<AuthService, 'getSessionUser'>): RequestHandler {
     return async (request, response, next) => {
         const authorization = request.get('authorization');
         let token = authorization?.startsWith('Bearer ') ? authorization.slice(7) : undefined;
+        let usedCookieToken = false;
         if (!token) {
             const cookie = request.headers.cookie
                 ?.split(';')
@@ -17,7 +25,9 @@ export function createAuthMiddleware(service: Pick<AuthService, 'getSessionUser'
             if (cookie) {
                 try {
                     token = decodeURIComponent(cookie.slice(4));
+                    usedCookieToken = true;
                 } catch {
+                    clearSessionCookie(response);
                     throw new AppError(401, 'Please sign in again.');
                 }
             }
@@ -27,11 +37,21 @@ export function createAuthMiddleware(service: Pick<AuthService, 'getSessionUser'
         try {
             payload = await verifyToken(token);
         } catch (error) {
-            if (error instanceof errors.JOSEError)
+            if (error instanceof errors.JOSEError) {
+                if (usedCookieToken) {
+                    clearSessionCookie(response);
+                }
+                if (error instanceof errors.JWTExpired) {
+                    throw new AppError(
+                        401,
+                        'Your session expired due to inactivity. Please sign in again.',
+                    );
+                }
                 throw new AppError(
                     401,
                     'Your session has expired or is invalid. Please sign in again.',
                 );
+            }
             throw error;
         }
         if (payload.purpose === 'socket')
@@ -49,6 +69,18 @@ export function createAuthMiddleware(service: Pick<AuthService, 'getSessionUser'
             permissions: user.permissions,
         };
         response.locals.session = user;
+
+        const path = request.originalUrl || request.url;
+        if (usedCookieToken && MUTATING_METHODS.has(request.method) && !path.startsWith('/api/auth/')) {
+            const nowSec = Math.floor(Date.now() / 1000);
+            if (
+                typeof payload.iat !== 'number' ||
+                nowSec - payload.iat >= SESSION_SLIDE_THROTTLE_SECONDS
+            ) {
+                await issueSessionCookie(response, user.userId);
+            }
+        }
+
         next();
     };
 }

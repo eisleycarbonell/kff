@@ -235,7 +235,7 @@ export const InventoryMovementTable = memo(function InventoryMovementTable({
                             setType((value ?? "all") as MovementType | "all")
                             table.setPageIndex(0)
                         }}
-                        className="h-10 min-w-40"
+                        className="h-10 w-full sm:w-auto sm:min-w-40"
                     />
                 )}
                 <ComboboxSelect
@@ -246,7 +246,7 @@ export const InventoryMovementTable = memo(function InventoryMovementTable({
                         setLocation(value ?? "all")
                         table.setPageIndex(0)
                     }}
-                    className="h-10 max-w-64 min-w-40"
+                    className="h-10 w-full sm:w-auto sm:max-w-64 sm:min-w-40"
                 />
                 {hasFilters && (
                     <Button variant="ghost" className="h-10" onClick={clearFilters}>

@@ -29,7 +29,8 @@ export const PERMISSIONS = [
     {
         key: "canManageAccounting",
         label: "Accounting",
-        description: "Access the accounting module, all costing roll-ups, COGS, and valuation ledgers.",
+        description:
+            "Grant access to costing, COGS, and valuation ledgers; assigning Accounting alone opens the standalone Accounting Portal.",
     },
 ] as const
 

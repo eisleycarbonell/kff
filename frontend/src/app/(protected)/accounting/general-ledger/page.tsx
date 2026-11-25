@@ -6,14 +6,14 @@ import { AccountingShell } from "@/components/modules/accounting/accounting-shel
 export default function GeneralLedgerPage() {
     return (
         <>
-            <title>General Ledger &amp; Trial Balance | Accounting</title>
+            <title>Financial Reports | Accounting Portal</title>
             <meta
                 name="description"
-                content="Chart of Accounts, balanced Trial Balance, and Double-Entry Journal Cost Ledger."
+                content="Download CSV financial reports, check balanced account totals, and review transaction history."
             />
             <AccountingShell
-                title="General Ledger & Trial Balance"
-                description="Audit the Chart of Accounts, verify Trial Balance equilibrium, and inspect double-entry journal postings."
+                title="Financial Reports"
+                description="Download CSV financial reports, verify balanced account totals, and check stock & cost transactions."
             >
                 {(overview) => <AccountingGeneralLedgerView overview={overview} />}
             </AccountingShell>

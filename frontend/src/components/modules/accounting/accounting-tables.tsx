@@ -443,7 +443,7 @@ export const AccountingTables = memo(function AccountingTables({
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                        <div className="grid grid-cols-1 gap-2 @lg/main:grid-cols-2 @5xl/main:grid-cols-4">
                             {overview.valuationByLocation.map((loc) => (
                                 <div
                                     key={loc.locationId}
@@ -488,6 +488,7 @@ export const AccountingTables = memo(function AccountingTables({
                             type="button"
                             size="sm"
                             variant="outline"
+                            className="shrink-0 self-start lg:self-auto"
                             onClick={handleExportCsv}
                             disabled={totalRows === 0}
                         >
@@ -497,7 +498,7 @@ export const AccountingTables = memo(function AccountingTables({
                     </div>
 
                     <div className="flex flex-col gap-2 pt-1 md:flex-row md:items-center md:justify-between">
-                        <p className="text-xs text-muted-foreground">{activeTabMeta.hint}</p>
+                        <p className="min-w-0 text-xs text-muted-foreground">{activeTabMeta.hint}</p>
                         <div className="flex flex-wrap items-center gap-2">
                             <div className="relative w-full sm:w-64">
                                 <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -515,7 +516,7 @@ export const AccountingTables = memo(function AccountingTables({
 
                             {activeTab === "lots" && (
                                 <>
-                                    <div className="w-40">
+                                    <div className="w-full sm:w-40">
                                         <ComboboxSelect
                                             items={itemTypeFilterItems}
                                             value={lotTypeFilter}
@@ -525,9 +526,10 @@ export const AccountingTables = memo(function AccountingTables({
                                             }}
                                             placeholder="Item type"
                                             aria-label="Filter by item type"
+                                            className="w-full"
                                         />
                                     </div>
-                                    <div className="w-40">
+                                    <div className="w-full sm:w-40">
                                         <ComboboxSelect
                                             items={costBasisFilterItems}
                                             value={lotBasisFilter}
@@ -537,13 +539,14 @@ export const AccountingTables = memo(function AccountingTables({
                                             }}
                                             placeholder="Cost basis"
                                             aria-label="Filter by cost basis"
+                                            className="w-full"
                                         />
                                     </div>
                                 </>
                             )}
 
                             {activeTab === "ledger" && (
-                                <div className="w-44">
+                                <div className="w-full sm:w-44">
                                     <ComboboxSelect
                                         items={ledgerTypeFilterItems}
                                         value={ledgerTypeFilter}
@@ -553,6 +556,7 @@ export const AccountingTables = memo(function AccountingTables({
                                         }}
                                         placeholder="Movement type"
                                         aria-label="Filter by movement type"
+                                        className="w-full"
                                     />
                                 </div>
                             )}
@@ -983,7 +987,7 @@ export const AccountingTables = memo(function AccountingTables({
                             </span>{" "}
                             of <span className="font-medium text-foreground">{totalRows}</span> records
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                             <div className="w-28">
                                 <ComboboxSelect
                                     items={PAGE_SIZE_OPTIONS}
@@ -995,6 +999,7 @@ export const AccountingTables = memo(function AccountingTables({
                                     }}
                                     placeholder="Rows"
                                     aria-label="Rows per page"
+                                    className="w-full"
                                 />
                             </div>
                             <Button

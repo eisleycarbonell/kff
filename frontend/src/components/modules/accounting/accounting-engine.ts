@@ -574,3 +574,65 @@ export function computeSupplierPayables(
             receivedPercent: percentString(bucket.receivedUnits, bucket.committedUnits),
         }))
 }
+
+export type SimpleAccountingSummary = {
+    totalSales: string
+    totalSalesWithVat: string
+    pendingSales: string
+    costOfGoodsSold: string
+    scrapLoss: string
+    adjustmentNet: string
+    totalExpenses: string
+    netProfit: string
+    profitMarginPercent: string | null
+    totalSupplierBills: string
+    openSupplierBills: string
+    activeCustomersCount: number
+    invoicedOrdersCount: number
+    pendingOrdersCount: number
+    activeSuppliersCount: number
+}
+
+/** Build plain-language headline accounting totals so Total Sales - Total Expenses = Net Profit. */
+export function computeSimpleAccountingSummary(
+    overview: AccountingOverview,
+): SimpleAccountingSummary {
+    const pnl = computeIncomeStatement(overview)
+    const cogsUnits = scaled4(pnl.deliveredCogs)
+    const scrapUnits = scaled4(pnl.scrapLoss)
+    const adjUnits = scaled4(pnl.adjustmentVarianceNet)
+    const totalExpensesUnits = cogsUnits + scrapUnits - adjUnits
+
+    const customers = computeCustomerReceivables(overview.salesCosting)
+    const suppliers = computeSupplierPayables(overview.purchasingCosting)
+
+    let invoicedOrdersCount = 0
+    let pendingOrdersCount = 0
+    for (const order of overview.salesCosting) {
+        if (order.status === "Cancelled") continue
+        if (scaled4(order.deliveredRevenue) > BigInt(0)) {
+            invoicedOrdersCount += 1
+        }
+        if (order.status !== "Completed") {
+            pendingOrdersCount += 1
+        }
+    }
+
+    return {
+        totalSales: pnl.recognizedRevenue,
+        totalSalesWithVat: overview.summary.totalDeliveredBilling ?? pnl.recognizedRevenue,
+        pendingSales: pnl.unfulfilledBacklog,
+        costOfGoodsSold: pnl.deliveredCogs,
+        scrapLoss: pnl.scrapLoss,
+        adjustmentNet: pnl.adjustmentVarianceNet,
+        totalExpenses: formatScaled4(totalExpensesUnits),
+        netProfit: pnl.netOperatingIncome,
+        profitMarginPercent: pnl.netOperatingMarginPercent,
+        totalSupplierBills: overview.summary.purchaseReceivedValue,
+        openSupplierBills: overview.summary.purchaseOutstandingValue,
+        activeCustomersCount: customers.length,
+        invoicedOrdersCount,
+        pendingOrdersCount,
+        activeSuppliersCount: suppliers.length,
+    }
+}

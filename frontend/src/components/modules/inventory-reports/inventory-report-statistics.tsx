@@ -5,14 +5,14 @@ export const InventoryReportStatistics = memo(function InventoryReportStatistics
     const movement = report.report === "movement"
     return (
         <div className="space-y-3">
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-3 @lg/main:grid-cols-2 @5xl/main:grid-cols-4">
                 {[
                     ["Matching rows", report.summary.rowCount],
                     ["Items", report.summary.itemCount],
                     ["Lots", report.summary.lotCount],
                     ["Locations", report.summary.locationCount],
                 ].map(([label, value]) => (
-                    <Card key={label} className="py-3">
+                    <Card key={label} className="min-w-0 py-3">
                         <CardHeader className="px-4">
                             <CardTitle className="text-xs text-muted-foreground">{label}</CardTitle>
                         </CardHeader>
@@ -23,14 +23,14 @@ export const InventoryReportStatistics = memo(function InventoryReportStatistics
                 ))}
             </div>
             {report.totals.length > 0 && (
-                <div className="grid gap-4 lg:grid-cols-2">
+                <div className="grid gap-4 @3xl/main:grid-cols-2">
                     {report.totals.map((total) => (
-                        <Card key={total.primaryUomId}>
+                        <Card key={total.primaryUomId} className="min-w-0">
                             <CardHeader>
                                 <CardTitle>Quantities in {total.primaryUomName}</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <dl className="grid grid-cols-3 gap-3">
+                                <dl className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-3">
                                     {(movement
                                         ? [
                                               ["In", total.qtyIn],
@@ -43,7 +43,7 @@ export const InventoryReportStatistics = memo(function InventoryReportStatistics
                                               ["Available", total.qtyAvailable],
                                           ]
                                     ).map(([label, value]) => (
-                                        <div key={label}>
+                                        <div key={label} className="min-w-0">
                                             <dt className="text-sm text-muted-foreground">
                                                 {label}
                                             </dt>

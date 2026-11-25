@@ -28,7 +28,7 @@ export const CustomerStatistics = memo(function CustomerStatistics({ customers }
     ]
 
     return (
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 @lg/main:grid-cols-2 @3xl/main:grid-cols-3">
             {statistics.map(({ label, value, description, icon: Icon }) => (
                 <Card key={label} className="border py-3 ring-0">
                     <CardContent className="flex items-start gap-3 px-4">

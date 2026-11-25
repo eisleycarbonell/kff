@@ -1,3 +1,3 @@
-@../AGENTS.md
-@../docs/system-flow.md
 @AGENTS.md
+@docs/specs/system-flow.md
+@docs/API-FRONTEND-CONTRACT.md

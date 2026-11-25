@@ -142,7 +142,7 @@ export function PurchaseOrderTableToolbar({
                         )
                     resetSelection()
                 }}
-                className="h-10 w-full min-w-40 bg-card sm:w-48"
+                className="h-10 w-full bg-card sm:w-48 sm:min-w-40"
             />
             {hasFilters && (
                 <Button variant="ghost" className="h-10" onClick={onClearFilters}>

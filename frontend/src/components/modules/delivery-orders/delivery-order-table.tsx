@@ -141,7 +141,7 @@ export const DeliveryOrderTable = memo(function DeliveryOrderTable({
                         table.resetRowSelection()
                         table.setPageIndex(0)
                     }}
-                    className="h-10 min-w-40 bg-card"
+                    className="h-10 w-full bg-card sm:w-auto sm:min-w-40"
                 />
                 {hasFilters && (
                     <Button variant="ghost" className="h-10" onClick={clearFilters}>

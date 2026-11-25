@@ -123,7 +123,7 @@ export function PurchaseOrderDetailDialog({
                     )}
                     {current && (
                         <>
-                            <dl className="grid gap-4 rounded-lg border bg-muted/15 p-4 sm:grid-cols-2 lg:grid-cols-4">
+                            <dl className="grid gap-4 rounded-lg border bg-muted/15 p-4 sm:grid-cols-2 lg:grid-cols-4 [&>*]:min-w-0">
                                 <div className="min-w-0">
                                     <dt className="text-xs font-medium text-muted-foreground">
                                         Supplier
@@ -175,7 +175,7 @@ export function PurchaseOrderDetailDialog({
                                     </dd>
                                 </div>
                             </dl>
-                            <div className="overflow-hidden rounded-lg border">
+                            <div className="min-w-0 overflow-hidden rounded-lg border">
                                 <Table className="min-w-[820px]">
                                     <TableHeader className="bg-muted/50">
                                         <TableRow>
@@ -281,7 +281,7 @@ export function PurchaseOrderDetailDialog({
                         </>
                     )}
                     <DialogFooter>
-                        <div className="mr-auto flex flex-wrap gap-2">
+                        <div className="flex w-full flex-wrap gap-2 sm:mr-auto sm:w-auto">
                             {current && canEdit && (
                                 <>
                                     <Button

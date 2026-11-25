@@ -8,48 +8,43 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 
 const STEPS = [
     {
-        step: "Step 1 · Buying & Receiving",
-        title: "Supplier prices become batch unit costs",
-        detail: "When a Purchase Order line is received, the system converts your agreed supplier unit price (including Dollar/Peso conversion) into the item's base unit and locks that cost onto the received batch (lot).",
+        step: "1 · Buying Stock",
+        title: "Supplier orders become bills when received",
+        detail: "When goods arrive from a supplier, the agreed Ex-VAT price sets the unit cost of that batch and counts toward Supplier Bills in Expenses & Bills.",
     },
     {
-        step: "Step 2 · Packing & Production",
-        title: "Ingredient, pouch & label costs roll up automatically",
-        detail: "When a Packing Order completes, every consumed bulk spice, pouch, jar, and label batch cost is summed and divided by the actual finished units produced to compute true Finished Good unit cost.",
+        step: "2 · Packing Products",
+        title: "Spices, containers & labels add up automatically",
+        detail: "When a packing run completes, the cost of all spices, pouches/jars, and labels used is divided by the finished packs produced to find the unit cost.",
     },
     {
-        step: "Step 3 · Inventory & Shrinkage",
-        title: "Stock on hand is valued per batch across all locations",
-        detail: "Inventory Asset Value multiplies each batch's quantity on hand by its actual cost (or Catalog Reference Cost if no batch cost was recorded). Scrap & count adjustments show stock gain/loss impact.",
+        step: "3 · Selling & Invoices",
+        title: "Sales & Invoices count once deliveries finish",
+        detail: "Pending customer orders stay in Pending Orders until delivery completes. Delivered orders appear under Billed Sales & Invoices with customer totals and printable invoice summaries.",
     },
     {
-        step: "Step 4 · Sales & Profit (COGS)",
-        title: "Delivered orders show true Gross Profit",
-        detail: "When a Customer Delivery finishes, Sales Revenue is compared against the exact cost of the batches shipped (Cost of Goods Sold) to calculate Gross Profit and Margin %.",
-    },
-    {
-        step: "Step 5 · Tax & VAT",
-        title: "Mixed VATable & VAT-Exempt Items (Input vs Output VAT)",
-        detail: "Items marked VATable pre-fill the Company Settings VAT rate on new PO and Sales Order lines, while VAT-exempt items default to 0%. Purchased inventory asset values (1210/1220) store Ex-VAT unit cost, creditable Input VAT tracks to 1150, customer Output VAT tracks to 2200, and Net VAT Payable equals Output VAT minus Input VAT.",
+        step: "4 · Profit & Tax",
+        title: "Total Sales minus Total Expenses equals Net Profit",
+        detail: "Net Profit subtracts the cost of products delivered plus any scrap or count losses from Total Sales. VAT on purchases and sales is tracked separately for tax reporting.",
     },
 ] as const
 
 const TERMS = [
     {
-        term: "Purchase Actual",
-        meaning: "Exact cost calculated from the Purchase Order price when the batch was received.",
+        term: "Total Sales",
+        meaning: "Revenue earned from completed customer deliveries (excluding VAT).",
     },
     {
-        term: "Packing Roll-Up",
-        meaning: "Finished-product unit cost computed from the raw materials, containers, and labels consumed.",
+        term: "Total Expenses",
+        meaning: "Product cost of delivered goods plus scrap losses and count adjustments.",
     },
     {
-        term: "Catalog Reference",
-        meaning: "Fallback Reference Cost saved on the Item record when a batch has no PO/Packing cost yet.",
+        term: "Supplier Bills",
+        meaning: "Amount owed for supplier purchase orders already received into stock.",
     },
     {
-        term: "COGS (Cost of Goods Sold)",
-        meaning: "The batch cost of finished spices actually delivered to customers.",
+        term: "Stock Value",
+        meaning: "What all current raw spices, packaging, and finished packs on hand are worth.",
     },
 ] as const
 
@@ -58,26 +53,26 @@ export function AccountingGuideCard() {
 
     return (
         <Card className="border shadow-xs">
-            <CardHeader className="flex flex-row items-center justify-between gap-3 pb-3">
-                <div className="space-y-0.5">
-                    <div className="flex items-center gap-2">
-                        <BookOpen className="size-4 text-primary" />
+            <CardHeader className="flex flex-col gap-3 pb-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0 space-y-0.5">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <BookOpen className="size-4 shrink-0 text-primary" />
                         <CardTitle className="text-base font-semibold">
-                            How to Use Accounting &amp; How Costing Links Together
+                            How Simple Accounting Works
                         </CardTitle>
                         <Badge variant="secondary" className="text-[10px]">
-                            Plain-Language Guide
+                            Quick Guide
                         </Badge>
                     </div>
                     <CardDescription className="text-xs">
-                        Follow these four steps to trace money from supplier purchasing through packing and customer profit.
+                        A plain-language walkthrough of how buying, packing, selling, and expenses connect.
                     </CardDescription>
                 </div>
                 <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="h-8 gap-1.5 text-xs"
+                    className="h-8 shrink-0 gap-1.5 self-start text-xs sm:self-auto"
                     onClick={() => setOpen((current) => !current)}
                     aria-expanded={open}
                 >
@@ -97,7 +92,7 @@ export function AccountingGuideCard() {
 
             {open && (
                 <CardContent className="space-y-4 pt-1">
-                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                    <div className="grid gap-3 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
                         {STEPS.map((item) => (
                             <div
                                 key={item.step}
@@ -119,9 +114,9 @@ export function AccountingGuideCard() {
                     <div className="rounded-xl border border-border/60 bg-card p-3.5">
                         <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-foreground">
                             <Info className="size-3.5 text-primary" />
-                            Simple Costing Terms
+                            Key Terms
                         </div>
-                        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                        <div className="grid gap-2.5 @lg/main:grid-cols-2 @4xl/main:grid-cols-4">
                             {TERMS.map((item) => (
                                 <div key={item.term} className="text-xs">
                                     <span className="font-semibold text-foreground">{item.term}: </span>

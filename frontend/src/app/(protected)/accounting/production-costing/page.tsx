@@ -6,14 +6,14 @@ import { AccountingShell } from "@/components/modules/accounting/accounting-shel
 export default function ProductionCostingPage() {
     return (
         <>
-            <title>Production Cost Roll-Up | Accounting</title>
+            <title>Production Costs | Accounting Portal</title>
             <meta
                 name="description"
-                content="Finished goods packing order BOM cost roll-ups and component unit cost breakdown."
+                content="See how much it costs to pack each finished product from bulk spices, containers, and printed labels."
             />
             <AccountingShell
-                title="Production Cost Roll-Up"
-                description="Audit BOM material costs absorbed into each packing run and compare rolled-up unit costs against catalog reference."
+                title="Production Costs"
+                description="See the ingredient, packaging, and label cost of each packing run and finished pack."
             >
                 {(overview) => <AccountingProductionView overview={overview} />}
             </AccountingShell>

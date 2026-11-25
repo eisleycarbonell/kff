@@ -11,6 +11,9 @@ try {
             'Use load-sample-data.cmd, or set KFF_ALLOW_TEST_DATA=true and run npm run db:seed.',
         );
     } else {
+        if (process.argv.includes('--allow')) {
+            process.env.KFF_ALLOW_TEST_DATA = 'true';
+        }
         requireTestDataOptIn();
         console.log(`Sample data target: ${databaseTarget(resolveDatabaseUrl())}`);
         const result = await seedSampleData();

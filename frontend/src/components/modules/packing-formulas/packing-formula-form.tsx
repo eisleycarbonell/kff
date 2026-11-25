@@ -339,8 +339,8 @@ function Content({
                     )
                     return (
                         <div key={index} className="min-w-0 space-y-3 rounded-lg border p-3 sm:p-4">
-                            <div className="grid gap-3 sm:grid-cols-6">
-                                <Field className="min-w-0 sm:col-span-3">
+                            <div className="grid gap-3 sm:grid-cols-12 [&>*]:min-w-0">
+                                <Field className="min-w-0 sm:col-span-5">
                                     <FieldLabel htmlFor={`${id}-material-${index}`}>
                                         Component {index + 1}
                                     </FieldLabel>
@@ -374,7 +374,7 @@ function Content({
                                         </p>
                                     )}
                                 </Field>
-                                <Field className="min-w-0 sm:col-span-2">
+                                <Field className="min-w-0 sm:col-span-4">
                                     <FieldLabel htmlFor={`${id}-quantity-${index}`}>
                                         Amount for 1 {unitName}
                                     </FieldLabel>
@@ -389,7 +389,7 @@ function Content({
                                         onValueChange={(next) => change(index, { quantity: next })}
                                     />
                                 </Field>
-                                <Field className="min-w-0">
+                                <Field className="min-w-0 sm:col-span-3">
                                     <FieldLabel htmlFor={`${id}-unit-${index}`}>Unit</FieldLabel>
                                     <ComboboxSelect
                                         id={`${id}-unit-${index}`}
@@ -406,7 +406,7 @@ function Content({
                             </div>
 
                             {calcOpen[index] && (
-                                <div className="grid gap-3 rounded-md border bg-muted/30 p-3 sm:grid-cols-3">
+                                <div className="grid gap-3 rounded-md border bg-muted/30 p-3 sm:grid-cols-3 [&>*]:min-w-0">
                                     <Field className="min-w-0">
                                         <FieldLabel htmlFor={`${id}-batch-${index}`}>
                                             Total batch amount

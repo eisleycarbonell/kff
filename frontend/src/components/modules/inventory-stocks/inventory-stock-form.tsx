@@ -220,17 +220,17 @@ function AdjustmentContent({
                         </Field>
                     ))}
                     {values.lotId && values.locationId && (
-                        <dl className="grid grid-cols-3 gap-3 rounded-lg border bg-muted/30 p-3 text-sm">
+                        <dl className="grid grid-cols-1 gap-3 rounded-lg border bg-muted/30 p-3 text-sm min-[360px]:grid-cols-3">
                             {[
                                 ["On hand", snapshot.qtyOnHand],
                                 ["Reserved", snapshot.qtyReserved],
                                 ["Available", snapshot.qtyAvailable],
                             ].map(([label, quantity]) => (
-                                <div key={label}>
+                                <div key={label} className="min-w-0">
                                     <dt className="text-muted-foreground">
                                         {label}
                                     </dt>
-                                    <dd className="mt-1 font-medium tabular-nums">
+                                    <dd className="mt-1 break-words font-medium tabular-nums">
                                         {formatStockQuantity(quantity)} {unit}
                                     </dd>
                                 </div>

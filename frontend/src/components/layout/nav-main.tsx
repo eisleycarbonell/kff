@@ -39,9 +39,10 @@ type NavItem = {
 
 type NavMainProps = {
     items: NavItem[];
+    label?: string;
 };
 
-export function NavMain({ items }: NavMainProps) {
+export function NavMain({ items, label = "Navigation" }: NavMainProps) {
     const pathname = usePathname();
     const { isMobile, setOpenMobile } = useSidebar();
 
@@ -93,7 +94,7 @@ export function NavMain({ items }: NavMainProps) {
 
     return (
         <SidebarGroup>
-            <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+            <SidebarGroupLabel>{label}</SidebarGroupLabel>
             <SidebarMenu>
                 {items.map((item) => {
                     const hasSubItems = Boolean(item.items?.length);

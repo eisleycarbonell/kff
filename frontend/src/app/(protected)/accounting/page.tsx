@@ -2,8 +2,6 @@
 
 import dynamic from "next/dynamic"
 
-import { AccountingGuideCard } from "@/components/modules/accounting/accounting-guide-card"
-import { AccountingPnlCard } from "@/components/modules/accounting/accounting-pnl-card"
 import { AccountingShell } from "@/components/modules/accounting/accounting-shell"
 import { AccountingStatistics } from "@/components/modules/accounting/accounting-statistics"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -16,7 +14,9 @@ const AccountingCharts = dynamic(
     {
         ssr: false,
         loading: () => (
-            <div className="grid gap-6 lg:grid-cols-2">
+            <div className="grid gap-4 sm:gap-5 @4xl/main:grid-cols-2 [&>*]:min-w-0">
+                <Skeleton className="h-80 rounded-xl" />
+                <Skeleton className="h-80 rounded-xl" />
                 <Skeleton className="h-80 rounded-xl" />
                 <Skeleton className="h-80 rounded-xl" />
             </div>
@@ -27,20 +27,18 @@ const AccountingCharts = dynamic(
 export default function AccountingPage() {
     return (
         <>
-            <title>Accounting Overview &amp; P&amp;L</title>
+            <title>Dashboard | Accounting Portal</title>
             <meta
                 name="description"
-                content="Financial overview, Profit & Loss income statement, inventory valuation, and cost flows."
+                content="Clean financial overview with 4 headline KPIs and 4 interactive charts covering sales, expenses, profit, stock value, customers, and supplier bills."
             />
             <AccountingShell
-                title="Accounting Overview & P&L"
-                description="Review financial KPIs, period Profit & Loss income statement, working capital, and inventory cost flows."
+                title="Accounting Dashboard"
+                description="Clean financial overview of sales, expenses, net profit, stock value, customers, and supplier bills."
             >
                 {(overview) => (
                     <>
-                        <AccountingGuideCard />
-                        <AccountingStatistics summary={overview.summary} />
-                        <AccountingPnlCard overview={overview} />
+                        <AccountingStatistics overview={overview} />
                         <AccountingCharts overview={overview} />
                     </>
                 )}

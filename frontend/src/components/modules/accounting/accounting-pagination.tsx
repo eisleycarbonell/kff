@@ -41,14 +41,14 @@ export type AccountingKpiCard = {
 
 export function AccountingKpiStrip({ cards }: { cards: AccountingKpiCard[] }) {
     return (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 @lg/main:grid-cols-2 @5xl/main:grid-cols-4">
             {cards.map((card) => {
                 const Icon = card.icon
                 return (
                     <Card key={card.title} className="border py-0 shadow-xs">
                         <CardContent className="p-3.5">
                             <div className="flex items-start justify-between gap-2">
-                                <span className="text-xs font-medium text-muted-foreground">
+                                <span className="min-w-0 text-xs font-medium text-muted-foreground">
                                     {card.title}
                                 </span>
                                 <div
@@ -58,10 +58,10 @@ export function AccountingKpiStrip({ cards }: { cards: AccountingKpiCard[] }) {
                                 </div>
                             </div>
                             <div className="mt-1.5 flex flex-wrap items-baseline justify-between gap-2">
-                                <span className="text-lg font-bold tracking-tight tabular-nums sm:text-xl">
+                                <span className="min-w-0 break-words text-lg font-bold tracking-tight tabular-nums sm:text-xl">
                                     {card.value}
                                 </span>
-                                <Badge variant="secondary" className="text-[10px] font-medium tabular-nums">
+                                <Badge variant="secondary" className="max-w-full truncate text-[10px] font-medium tabular-nums">
                                     {card.badge}
                                 </Badge>
                             </div>
@@ -101,7 +101,7 @@ export function AccountingPagination({
                 </span>{" "}
                 of <span className="font-medium text-foreground">{totalRows}</span> records
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
                 <div className="w-24">
                     <ComboboxSelect
                         items={ACCOUNTING_PAGE_SIZE_OPTIONS}
@@ -113,12 +113,14 @@ export function AccountingPagination({
                         }}
                         placeholder="Rows"
                         aria-label="Rows per page"
+                        className="w-full"
                     />
                 </div>
                 <Button
                     type="button"
                     size="sm"
                     variant="outline"
+                    aria-label="Previous page"
                     disabled={safePageIndex === 0}
                     onClick={() => onPageIndexChange(Math.max(0, safePageIndex - 1))}
                 >
@@ -131,6 +133,7 @@ export function AccountingPagination({
                     type="button"
                     size="sm"
                     variant="outline"
+                    aria-label="Next page"
                     disabled={safePageIndex >= pageCount - 1}
                     onClick={() => onPageIndexChange(Math.min(pageCount - 1, safePageIndex + 1))}
                 >

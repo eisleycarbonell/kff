@@ -36,9 +36,9 @@ export default function Page() {
                         {f.report.currencyCode}. Date filters use order creation/request dates.
                         Quantities retain the displayed UOM.
                     </p>
-                    <div className="grid gap-4 sm:grid-cols-3">
+                    <div className="grid gap-3 @lg/main:grid-cols-2 @3xl/main:grid-cols-3">
                         {f.report.sections.map((s) => (
-                            <div key={s.title} className="rounded-xl border bg-card p-5">
+                            <div key={s.title} className="min-w-0 rounded-xl border bg-card p-4 sm:p-5">
                                 <p className="text-sm text-muted-foreground">{s.title}</p>
                                 <p className="text-3xl font-semibold">{s.rows.length}</p>
                             </div>

@@ -4,6 +4,7 @@ import {
     buildCategoryDistributionChart,
     buildLedgerActivityChart,
     buildLocationChart,
+    buildOperationsWorkloadChart,
     buildPurchaseOrderChart,
 } from "../src/components/modules/dashboard/dashboard-charts.data.ts"
 
@@ -133,5 +134,36 @@ test("buildLedgerActivityChart aggregates and sorts recent movements by count", 
     assert.deepEqual(result, [
         { transactionType: "Receive", count: 2 },
         { transactionType: "Produce", count: 1 },
+    ])
+})
+
+test("buildOperationsWorkloadChart summarizes active orders and stock alerts", () => {
+    assert.deepEqual(buildOperationsWorkloadChart(null), [])
+    const result = buildOperationsWorkloadChart({
+        totalInventoryValue: "1000.00",
+        rawMaterialValue: "500.00",
+        packagingValue: "200.00",
+        finishedGoodsValue: "300.00",
+        totalItemsCount: 10,
+        currencyCode: "PHP",
+        rawMaterialQuantities: [],
+        finishedGoodsQuantities: [],
+        activePackingOrdersCount: 3,
+        pendingPurchaseOrdersCount: 2,
+        activeTransfersCount: 1,
+        lowStockItemsCount: 4,
+        expiringLotsCount: 5,
+        openSalesOrdersCount: 6,
+        activeDeliveriesCount: 2,
+    })
+
+    assert.deepEqual(result, [
+        { metric: "Packing", count: 3 },
+        { metric: "Open POs", count: 2 },
+        { metric: "Sales", count: 6 },
+        { metric: "Deliveries", count: 2 },
+        { metric: "Transfers", count: 1 },
+        { metric: "Low Stock", count: 4 },
+        { metric: "Expiring", count: 5 },
     ])
 })

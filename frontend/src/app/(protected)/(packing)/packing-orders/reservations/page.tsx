@@ -61,7 +61,7 @@ export default function PackingReservationsPage() {
             )}
             {feature.loadStatus === "loading" && (
                 <div className="space-y-4" aria-busy="true" aria-label="Loading reservations">
-                    <div className="grid gap-4 sm:grid-cols-3">
+                    <div className="grid gap-3 @lg/main:grid-cols-2 @3xl/main:grid-cols-3">
                         {[0, 1, 2].map((row) => (
                             <Skeleton key={row} className="h-28 rounded-xl" />
                         ))}

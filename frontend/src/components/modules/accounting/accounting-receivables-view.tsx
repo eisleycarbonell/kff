@@ -1,11 +1,12 @@
 "use client"
 
 import { useDeferredValue, useMemo, useState } from "react"
-import { Coins, Download, Receipt, Search, TrendingUp, Users } from "lucide-react"
+import { Coins, Download, Eye, Receipt, Search, TrendingUp, Users } from "lucide-react"
 import {
     computeCustomerReceivables,
     computeIncomeStatement,
 } from "@/components/modules/accounting/accounting-engine"
+import { AccountingInvoiceDialog } from "@/components/modules/accounting/accounting-invoice-dialog"
 import {
     AccountingKpiStrip,
     AccountingPagination,
@@ -13,6 +14,7 @@ import {
 import {
     formatCurrency,
     type AccountingOverview,
+    type AccountingSalesCosting,
 } from "@/components/modules/accounting/accounting.schema"
 import { ComboboxSelect } from "@/components/shared/combobox-select"
 import { Badge } from "@/components/ui/badge"
@@ -29,7 +31,25 @@ import {
 } from "@/components/ui/table"
 import { downloadCsv } from "@/lib/csv"
 
-const SALES_STATUSES = ["Draft", "Confirmed", "Partially Delivered", "Completed", "Cancelled"] as const
+const SALES_STATUSES = [
+    "Draft",
+    "Confirmed",
+    "Partially Delivered",
+    "Completed",
+    "Cancelled",
+] as const
+
+function billingStatusBadge(status: string): {
+    label: string
+    variant: "default" | "secondary" | "outline"
+} {
+    if (status === "Completed") return { label: "Billed", variant: "default" }
+    if (status === "Partially Delivered") {
+        return { label: "Partially Billed", variant: "secondary" }
+    }
+    if (status === "Cancelled") return { label: "Cancelled", variant: "outline" }
+    return { label: "Pending Delivery", variant: "outline" }
+}
 
 export function AccountingReceivablesView({ overview }: { overview: AccountingOverview }) {
     const currency = overview.currencyCode
@@ -39,11 +59,16 @@ export function AccountingReceivablesView({ overview }: { overview: AccountingOv
         [overview.salesCosting],
     )
 
+    const [customerSearch, setCustomerSearch] = useState("")
+    const deferredCustomerSearch = useDeferredValue(customerSearch.trim().toLowerCase())
+
     const [searchInput, setSearchInput] = useState("")
     const deferredSearch = useDeferredValue(searchInput.trim().toLowerCase())
     const [statusFilter, setStatusFilter] = useState("all")
     const [pageIndex, setPageIndex] = useState(0)
     const [pageSize, setPageSize] = useState(10)
+
+    const [selectedInvoice, setSelectedInvoice] = useState<AccountingSalesCosting | null>(null)
 
     const statusItems = useMemo(
         () => [
@@ -52,6 +77,13 @@ export function AccountingReceivablesView({ overview }: { overview: AccountingOv
         ],
         [],
     )
+
+    const filteredCustomers = useMemo(() => {
+        if (!deferredCustomerSearch) return customers
+        return customers.filter((row) =>
+            row.customerName.toLowerCase().includes(deferredCustomerSearch),
+        )
+    }, [customers, deferredCustomerSearch])
 
     const filteredOrders = useMemo(() => {
         return overview.salesCosting.filter((row) => {
@@ -66,26 +98,29 @@ export function AccountingReceivablesView({ overview }: { overview: AccountingOv
         })
     }, [overview.salesCosting, statusFilter, deferredSearch])
 
-    const safePageIndex = Math.min(pageIndex, Math.max(0, Math.ceil(filteredOrders.length / pageSize) - 1))
+    const safePageIndex = Math.min(
+        pageIndex,
+        Math.max(0, Math.ceil(filteredOrders.length / pageSize) - 1),
+    )
     const sliceStart = safePageIndex * pageSize
     const sliceEnd = sliceStart + pageSize
 
     function handleExportCustomers() {
-        downloadCsv("accounting-customer-ar-margins.csv", [
+        downloadCsv("customers-sales-summary.csv", [
             [
                 "Customer",
                 "Orders",
-                "Booked Revenue",
-                "Delivered Revenue",
-                "Unfulfilled Backlog",
-                "Delivered COGS",
-                "Gross Profit",
-                "Gross Margin %",
+                "Total Ordered",
+                "Billed Sales",
+                "Pending Delivery",
+                "Product Cost",
+                "Profit",
+                "Margin %",
                 "Completed Deliveries",
                 "Total Deliveries",
                 "Currency",
             ],
-            ...customers.map((c) => [
+            ...filteredCustomers.map((c) => [
                 c.customerName,
                 String(c.orderCount),
                 c.bookedRevenue,
@@ -102,27 +137,31 @@ export function AccountingReceivablesView({ overview }: { overview: AccountingOv
     }
 
     function handleExportOrders() {
-        downloadCsv("accounting-sales-order-cogs.csv", [
+        downloadCsv("customer-invoices-list.csv", [
             [
+                "Invoice #",
                 "Sales Order",
                 "Customer PO",
                 "Customer",
-                "Status",
+                "Order Status",
+                "Billing Status",
                 "Order Date",
-                "Booked Revenue",
-                "Delivered Revenue",
-                "Delivered COGS",
-                "Gross Profit",
-                "Gross Margin %",
+                "Total Ordered",
+                "Billed Sales",
+                "Product Cost",
+                "Profit",
+                "Margin %",
                 "Completed Deliveries",
                 "Total Deliveries",
                 "Currency",
             ],
             ...filteredOrders.map((row) => [
+                `INV-${row.salesOrderNumber}`,
                 row.salesOrderNumber,
                 row.customerPoNumber ?? "",
                 row.customerName,
                 row.status,
+                billingStatusBadge(row.status).label,
                 row.orderDate,
                 row.bookedRevenue,
                 row.deliveredRevenue,
@@ -141,46 +180,46 @@ export function AccountingReceivablesView({ overview }: { overview: AccountingOv
             <AccountingKpiStrip
                 cards={[
                     {
-                        title: "Delivered Sales Billing (AR)",
+                        title: "Total Billed (Invoices)",
                         value: formatCurrency(
                             overview.summary.totalDeliveredBilling ?? pnl.recognizedRevenue,
                             currency,
                         ),
-                        badge: `Booked ${formatCurrency(overview.summary.totalBookedBilling ?? pnl.bookedSales, currency)}`,
+                        badge: `Ordered ${formatCurrency(overview.summary.totalBookedBilling ?? pnl.bookedSales, currency)}`,
                         helper:
                             overview.summary.totalOutputVat &&
                             Number.parseFloat(overview.summary.totalOutputVat) > 0
-                                ? `Net sales ${formatCurrency(pnl.recognizedRevenue, currency)} + Output VAT ${formatCurrency(overview.summary.totalOutputVat, currency)} (Acct 2200).`
-                                : "Completed customer deliveries recognized as receivable billing.",
+                                ? `Sales ${formatCurrency(pnl.recognizedRevenue, currency)} + VAT ${formatCurrency(overview.summary.totalOutputVat, currency)}.`
+                                : "Customer deliveries completed and counted as billed.",
                         icon: Coins,
                         color: "text-teal-600 dark:text-teal-400",
                         bg: "bg-teal-500/10",
                     },
                     {
-                        title: "Undelivered Order Backlog",
+                        title: "Pending Orders",
                         value: formatCurrency(pnl.unfulfilledBacklog, currency),
-                        badge: "Pending fulfillment",
-                        helper: "Booked sales orders remaining open for delivery completion.",
+                        badge: "Waiting for delivery",
+                        helper: "Booked customer orders not yet delivered or billed.",
                         icon: Receipt,
                         color: "text-sky-600 dark:text-sky-400",
                         bg: "bg-sky-500/10",
                     },
                     {
-                        title: "Delivered Batch COGS",
+                        title: "Cost of Products Sold",
                         value: formatCurrency(pnl.deliveredCogs, currency),
-                        badge: "Account 5100",
-                        helper: "Exact batch unit cost of finished spice lots shipped.",
+                        badge: "Batch product cost",
+                        helper: "Actual spice, packaging, and label cost of delivered products.",
                         icon: TrendingUp,
                         color: "text-amber-600 dark:text-amber-400",
                         bg: "bg-amber-500/10",
                     },
                     {
-                        title: "Gross Profit & Customer Margin",
+                        title: "Sales Profit",
                         value: formatCurrency(pnl.grossProfit, currency),
                         badge:
                             pnl.grossMarginPercent !== null
                                 ? `${pnl.grossMarginPercent}% margin`
-                                : "No deliveries",
+                                : "No deliveries yet",
                         helper: `Across ${customers.length} active customer account(s).`,
                         icon: Users,
                         color: "text-primary",
@@ -190,25 +229,37 @@ export function AccountingReceivablesView({ overview }: { overview: AccountingOv
             />
 
             <Card className="border shadow-xs">
-                <CardHeader className="flex flex-col gap-3 border-b pb-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                        <CardTitle className="text-base font-semibold">
-                            Customer Account Profitability &amp; Receivables Summary
-                        </CardTitle>
-                        <CardDescription className="text-xs">
-                            Booked demand, completed delivery billing, undelivered backlog, COGS, and gross margin rolled up per customer.
-                        </CardDescription>
+                <CardHeader className="gap-3 border-b pb-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="min-w-0">
+                            <CardTitle className="text-base font-semibold">
+                                Customers Summary
+                            </CardTitle>
+                            <CardDescription className="text-xs">
+                                See total orders, billed sales, pending deliveries, product cost, and profit for each customer.
+                            </CardDescription>
+                        </div>
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="shrink-0 self-start sm:self-auto"
+                            onClick={handleExportCustomers}
+                            disabled={filteredCustomers.length === 0}
+                        >
+                            <Download className="mr-1.5 size-4" />
+                            Export Customers CSV
+                        </Button>
                     </div>
-                    <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={handleExportCustomers}
-                        disabled={customers.length === 0}
-                    >
-                        <Download className="mr-1.5 size-4" />
-                        Export Customer CSV
-                    </Button>
+                    <div className="relative w-full sm:w-64">
+                        <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                            value={customerSearch}
+                            onChange={(e) => setCustomerSearch(e.target.value)}
+                            placeholder="Search customer name..."
+                            className="h-8 pl-8 text-xs"
+                        />
+                    </div>
                 </CardHeader>
                 <CardContent className="p-0">
                     <Table>
@@ -216,16 +267,16 @@ export function AccountingReceivablesView({ overview }: { overview: AccountingOv
                             <TableRow>
                                 <TableHead>Customer</TableHead>
                                 <TableHead className="text-right">Orders</TableHead>
-                                <TableHead className="text-right">Booked Revenue</TableHead>
-                                <TableHead className="text-right">Delivered Billing</TableHead>
-                                <TableHead className="text-right">Backlog</TableHead>
-                                <TableHead className="text-right">Delivered COGS</TableHead>
-                                <TableHead className="text-right">Gross Profit</TableHead>
+                                <TableHead className="text-right">Total Ordered</TableHead>
+                                <TableHead className="text-right">Billed</TableHead>
+                                <TableHead className="text-right">Pending</TableHead>
+                                <TableHead className="text-right">Product Cost</TableHead>
+                                <TableHead className="text-right">Profit</TableHead>
                                 <TableHead className="text-right">Margin %</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {customers.map((row) => (
+                            {filteredCustomers.map((row) => (
                                 <TableRow key={row.customerName}>
                                     <TableCell className="font-medium">{row.customerName}</TableCell>
                                     <TableCell className="text-right tabular-nums">
@@ -251,10 +302,10 @@ export function AccountingReceivablesView({ overview }: { overview: AccountingOv
                                     </TableCell>
                                 </TableRow>
                             ))}
-                            {customers.length === 0 && (
+                            {filteredCustomers.length === 0 && (
                                 <TableRow>
                                     <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
-                                        No non-cancelled customer orders found in this period.
+                                        No matching customer accounts found in this period.
                                     </TableCell>
                                 </TableRow>
                             )}
@@ -266,23 +317,24 @@ export function AccountingReceivablesView({ overview }: { overview: AccountingOv
             <Card className="border shadow-xs">
                 <CardHeader className="gap-3 border-b pb-4">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
+                        <div className="min-w-0">
                             <CardTitle className="text-base font-semibold">
-                                Sales Order Revenue &amp; Batch COGS Detail
+                                Customer Invoices &amp; Sales Orders
                             </CardTitle>
                             <CardDescription className="text-xs">
-                                Individual order billing progress matched against actual shipped batch costs.
+                                View billing status, delivered totals, and printable invoice summaries per order.
                             </CardDescription>
                         </div>
                         <Button
                             type="button"
                             size="sm"
                             variant="outline"
+                            className="shrink-0 self-start sm:self-auto"
                             onClick={handleExportOrders}
                             disabled={filteredOrders.length === 0}
                         >
                             <Download className="mr-1.5 size-4" />
-                            Export Orders CSV
+                            Export Invoices CSV
                         </Button>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
@@ -294,7 +346,7 @@ export function AccountingReceivablesView({ overview }: { overview: AccountingOv
                                     setSearchInput(e.target.value)
                                     setPageIndex(0)
                                 }}
-                                placeholder="Search sales #, customer, PO..."
+                                placeholder="Search invoice #, customer, PO..."
                                 className="h-8 pl-8 text-xs"
                             />
                         </div>
@@ -307,6 +359,7 @@ export function AccountingReceivablesView({ overview }: { overview: AccountingOv
                                     setPageIndex(0)
                                 }}
                                 placeholder="Order status"
+                                className="w-full"
                             />
                         </div>
                     </div>
@@ -315,56 +368,71 @@ export function AccountingReceivablesView({ overview }: { overview: AccountingOv
                     <Table>
                         <TableHeader className="bg-muted/50">
                             <TableRow>
-                                <TableHead>Sales Order</TableHead>
+                                <TableHead>Invoice / Order</TableHead>
                                 <TableHead>Customer</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead className="text-right">Booked Revenue</TableHead>
-                                <TableHead className="text-right">Delivered Revenue</TableHead>
-                                <TableHead className="text-right">Delivered COGS</TableHead>
-                                <TableHead className="text-right">Gross Profit</TableHead>
-                                <TableHead className="text-right">Margin</TableHead>
+                                <TableHead>Billing Status</TableHead>
+                                <TableHead className="text-right">Total Ordered</TableHead>
+                                <TableHead className="text-right">Billed</TableHead>
+                                <TableHead className="text-right">Product Cost</TableHead>
+                                <TableHead className="text-right">Profit</TableHead>
+                                <TableHead className="text-right">Invoice</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {filteredOrders.slice(sliceStart, sliceEnd).map((row) => (
-                                <TableRow key={row.salesOrderId}>
-                                    <TableCell>
-                                        <div className="font-medium">{row.salesOrderNumber}</div>
-                                        <div className="text-xs text-muted-foreground">
-                                            {row.orderDate}
-                                            {row.customerPoNumber ? ` · PO ${row.customerPoNumber}` : ""}
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="font-medium">{row.customerName}</div>
-                                        <div className="text-xs text-muted-foreground">
-                                            {row.completedDeliveryCount}/{row.deliveryCount} deliveries completed
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Badge variant="outline">{row.status}</Badge>
-                                    </TableCell>
-                                    <TableCell className="text-right tabular-nums">
-                                        {formatCurrency(row.bookedRevenue, currency)}
-                                    </TableCell>
-                                    <TableCell className="text-right font-medium tabular-nums">
-                                        {formatCurrency(row.deliveredRevenue, currency)}
-                                    </TableCell>
-                                    <TableCell className="text-right tabular-nums text-muted-foreground">
-                                        {formatCurrency(row.deliveredCogs, currency)}
-                                    </TableCell>
-                                    <TableCell className="text-right font-semibold tabular-nums">
-                                        {formatCurrency(row.grossProfit, currency)}
-                                    </TableCell>
-                                    <TableCell className="text-right tabular-nums">
-                                        {row.grossMarginPercent !== null ? `${row.grossMarginPercent}%` : "—"}
-                                    </TableCell>
-                                </TableRow>
-                            ))}
+                            {filteredOrders.slice(sliceStart, sliceEnd).map((row) => {
+                                const badge = billingStatusBadge(row.status)
+                                return (
+                                    <TableRow key={row.salesOrderId}>
+                                        <TableCell>
+                                            <div className="font-medium">
+                                                INV-{row.salesOrderNumber}
+                                            </div>
+                                            <div className="text-xs text-muted-foreground">
+                                                {row.orderDate}
+                                                {row.customerPoNumber
+                                                    ? ` · PO ${row.customerPoNumber}`
+                                                    : ""}
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="font-medium">{row.customerName}</div>
+                                            <div className="text-xs text-muted-foreground">
+                                                {row.completedDeliveryCount}/{row.deliveryCount} deliveries finished
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Badge variant={badge.variant}>{badge.label}</Badge>
+                                        </TableCell>
+                                        <TableCell className="text-right tabular-nums">
+                                            {formatCurrency(row.bookedRevenue, currency)}
+                                        </TableCell>
+                                        <TableCell className="text-right font-medium tabular-nums">
+                                            {formatCurrency(row.deliveredRevenue, currency)}
+                                        </TableCell>
+                                        <TableCell className="text-right tabular-nums text-muted-foreground">
+                                            {formatCurrency(row.deliveredCogs, currency)}
+                                        </TableCell>
+                                        <TableCell className="text-right font-semibold tabular-nums">
+                                            {formatCurrency(row.grossProfit, currency)}
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            <Button
+                                                type="button"
+                                                size="xs"
+                                                variant="outline"
+                                                onClick={() => setSelectedInvoice(row)}
+                                            >
+                                                <Eye className="mr-1 size-3" />
+                                                View
+                                            </Button>
+                                        </TableCell>
+                                    </TableRow>
+                                )
+                            })}
                             {filteredOrders.length === 0 && (
                                 <TableRow>
                                     <TableCell colSpan={8} className="py-10 text-center text-muted-foreground">
-                                        No matching sales order records found.
+                                        No matching customer invoices found.
                                     </TableCell>
                                 </TableRow>
                             )}
@@ -379,6 +447,15 @@ export function AccountingReceivablesView({ overview }: { overview: AccountingOv
                     />
                 </CardContent>
             </Card>
+
+            <AccountingInvoiceDialog
+                invoice={selectedInvoice}
+                currencyCode={currency}
+                open={selectedInvoice !== null}
+                onOpenChange={(open) => {
+                    if (!open) setSelectedInvoice(null)
+                }}
+            />
         </div>
     )
 }

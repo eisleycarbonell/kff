@@ -90,7 +90,7 @@ export default function LotsPage() {
             )}
             {loadStatus === "loading" && (
                 <div className="space-y-4" aria-label="Loading lots" aria-busy="true">
-                    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                    <div className="grid gap-3 @lg/main:grid-cols-2 @5xl/main:grid-cols-4">
                         {[0, 1, 2, 3].map((index) => (
                             <Skeleton key={index} className="h-28 rounded-xl" />
                         ))}

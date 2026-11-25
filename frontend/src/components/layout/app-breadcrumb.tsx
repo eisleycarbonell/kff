@@ -136,28 +136,28 @@ const routeConfig: Record<string, BreadcrumbConfig> = {
 
     // Accounting
     "/accounting": {
-        label: "Overview & P&L",
-        group: "Accounting",
-    },
-    "/accounting/general-ledger": {
-        label: "General Ledger",
-        group: "Accounting",
-    },
-    "/accounting/valuation": {
-        label: "Inventory Valuation",
-        group: "Accounting",
-    },
-    "/accounting/production-costing": {
-        label: "Production Costing",
-        group: "Accounting",
+        label: "Dashboard",
+        group: "Accounting Portal",
     },
     "/accounting/receivables-margins": {
-        label: "Receivables & Margin",
-        group: "Accounting",
+        label: "Sales & Invoices",
+        group: "Accounting Portal",
     },
     "/accounting/payables": {
-        label: "Payables & POs",
-        group: "Accounting",
+        label: "Expenses & Bills",
+        group: "Accounting Portal",
+    },
+    "/accounting/general-ledger": {
+        label: "Financial Reports",
+        group: "Accounting Portal",
+    },
+    "/accounting/valuation": {
+        label: "Stock Value",
+        group: "Accounting Portal",
+    },
+    "/accounting/production-costing": {
+        label: "Production Costs",
+        group: "Accounting Portal",
     },
 
     // Administration
@@ -217,6 +217,10 @@ export function AppBreadcrumb() {
     if (group) {
         breadcrumbs.push({
             label: group,
+            href:
+                group === "Accounting Portal" && currentPath !== "/accounting"
+                    ? "/accounting"
+                    : undefined,
         })
     }
 
@@ -233,7 +237,7 @@ export function AppBreadcrumb() {
         // Inventory and Accounting nested pages are sibling sub-modules, not children of Overview.
         if (
             (href === "/inventory" && currentRoute?.group === "Inventory") ||
-            (href === "/accounting" && currentRoute?.group === "Accounting")
+            (href === "/accounting" && currentRoute?.group === "Accounting Portal")
         )
             return
 
@@ -261,11 +265,13 @@ export function AppBreadcrumb() {
 
                     return (
                         <Fragment key={`${index}-${item.label}`}>
-                            {index > 0 && <BreadcrumbSeparator className="shrink-0" />}
+                            {index > 0 && (
+                                <BreadcrumbSeparator className="hidden shrink-0 sm:inline-flex" />
+                            )}
 
-                            <BreadcrumbItem className="min-w-0">
+                            <BreadcrumbItem className={isLast ? "min-w-0" : "hidden min-w-0 sm:inline-flex"}>
                                 {isLast ? (
-                                    <BreadcrumbPage className="max-w-[12rem] truncate sm:max-w-none">
+                                    <BreadcrumbPage className="min-w-0 truncate">
                                         {item.label}
                                     </BreadcrumbPage>
                                 ) : item.href ? (

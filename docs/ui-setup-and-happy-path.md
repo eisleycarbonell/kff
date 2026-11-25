@@ -40,7 +40,7 @@ If the sample dataset has already been installed, its test administrator is `dem
 
 ### Which account to use
 
-Use an account with all five permissions for the operational training steps.
+Use an account with all five operational and user-management permissions shown below (or full Administrator permissions) for the operational training steps.
 A second authorized person must independently review the initial formula
 release (or use an already released formula). For a team run, hand each step to
 the appropriate operator.
@@ -452,7 +452,7 @@ Use the operational screens to verify the completed exercise:
 
 Use filters for the `HP-` references, items, lots and locations. Export operational
 table rows where needed. Do not add kilograms and pieces together. The
-historical [audit](documentation-compliance-audit.md) records earlier findings
+historical [audit](archive/documentation-compliance-audit.md) records earlier findings
 and follow-ups. Current Dashboard totals are grouped by primary UOM, open lists
 filter by status, and low-stock alerts include unstocked items. Use operational
 screens and reports to check the exact documents in this exercise.
@@ -552,7 +552,7 @@ payment, return or dispatched-delivery reversal workflow in the current scope.
 ## Reference documents
 
 - [Complete system flow](system-flow.md)
-- [Documentation compliance audit](documentation-compliance-audit.md)
+- [Documentation compliance audit](archive/documentation-compliance-audit.md)
 - [Users and roles](roles-users-module.md)
 - [Units and locations](uom-locations-modules.md)
 - [Items](items-module.md), [suppliers](suppliers-module.md) and [customers](customers-module.md)

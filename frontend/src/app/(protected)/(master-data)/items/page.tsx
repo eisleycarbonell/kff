@@ -99,7 +99,7 @@ export default function ItemsPage() {
           aria-busy="true"
           aria-label="Loading items"
         >
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-3 @lg/main:grid-cols-2 @3xl/main:grid-cols-3">
             {[0, 1, 2].map((index) => (
               <Skeleton key={index} className="h-36 rounded-xl" />
             ))}

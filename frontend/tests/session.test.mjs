@@ -20,8 +20,26 @@ process.env.NEXT_PUBLIC_API_BASE_URL = "https://kff.example.test/api/"
 
 const { ApiError } = await import("../src/lib/api-request.ts")
 const { getLoadStatus, shouldRedirectToLogin } = await import("../src/lib/load-status.ts")
-const { getSession, loginSession, logoutSession, sessionSchema, SESSION_QUERY_KEY } =
+const {
+    canNavigateToRoute,
+    getHomeRouteForSession,
+    getWorkspaceRedirect,
+    isAccountingOnlySession,
+    isAccountingRoute,
+} = await import("../src/lib/workspace-access.ts")
+const { getSession, keepaliveSession, loginSession, logoutSession, sessionSchema, SESSION_QUERY_KEY } =
     await import("../src/hooks/use-session.ts")
+const {
+    SESSION_IDLE_TIMEOUT_MS,
+    SESSION_IDLE_WARNING_BEFORE_MS,
+    SESSION_KEEPALIVE_INTERVAL_MS,
+    getIdleRemainingMs,
+    isSessionIdleExpired,
+    parseLogoutBroadcast,
+    parseStoredTimestamp,
+    shouldSendSessionKeepalive,
+    shouldWarnIdleTimeout,
+} = await import("../src/lib/idle-session.ts")
 
 const originalFetch = globalThis.fetch
 
@@ -235,4 +253,172 @@ test("shouldRedirectToLogin only redirects when settled as definitively signed o
     assert.equal(shouldRedirectToLogin({ isPending: false, data: undefined }), false)
     assert.equal(shouldRedirectToLogin({ isPending: false, data: validSessionPayload }), false)
     assert.equal(shouldRedirectToLogin({ isPending: false, data: null }), true)
+})
+
+test("workspace access isolates Accounting-only roles into the standalone Accounting Portal", () => {
+    const accountingOnlySession = {
+        ...validSessionPayload,
+        permissions: {
+            canManageInventory: false,
+            canManagePurchasing: false,
+            canManagePacking: false,
+            canManageTransfers: false,
+            canManageUsers: false,
+            canManageAccounting: true,
+        },
+    }
+    const adminSession = {
+        ...validSessionPayload,
+        permissions: {
+            canManageInventory: true,
+            canManagePurchasing: true,
+            canManagePacking: true,
+            canManageTransfers: true,
+            canManageUsers: true,
+            canManageAccounting: true,
+        },
+    }
+    const mixedSession = {
+        ...validSessionPayload,
+        permissions: {
+            canManageInventory: true,
+            canManageAccounting: true,
+        },
+    }
+    const viewerSession = {
+        ...validSessionPayload,
+        permissions: {
+            canManageInventory: false,
+            canManagePurchasing: false,
+            canManagePacking: false,
+            canManageTransfers: false,
+            canManageUsers: false,
+            canManageAccounting: false,
+        },
+    }
+
+    assert.equal(isAccountingOnlySession(accountingOnlySession), true)
+    assert.equal(isAccountingOnlySession(adminSession), false)
+    assert.equal(isAccountingOnlySession(mixedSession), false)
+    assert.equal(isAccountingOnlySession(validSessionPayload), false)
+    assert.equal(isAccountingOnlySession(viewerSession), false)
+    assert.equal(isAccountingOnlySession(null), false)
+    assert.equal(isAccountingOnlySession(undefined), false)
+
+    assert.equal(isAccountingRoute("/accounting"), true)
+    assert.equal(isAccountingRoute("/accounting/"), true)
+    assert.equal(isAccountingRoute("/accounting/general-ledger"), true)
+    assert.equal(isAccountingRoute("/accounting/payables/"), true)
+    assert.equal(isAccountingRoute("/dashboard"), false)
+    assert.equal(isAccountingRoute("/inventory"), false)
+
+    assert.equal(getHomeRouteForSession(accountingOnlySession), "/accounting")
+    assert.equal(getHomeRouteForSession(adminSession), "/dashboard")
+    assert.equal(getHomeRouteForSession(validSessionPayload), "/dashboard")
+    assert.equal(getHomeRouteForSession(viewerSession), "/dashboard")
+    assert.equal(getHomeRouteForSession(null), "/dashboard")
+
+    assert.equal(getWorkspaceRedirect(accountingOnlySession, "/dashboard"), "/accounting")
+    assert.equal(getWorkspaceRedirect(accountingOnlySession, "/inventory"), "/accounting")
+    assert.equal(getWorkspaceRedirect(accountingOnlySession, "/accounting"), null)
+    assert.equal(
+        getWorkspaceRedirect(accountingOnlySession, "/accounting/general-ledger"),
+        null,
+    )
+    assert.equal(getWorkspaceRedirect(adminSession, "/accounting"), "/dashboard")
+    assert.equal(getWorkspaceRedirect(adminSession, "/accounting/valuation"), "/dashboard")
+    assert.equal(getWorkspaceRedirect(adminSession, "/dashboard"), null)
+    assert.equal(getWorkspaceRedirect(viewerSession, "/accounting"), "/dashboard")
+    assert.equal(getWorkspaceRedirect(null, "/dashboard"), null)
+
+    assert.equal(canNavigateToRoute(accountingOnlySession, "/accounting/payables"), true)
+    assert.equal(canNavigateToRoute(accountingOnlySession, "/purchase-orders"), false)
+    assert.equal(canNavigateToRoute(adminSession, "/purchase-orders"), true)
+    assert.equal(canNavigateToRoute(adminSession, "/accounting/payables"), false)
+    assert.equal(canNavigateToRoute(adminSession, null), false)
+})
+
+test("keepaliveSession calls POST /auth/keepalive with credentials", async () => {
+    let seenUrl = null
+    let seenInit = null
+    globalThis.fetch = async (url, init) => {
+        seenUrl = String(url)
+        seenInit = init
+        return new Response(
+            JSON.stringify({
+                success: true,
+                data: {
+                    expiresAt: "2026-11-25T18:00:00.000Z",
+                    idleTimeoutSeconds: 10800,
+                },
+            }),
+            { status: 200, headers: { "content-type": "application/json" } },
+        )
+    }
+
+    await keepaliveSession()
+    assert.equal(seenUrl, "https://kff.example.test/api/auth/keepalive")
+    assert.equal(seenInit?.method, "POST")
+    assert.equal(seenInit?.credentials, "include")
+})
+
+test("idle-session helpers enforce 3-hour expiry, 5-minute warning, and activity-only keepalive", () => {
+    const start = 1_700_000_000_000
+
+    assert.equal(SESSION_IDLE_TIMEOUT_MS, 3 * 60 * 60 * 1000)
+    assert.equal(SESSION_IDLE_WARNING_BEFORE_MS, 5 * 60 * 1000)
+    assert.equal(SESSION_KEEPALIVE_INTERVAL_MS, 15 * 60 * 1000)
+
+    assert.equal(
+        getIdleRemainingMs(start, start + SESSION_IDLE_TIMEOUT_MS - 1_000),
+        1_000,
+    )
+    assert.equal(getIdleRemainingMs(start, start + SESSION_IDLE_TIMEOUT_MS + 5_000), 0)
+
+    assert.equal(isSessionIdleExpired(start, start + SESSION_IDLE_TIMEOUT_MS - 1), false)
+    assert.equal(isSessionIdleExpired(start, start + SESSION_IDLE_TIMEOUT_MS), true)
+
+    assert.equal(
+        shouldWarnIdleTimeout(start, start + SESSION_IDLE_TIMEOUT_MS - SESSION_IDLE_WARNING_BEFORE_MS - 1),
+        false,
+    )
+    assert.equal(
+        shouldWarnIdleTimeout(start, start + SESSION_IDLE_TIMEOUT_MS - SESSION_IDLE_WARNING_BEFORE_MS),
+        true,
+    )
+    assert.equal(shouldWarnIdleTimeout(start, start + SESSION_IDLE_TIMEOUT_MS), false)
+
+    // No keepalive without new user activity after the previous keepalive.
+    assert.equal(
+        shouldSendSessionKeepalive(start, start, start + SESSION_KEEPALIVE_INTERVAL_MS + 1_000),
+        false,
+    )
+    // User acted within the interval, so keepalive triggers once the 15-minute throttle passes.
+    assert.equal(
+        shouldSendSessionKeepalive(
+            start + 20_000,
+            start,
+            start + SESSION_KEEPALIVE_INTERVAL_MS,
+        ),
+        true,
+    )
+    // Never send keepalive once idle timeout is already reached.
+    assert.equal(
+        shouldSendSessionKeepalive(
+            start,
+            start - SESSION_KEEPALIVE_INTERVAL_MS,
+            start + SESSION_IDLE_TIMEOUT_MS,
+        ),
+        false,
+    )
+
+    assert.equal(parseStoredTimestamp("1700000000000"), 1_700_000_000_000)
+    assert.equal(parseStoredTimestamp("0"), null)
+    assert.equal(parseStoredTimestamp("not-a-number"), null)
+    assert.deepEqual(
+        parseLogoutBroadcast(JSON.stringify({ reason: "idle", at: start })),
+        { reason: "idle", at: start },
+    )
+    assert.equal(parseLogoutBroadcast('{"reason":"other","at":123}'), null)
+    assert.equal(parseLogoutBroadcast("{"), null)
 })

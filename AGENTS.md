@@ -1,138 +1,96 @@
-# KFF Shared Agent Instructions
+# KFF Workspace — AI Agent Guide
 
-## Required reading
+KFF (Kusina Filipino Food) is a spice trading and packing system. `backend/` and
+`frontend/` are **independent Git repositories containing application code only**;
+all AI instructions, skills, and documentation live outside them at the workspace
+root so none of those files are committed or pushed to either app repository.
 
-Read [the full system flow](docs/system-flow.md) before implementing or changing
-business features in either application. It is the shared business specification
-for this spice trading and packing system, including all 26 sections, examples,
-formulas, routes, statuses, and operational rules supplied by the project owner.
-Keep that complete document as the single source for the system flow.
+| Folder / Files | Contents | Rules / Guide |
+| --- | --- | --- |
+| `backend/` | Express 5 + Drizzle + PostgreSQL/Supabase API (port 3001) + DB `.cmd` scripts | [docs/backend-rules.md](docs/backend-rules.md) |
+| `frontend/` | Next.js 16 + React 19 UI (port 3000) | [docs/frontend-rules.md](docs/frontend-rules.md) |
+| `docs/` | All shared specs, module contracts, and app architecture/rule guides | [docs/README.md](docs/README.md) |
+| `.agents/skills/` | All KFF + external skills (tracked in `skills-lock.json`) | — |
+| `kff.cmd`, `scripts/` | Root launcher menu and `check-docs.ps1` (see Commands) | — |
+| `tools/`, `database-backups/` | Local binaries (`caddy`) and backup storage — do not edit | — |
 
-Also read the guide for each application being changed:
+There is no root `package.json`: run npm commands inside `backend/` or `frontend/`.
 
-- [Frontend instructions](frontend/AGENTS.md): Next.js pages, hooks, tables,
-  forms, UI conventions, and the users reference module.
-- [Backend instructions](backend/AGENTS.md): Express modules, Zod validation,
-  services, database access, shared errors, and the users reference API.
+## Read order
 
-Use the implementation coverage and module-contract index in section 2 of the
-system flow to distinguish working modules from planned pages. For sales and
-delivery changes, also read [the module contract](docs/sales-delivery-modules.md).
-For sample records, test accounts or seed/reset changes, read
-[the sample-data guide](docs/test-data.md).
+Stop as soon as you have what the task needs.
 
-When business behavior changes, keep the canonical system flow and affected
-module contracts aligned. Preserve all 26 sections and their original examples;
-extend the relevant section and mark current implementation limits explicitly.
+1. [docs/business-rules.md](docs/business-rules.md) — shared business rules (auto-loaded by `CLAUDE.md`).
+2. The guide for each app you will change: [docs/backend-rules.md](docs/backend-rules.md) and/or [docs/frontend-rules.md](docs/frontend-rules.md).
+3. The task-specific document from the routing table below.
+4. For business-behavior changes, the relevant section of [docs/system-flow.md](docs/system-flow.md)
+   (large — search its headings instead of reading it all).
 
-The system flow defines business behavior; the application guides define its
-implementation. The current user request defines which part to implement.
-Apply the shared business rules to that scope and describe any remaining gaps
-accurately. A documented route or workflow may still be planned rather than
-implemented in the current code.
+The current user request defines the scope. The system flow defines business
+behavior; the app guides define implementation. Report any remaining gaps.
 
-## Business rules shared by both applications
+## Task routing
 
-- The business buys already processed spices and packs finished products. Keep
-  workflows focused on buy, receive, store, reserve, pack, transfer, track, and
-  report, with the minimal complexity needed for the actual business process.
-- Customer demand can initiate replenishment: record the customer PO on a Sales
-  Order, select finished products and inspect the advisory Material plan. Use
-  eligible finished stock first, aggregate BOM requirements for the packing gap,
-  and buy material shortages through supplier POs. Planning creates no reservation.
-- Labels are Packaging - Label items assigned to Finished Goods through
-  `labelItemId`. Brands are retired; retain legacy data. The published BOM
-  determines label consumption, independently of the catalog assignment.
-- Follow the inventory sequence: supplier and purchase order, receiving into
-  raw/packaging storage, packing order and material reservations, packing into
-  finished-goods storage, then transfer through In Transit to a branch or store.
-- The Create Purchase Order form opens with a backend-generated PO number.
-  Users may keep it or replace it with a unique custom number before saving;
-  saved numbers remain immutable. Allocating a number does not create an order.
-  PO materials require an active link to the selected supplier. Suppliers and
-  Items maintain the same supplier-item relationship, with multiple suppliers
-  permitted for one material.
-- Count Sessions, QC Decisions and Stock Dispositions are retired workflows;
-  preserve their read history without accepting new requests/actions. Use direct
-  Stock Adjustments for count corrections and Scrap & Disposal for permanent
-  removal. New received/packed lots start Approved; legacy held statuses remain.
-- Use the documented item types, compatible UOM classes, and each item's primary
-  UOM for inventory quantities. Example codes, prices, dates, quantities, and
-  warehouse names illustrate the flow; real operations use configured master data.
-- Track stock by item, lot, and location. Warehouses, branches, stores, and
-  In Transit use the same inventory model. Purchased lots trace to purchase-order
-  lines; finished-product lots trace to packing orders. Lot dates remain optional
-  where the document allows it, including packaging and labels.
-- Treat `inventory_transactions` as an append-only ledger. Every stock change
-  creates the corresponding ledger entry and updates the current balance in the
-  same database transaction. Corrections use new transactions.
-- Calculate availability as on-hand stock minus active reservations. Enforce
-  availability across concurrent requests so separate orders cannot reserve or
-  consume the same available stock.
-- Require a valid BOM for packing planning. Copy material requirements into the
-  packing order as a historical snapshot. Calculate maximum producible quantity
-  from the limiting component. Historical orders use their own material snapshot.
-- Consume reserved materials and release unused reservations according to the
-  packing flow. Completing packing records consumption, creates a traceable
-  finished-product lot, records production, and updates inventory atomically.
-- Transfers have distinct source and destination locations. Dispatch moves stock
-  into In Transit; confirmed receiving moves it to the destination. Goods remain
-  part of company inventory during transit.
-- Sales confirmation does not reserve warehouse stock. Draft deliveries allocate
-  sales demand; dispatch checks stock availability and moves selected lots into
-  protected In Transit inventory. Completed customer delivery records negative
-  Sale entries, consumes/releases its reservation, and updates sales fulfillment
-  atomically. Customer contacts are separate from company inventory locations.
-- Reuse the current permission settings: sales writes require
-  `canManageInventory`; delivery writes require `canManageTransfers`. All active
-  outstanding packing and delivery reservations reduce stock availability.
-- Derive reports and dashboard metrics from operational records. Maintain audit
-  fields using authenticated user identity. The frontend reflects role settings;
-  the backend enforces authorization for protected operations.
+| Task | Read / use |
+| --- | --- |
+| Backend module, endpoint, service, migration | [docs/backend-rules.md](docs/backend-rules.md) · [docs/backend-architecture.md](docs/backend-architecture.md) · skill `kff-backend-module` |
+| Frontend page, hook, table, form | [docs/frontend-rules.md](docs/frontend-rules.md) · [docs/frontend-architecture.md](docs/frontend-architecture.md) · skill `kff-frontend-module` |
+| Feature touching **both** apps | skill `kff-fullstack-feature` |
+| API route, DTO, permission flag, header, CORS/cookie, Socket.IO | [docs/api-contract.md](docs/api-contract.md) · skills `kff-frontend-bridge` (backend), `kff-backend-bridge` (frontend) |
+| A specific module's rules | its contract, listed in [docs/README.md](docs/README.md) |
+| Sales orders, customer PO planning, deliveries | [docs/sales-delivery-modules.md](docs/sales-delivery-modules.md) |
+| Seed data, test accounts, DB reset | [docs/test-data.md](docs/test-data.md) |
+| PostgreSQL indexing, locking, Supabase | skills `supabase-postgres-best-practices`, `supabase` |
+| shadcn/Base UI, animation | skills `shadcn`, `animate-ui`, `gsap-*` |
+| Pushing / deploying the two repos | [docs/repo-separation-guide.md](docs/repo-separation-guide.md) |
 
-These are the essential implementation reminders. Read the complete system-flow
-document for the full requirements and the sidebar organization in section 21.
+## Golden rules
 
-## Architecture and contracts
+1. **Backend is authoritative** for stock writes, availability, permissions and
+   audit identity. The frontend previews and reflects; it never fakes server data.
+2. **Stock changes are atomic**: append-only ledger entry + balance update in one
+   PostgreSQL transaction. Corrections are new transactions.
+3. **Keep AI instructions and docs outside app repos.** Never place `AGENTS.md`,
+   `CLAUDE.md`, `GEMINI.md`, `.agents/`, `skills-lock.json`, or `docs/` inside
+   `backend/` or `frontend/` — their `.gitignore` files also block them.
+4. **Never duplicate rules.** Shared business rules live only in
+   `docs/business-rules.md`; app-specific rules only in `docs/backend-rules.md`
+   or `docs/frontend-rules.md`; step-by-step procedures only in `.agents/skills/`.
+5. **Keep `docs/` updated on every flow change or added feature.** In the same
+   task, create `docs/<module>-module.md` and index it in
+   [docs/README.md](docs/README.md) for new modules, or update the affected files
+   (`docs/system-flow.md` preserving all 26 sections and examples,
+   `docs/business-rules.md`, `docs/api-contract.md`, module contract,
+   `docs/backend-architecture.md` / `docs/frontend-architecture.md`,
+   `docs/test-data.md` / `docs/module-demo-guide.md`), then run
+   `.\kff.cmd check-docs`.
+6. **Coordinate cross-app changes** inside the requested scope: schema, service,
+   DTO, form, permission, navigation, report and `docs/` together.
+7. **Test data only on test databases.** Never point a launcher at an operational database.
 
-Map the system-flow document's general architecture to the existing repository:
+## Commands
 
-```text
-Next.js page/components
-  -> frontend feature hook using TanStack Query
-  -> Express API route with Zod request validation
-  -> controller
-  -> backend business service
-  -> PostgreSQL transaction / Drizzle ORM
-  -> PostgreSQL / Supabase
-```
+Double-click `kff.cmd` for a menu, or run `kff <command>` from this folder
+(the DB/test scripts themselves live in `backend/`):
 
-Complex inventory rules and authoritative stock writes belong in backend
-services. Frontend calculations can preview requirements, while the backend
-validates and commits each operation. The document's service names are business
-responsibilities that can be implemented with the existing module functions.
-
-Compare the business specification with the current database schema and API
-before changing a feature. Coordinate required schema, service, response-type,
-form, permission, navigation, and report changes within the requested scope.
-Preserve existing implementation conventions unless the requested feature
-requires a coordinated change.
-
-- Always use the shared `ComboboxSelect` (`frontend/src/components/shared/combobox-select.tsx`)
-  or `Combobox` (`frontend/src/components/ui/combobox.tsx`) component on every dropdown,
-  form selector, filter selector, and pagination selector across the frontend — never
-  use native `<select>` elements or plain `<Select>` dropdowns.
-- Always build every module, page, table, toolbar, dialog, and form to be fully
-  mobile-responsive across phone, tablet, and desktop viewports (down to 320px width)
-  without horizontal page overflow, clipped controls, or inaccessible touch targets.
+| Command | Action |
+| --- | --- |
+| `kff install` | Install dependencies (`npm ci` on clean setup, `npm install` when `node_modules` exists) in both apps |
+| `kff dev` | Start backend and frontend dev servers in two windows |
+| `kff test` | Build and start the testing backend — calls `backend\start-test-backend.cmd` |
+| `kff seed` | Load demo data into an empty DB — calls `backend\load-sample-data.cmd` |
+| `kff rebuild` | **Delete** all KFF records and recreate the schema — calls `backend\rebuild-test-database.cmd` |
+| `kff fresh-start` | **Delete** all KFF records, recreate an empty schema (no sample data), and start backend — calls `backend\fresh-start.cmd` |
+| `kff demo-user` | Create the demo administrator login |
+| `kff verify` | Run `check-docs`, backend typecheck/tests, and frontend tsc/lint/tests |
+| `kff check-docs` | Verify Markdown links and confirm no AI/doc files live inside `backend/` or `frontend/` |
 
 ## Verification
 
-Follow the affected application's verification rules. For operational features,
-cover transaction rollback, availability under concurrency, lot traceability,
-state transitions, authorization, and ledger/balance consistency as applicable.
-Check both frontend behavior and backend enforcement for changes that span them.
-
-For documentation-only work, verify source fidelity, links, shared-document
-references, and agent-file imports. Runtime checks are needed when application
-code changes.
+- Code changes: `kff verify` (or each app's checks in `docs/backend-rules.md` /
+  `docs/frontend-rules.md`); add `npm run build` in `frontend/` for routing/runtime changes.
+- Operational features: cover transaction rollback, availability under
+  concurrency, lot traceability, state transitions, authorization and
+  ledger/balance consistency. Check frontend behavior **and** backend enforcement.
+- Docs-only changes: `kff check-docs` must report 0 errors; review source
+  fidelity. Runtime checks are not required.

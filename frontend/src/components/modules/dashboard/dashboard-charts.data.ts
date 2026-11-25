@@ -4,6 +4,7 @@ import type {
     DashboardRecentActivity,
     DashboardStockByLocation,
     DashboardStockByType,
+    DashboardSummary,
 } from "./dashboard.schema.ts"
 
 export type CategoryChartKey = "raw" | "hardware" | "labels" | "finished"
@@ -59,6 +60,11 @@ export type PackingProgressChartDatum = {
     itemName: string
     actualQty: number
     remainingQty: number
+}
+
+export type OperationsWorkloadDatum = {
+    metric: string
+    count: number
 }
 
 function toChartNumber(value: string): number {
@@ -159,4 +165,19 @@ export function buildPackingProgressChart(
             remainingQty: Math.max(0, target - actual),
         }
     })
+}
+
+export function buildOperationsWorkloadChart(
+    summary: DashboardSummary | null,
+): OperationsWorkloadDatum[] {
+    if (!summary) return []
+    return [
+        { metric: "Packing", count: summary.activePackingOrdersCount },
+        { metric: "Open POs", count: summary.pendingPurchaseOrdersCount },
+        { metric: "Sales", count: summary.openSalesOrdersCount ?? 0 },
+        { metric: "Deliveries", count: summary.activeDeliveriesCount ?? 0 },
+        { metric: "Transfers", count: summary.activeTransfersCount },
+        { metric: "Low Stock", count: summary.lowStockItemsCount },
+        { metric: "Expiring", count: summary.expiringLotsCount },
+    ]
 }

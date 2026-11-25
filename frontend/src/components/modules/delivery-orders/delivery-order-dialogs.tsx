@@ -100,38 +100,40 @@ export function DeliveryOrderDetailDialog({
                             ]
                                 .filter(([, value]) => value !== null)
                                 .map(([label, value]) => (
-                                    <div key={label}>
+                                    <div key={label} className="min-w-0">
                                         <dt className="text-muted-foreground">{label}</dt>
-                                        <dd className="mt-1 font-medium">{value}</dd>
+                                        <dd className="mt-1 break-words font-medium">{value}</dd>
                                     </div>
                                 ))}
                         </dl>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Product</TableHead>
-                                    <TableHead>Lot</TableHead>
-                                    <TableHead className="text-right">Quantity</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {order.lines.map((line) => (
-                                    <TableRow key={line.deliveryOrderLineId}>
-                                        <TableCell>
-                                            <span className="font-medium">{line.itemName}</span>
-                                            <p className="text-xs text-muted-foreground">
-                                                {line.itemSku}
-                                            </p>
-                                        </TableCell>
-                                        <TableCell>{line.lotNumber}</TableCell>
-                                        <TableCell className="text-right tabular-nums">
-                                            {formatDeliveryQuantity(line.qtyDelivered)}{" "}
-                                            {line.uomName}
-                                        </TableCell>
+                        <div className="min-w-0 overflow-hidden rounded-lg border">
+                            <Table className="min-w-[520px]">
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Product</TableHead>
+                                        <TableHead>Lot</TableHead>
+                                        <TableHead className="text-right">Quantity</TableHead>
                                     </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
+                                </TableHeader>
+                                <TableBody>
+                                    {order.lines.map((line) => (
+                                        <TableRow key={line.deliveryOrderLineId}>
+                                            <TableCell>
+                                                <span className="font-medium">{line.itemName}</span>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {line.itemSku}
+                                                </p>
+                                            </TableCell>
+                                            <TableCell>{line.lotNumber}</TableCell>
+                                            <TableCell className="text-right tabular-nums">
+                                                {formatDeliveryQuantity(line.qtyDelivered)}{" "}
+                                                {line.uomName}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
                         {order.notes && (
                             <div className="text-sm">
                                 <p className="text-muted-foreground">Notes</p>

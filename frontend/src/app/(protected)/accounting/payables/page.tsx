@@ -6,14 +6,14 @@ import { AccountingShell } from "@/components/modules/accounting/accounting-shel
 export default function PayablesPage() {
     return (
         <>
-            <title>Payables &amp; PO Commitments | Accounting</title>
+            <title>Expenses &amp; Bills | Accounting Portal</title>
             <meta
                 name="description"
-                content="Supplier Accounts Payable GRNI accruals, purchase order commitments, and open liabilities."
+                content="Track total operating expenses, supplier bills for received goods, open purchase orders, and stock losses."
             />
             <AccountingShell
-                title="Payables & PO Commitments"
-                description="Monitor vendor GRNI liabilities for received goods alongside remaining open supplier purchase commitments."
+                title="Expenses & Bills"
+                description="Track total operating expenses, supplier bills for received goods, open orders, and stock write-offs."
             >
                 {(overview) => <AccountingPayablesView overview={overview} />}
             </AccountingShell>

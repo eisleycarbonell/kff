@@ -290,7 +290,7 @@ export default function ControlDetailDialog(p: Props) {
                 if (!v && !p.busy) p.onClose()
             }}
         >
-            <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-4xl">
+            <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-4xl">
                 <DialogHeader>
                     <DialogTitle>{p.detail?.requestNumber ?? "Request details"}</DialogTitle>
                     <DialogDescription>

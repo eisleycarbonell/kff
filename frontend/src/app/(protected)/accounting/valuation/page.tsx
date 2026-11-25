@@ -6,14 +6,14 @@ import { AccountingValuationView } from "@/components/modules/accounting/account
 export default function InventoryValuationPage() {
     return (
         <>
-            <title>Inventory &amp; Lot Valuation | Accounting</title>
+            <title>Stock Value | Accounting Portal</title>
             <meta
                 name="description"
-                content="Perpetual inventory asset valuation by category, warehouse location, and specific batch cost."
+                content="Check how much raw spices, packaging, labels, and finished goods are worth across every warehouse and batch."
             />
             <AccountingShell
-                title="Inventory & Lot Valuation"
-                description="Inspect batch asset valuation across warehouses, raw spices, packaging, labels, and finished goods."
+                title="Stock Value"
+                description="See how much your raw spices, packaging, labels, and finished goods are worth across locations and batches."
             >
                 {(overview) => <AccountingValuationView overview={overview} />}
             </AccountingShell>

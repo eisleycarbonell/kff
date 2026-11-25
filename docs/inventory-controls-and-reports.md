@@ -2,7 +2,7 @@
 
 Implemented extension of the [canonical system flow](system-flow.md), reviewed
 2026-11-11. Quantities are exact decimal strings in the item's primary UOM.
-These modules use the existing five permissions and authenticated audit identity.
+These modules reuse the existing inventory, packing, and user-management permissions and authenticated audit identity.
 
 ## Pages and access
 

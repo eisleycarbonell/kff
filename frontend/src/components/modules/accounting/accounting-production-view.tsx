@@ -131,37 +131,37 @@ export function AccountingProductionView({ overview }: { overview: AccountingOve
             <AccountingKpiStrip
                 cards={[
                     {
-                        title: "Absorbed Production Material Cost",
+                        title: "Total Packing Material Cost",
                         value: formatCurrency(overview.summary.totalProductionCost, currency),
-                        badge: "BOM Roll-Up",
-                        helper: "Bulk spice, hardware & label batch cost consumed in completed runs.",
+                        badge: "All materials used",
+                        helper: "Bulk spice, container, and label cost used across completed packing runs.",
                         icon: Factory,
                         color: "text-amber-600 dark:text-amber-400",
                         bg: "bg-amber-500/10",
                     },
                     {
-                        title: "Completed Packing Runs",
+                        title: "Finished Packing Runs",
                         value: String(stats.completedCount),
                         badge: `${stats.totalOrders} total runs`,
-                        helper: "Packing orders with finished lot output cost calculated.",
+                        helper: "Packing runs with unit costs calculated.",
                         icon: CheckCircle2,
                         color: "text-emerald-600 dark:text-emerald-400",
                         bg: "bg-emerald-500/10",
                     },
                     {
-                        title: "Finished Units Produced",
+                        title: "Finished Packs Produced",
                         value: formatQuantity(stats.totalOutputQty),
                         badge: "Period output",
-                        helper: "Completed finished units carrying computed batch unit cost.",
+                        helper: "Total finished packs produced in the selected dates.",
                         icon: PackageCheck,
                         color: "text-primary",
                         bg: "bg-primary/10",
                     },
                     {
-                        title: "BOM Cost Lines Consumed",
+                        title: "Material Batches Used",
                         value: String(stats.totalComponents),
-                        badge: "Traceable lots",
-                        helper: "Individual component lot consumptions rolled into finished goods.",
+                        badge: "Ingredients & packaging",
+                        helper: "Individual raw spice, jar/pouch, and label lots used.",
                         icon: Layers,
                         color: "text-sky-600 dark:text-sky-400",
                         bg: "bg-sky-500/10",
@@ -172,18 +172,19 @@ export function AccountingProductionView({ overview }: { overview: AccountingOve
             <Card className="border shadow-xs">
                 <CardHeader className="gap-3 border-b pb-4">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
+                        <div className="min-w-0">
                             <CardTitle className="text-base font-semibold">
-                                Production &amp; BOM Cost Roll-Up Subledger
+                                Packing Run Cost Breakdown
                             </CardTitle>
                             <CardDescription className="text-xs">
-                                Expand any packing order to audit exact component quantities, batch unit costs, and unit variance versus catalog reference.
+                                Click the arrow on any packing order to see the exact ingredient, container, and label costs used.
                             </CardDescription>
                         </div>
                         <Button
                             type="button"
                             size="sm"
                             variant="outline"
+                            className="shrink-0 self-start sm:self-auto"
                             onClick={handleExport}
                             disabled={filtered.length === 0}
                         >
@@ -213,6 +214,7 @@ export function AccountingProductionView({ overview }: { overview: AccountingOve
                                     setPageIndex(0)
                                 }}
                                 placeholder="Status"
+                                className="w-full"
                             />
                         </div>
                     </div>
@@ -307,7 +309,7 @@ export function AccountingProductionView({ overview }: { overview: AccountingOve
                                                         <p className="mb-2 text-xs font-semibold text-foreground">
                                                             BOM Component Cost Breakdown for {row.packingOrderNumber}
                                                         </p>
-                                                        <div className="grid grid-cols-1 gap-1.5 text-xs sm:grid-cols-2 lg:grid-cols-3">
+                                                        <div className="grid grid-cols-1 gap-2 text-xs @xl/main:grid-cols-2 @4xl/main:grid-cols-3">
                                                             {row.components.map((comp, idx) => (
                                                                 <div
                                                                     key={`${row.packingOrderId}-${comp.componentSku}-${idx}`}

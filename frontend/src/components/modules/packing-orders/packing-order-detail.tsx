@@ -76,15 +76,15 @@ export function PackingOrderDetail({
                     </p>
                 ) : (
                     order && (
-                        <div className="space-y-6">
+                        <div className="min-w-0 space-y-6">
                             <div className="flex flex-wrap items-center justify-between gap-3">
-                                <div>
-                                    <h3 className="font-semibold">{order.itemName}</h3>
-                                    <p className="text-sm text-muted-foreground">{order.itemSku}</p>
+                                <div className="min-w-0">
+                                    <h3 className="break-words font-semibold">{order.itemName}</h3>
+                                    <p className="break-words text-sm text-muted-foreground">{order.itemSku}</p>
                                 </div>
                                 <Badge variant="outline">{order.status}</Badge>
                             </div>
-                            <dl className="grid gap-4 rounded-lg border bg-muted/20 p-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
+                            <dl className="grid gap-4 rounded-lg border bg-muted/20 p-4 text-sm sm:grid-cols-2 lg:grid-cols-3 [&>*]:min-w-0">
                                 {[
                                     [
                                         "Target",
@@ -111,9 +111,9 @@ export function PackingOrderDetail({
                                     ],
                                     ["Created", order.createdAt.slice(0, 10)],
                                 ].map(([label, value]) => (
-                                    <div key={label}>
+                                    <div key={label} className="min-w-0">
                                         <dt className="text-muted-foreground">{label}</dt>
-                                        <dd className="mt-1 font-medium">{value}</dd>
+                                        <dd className="mt-1 break-words font-medium">{value}</dd>
                                     </div>
                                 ))}
                             </dl>
@@ -183,13 +183,13 @@ export function PackingOrderDetail({
                                     )}
                                 </div>
                             )}
-                            <section>
+                            <section className="min-w-0">
                                 <h3 className="mb-1 font-medium">Material snapshot</h3>
                                 <p className="mb-3 text-sm text-muted-foreground">
                                     Requirements copied when this order was created. Later formula
                                     changes do not alter these quantities.
                                 </p>
-                                <div className="overflow-hidden rounded-lg border">
+                                <div className="min-w-0 overflow-hidden rounded-lg border">
                                     <Table>
                                         <TableHeader>
                                             <TableRow>
@@ -225,10 +225,10 @@ export function PackingOrderDetail({
                                     </Table>
                                 </div>
                             </section>
-                            <section>
+                            <section className="min-w-0">
                                 <h3 className="mb-3 font-medium">Lot reservations</h3>
                                 {order.reservations.length ? (
-                                    <div className="overflow-hidden rounded-lg border">
+                                    <div className="min-w-0 overflow-hidden rounded-lg border">
                                         <Table>
                                             <TableHeader>
                                                 <TableRow>

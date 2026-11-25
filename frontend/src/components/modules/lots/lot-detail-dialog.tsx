@@ -251,7 +251,7 @@ export function LotDetailDialog({ open, onOpenChange, lot, canManage, isBusy, on
                                         primary unit.
                                     </p>
                                 </div>
-                                <div className="overflow-hidden rounded-lg border">
+                                <div className="min-w-0 overflow-hidden rounded-lg border">
                                     <Table className="min-w-[720px]">
                                         <TableHeader className="bg-muted/50">
                                             <TableRow>
@@ -330,7 +330,7 @@ export function LotDetailDialog({ open, onOpenChange, lot, canManage, isBusy, on
                                         receiving, packing, and transfers.
                                     </p>
                                 </div>
-                                <div className="overflow-hidden rounded-lg border">
+                                <div className="min-w-0 overflow-hidden rounded-lg border">
                                     <Table className="min-w-[900px]">
                                         <TableHeader className="bg-muted/50">
                                             <TableRow>
@@ -436,7 +436,7 @@ export function LotDetailDialog({ open, onOpenChange, lot, canManage, isBusy, on
                             <Button
                                 type="button"
                                 variant="outline"
-                                className="mr-auto"
+                                className="w-full sm:mr-auto sm:w-auto"
                                 disabled={isBusy}
                                 onClick={() => onEdit(current)}
                             >

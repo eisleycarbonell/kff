@@ -310,17 +310,17 @@ function TransferFormContent({
                                         </Button>
                                     </div>
                                     {stock ? (
-                                        <dl className="grid grid-cols-3 gap-2 text-sm">
+                                        <dl className="grid grid-cols-1 gap-2 text-sm min-[360px]:grid-cols-3">
                                             {[
                                                 ["On hand", stock.qtyOnHand],
                                                 ["Reserved", stock.qtyReserved],
                                                 ["Available", stock.qtyAvailable],
                                             ].map(([name, quantity]) => (
-                                                <div key={name}>
+                                                <div key={name} className="min-w-0">
                                                     <dt className="text-xs text-muted-foreground">
                                                         {name}
                                                     </dt>
-                                                    <dd className="mt-1 tabular-nums">
+                                                    <dd className="mt-1 break-words tabular-nums">
                                                         {formatTransferDecimal(quantity)}{" "}
                                                         {stock.primaryUomName}
                                                     </dd>

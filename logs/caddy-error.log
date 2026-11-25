@@ -1,0 +1,97 @@
+{"level":"info","ts":1795537148.3621292,"msg":"maxprocs: Leaving GOMAXPROCS=4: CPU quota undefined"}
+{"level":"info","ts":1795537148.3621292,"msg":"GOMEMLIMIT is updated","GOMEMLIMIT":7689764044,"previous":9223372036854775807}
+{"level":"info","ts":1795537148.3621292,"msg":"using config from file","file":"C:\\kff\\tools\\caddy\\Caddyfile"}
+{"level":"info","ts":1795537148.3621292,"msg":"adapted config to JSON","adapter":"caddyfile"}
+{"level":"error","ts":1795537148.3730693,"msg":"loading initial config: loading new config: starting caddy administration endpoint: listen tcp 127.0.0.1:2019: bind: Only one usage of each socket address (protocol/network address/port) is normally permitted."}
+{"level":"info","ts":1795537153.5124788,"msg":"maxprocs: Leaving GOMAXPROCS=4: CPU quota undefined"}
+{"level":"info","ts":1795537153.5124788,"msg":"GOMEMLIMIT is updated","GOMEMLIMIT":7689764044,"previous":9223372036854775807}
+{"level":"info","ts":1795537153.5124788,"msg":"using config from file","file":"C:\\kff\\tools\\caddy\\Caddyfile"}
+{"level":"info","ts":1795537153.5124788,"msg":"adapted config to JSON","adapter":"caddyfile"}
+{"level":"error","ts":1795537153.5208163,"msg":"loading initial config: loading new config: starting caddy administration endpoint: listen tcp 127.0.0.1:2019: bind: Only one usage of each socket address (protocol/network address/port) is normally permitted."}
+{"level":"info","ts":1795537158.6644645,"msg":"maxprocs: Leaving GOMAXPROCS=4: CPU quota undefined"}
+{"level":"info","ts":1795537158.6654642,"msg":"GOMEMLIMIT is updated","GOMEMLIMIT":7689764044,"previous":9223372036854775807}
+{"level":"info","ts":1795537158.6654642,"msg":"using config from file","file":"C:\\kff\\tools\\caddy\\Caddyfile"}
+{"level":"info","ts":1795537158.6654642,"msg":"adapted config to JSON","adapter":"caddyfile"}
+{"level":"error","ts":1795537158.6737082,"msg":"loading initial config: loading new config: starting caddy administration endpoint: listen tcp 127.0.0.1:2019: bind: Only one usage of each socket address (protocol/network address/port) is normally permitted."}
+{"level":"info","ts":1795537166.8154805,"msg":"maxprocs: Leaving GOMAXPROCS=4: CPU quota undefined"}
+{"level":"info","ts":1795537166.8154805,"msg":"GOMEMLIMIT is updated","GOMEMLIMIT":7689764044,"previous":9223372036854775807}
+{"level":"info","ts":1795537166.8154805,"msg":"using config from file","file":"C:\\kff\\tools\\caddy\\Caddyfile"}
+{"level":"info","ts":1795537166.8154805,"msg":"adapted config to JSON","adapter":"caddyfile"}
+{"level":"error","ts":1795537166.8237004,"msg":"loading initial config: loading new config: starting caddy administration endpoint: listen tcp 127.0.0.1:2019: bind: Only one usage of each socket address (protocol/network address/port) is normally permitted."}
+{"level":"info","ts":1795537182.971908,"msg":"maxprocs: Leaving GOMAXPROCS=4: CPU quota undefined"}
+{"level":"info","ts":1795537182.971908,"msg":"GOMEMLIMIT is updated","GOMEMLIMIT":7689764044,"previous":9223372036854775807}
+{"level":"info","ts":1795537182.971908,"msg":"using config from file","file":"C:\\kff\\tools\\caddy\\Caddyfile"}
+{"level":"info","ts":1795537182.971908,"msg":"adapted config to JSON","adapter":"caddyfile"}
+{"level":"error","ts":1795537182.9818652,"msg":"loading initial config: loading new config: starting caddy administration endpoint: listen tcp 127.0.0.1:2019: bind: Only one usage of each socket address (protocol/network address/port) is normally permitted."}
+{"level":"info","ts":1795537215.114196,"msg":"maxprocs: Leaving GOMAXPROCS=4: CPU quota undefined"}
+{"level":"info","ts":1795537215.114196,"msg":"GOMEMLIMIT is updated","GOMEMLIMIT":7689764044,"previous":9223372036854775807}
+{"level":"info","ts":1795537215.114196,"msg":"using config from file","file":"C:\\kff\\tools\\caddy\\Caddyfile"}
+{"level":"info","ts":1795537215.114196,"msg":"adapted config to JSON","adapter":"caddyfile"}
+{"level":"error","ts":1795537215.121999,"msg":"loading initial config: loading new config: starting caddy administration endpoint: listen tcp 127.0.0.1:2019: bind: Only one usage of each socket address (protocol/network address/port) is normally permitted."}
+{"level":"info","ts":1795537279.2585814,"msg":"maxprocs: Leaving GOMAXPROCS=4: CPU quota undefined"}
+{"level":"info","ts":1795537279.2585814,"msg":"GOMEMLIMIT is updated","GOMEMLIMIT":7689764044,"previous":9223372036854775807}
+{"level":"info","ts":1795537279.2585814,"msg":"using config from file","file":"C:\\kff\\tools\\caddy\\Caddyfile"}
+{"level":"info","ts":1795537279.2585814,"msg":"adapted config to JSON","adapter":"caddyfile"}
+{"level":"error","ts":1795537279.2668724,"msg":"loading initial config: loading new config: starting caddy administration endpoint: listen tcp 127.0.0.1:2019: bind: Only one usage of each socket address (protocol/network address/port) is normally permitted."}
+{"level":"info","ts":1795537407.4098344,"msg":"maxprocs: Leaving GOMAXPROCS=4: CPU quota undefined"}
+{"level":"info","ts":1795537407.4098344,"msg":"GOMEMLIMIT is updated","GOMEMLIMIT":7689764044,"previous":9223372036854775807}
+{"level":"info","ts":1795537407.4098344,"msg":"using config from file","file":"C:\\kff\\tools\\caddy\\Caddyfile"}
+{"level":"info","ts":1795537407.4098344,"msg":"adapted config to JSON","adapter":"caddyfile"}
+{"level":"error","ts":1795537407.4183974,"msg":"loading initial config: loading new config: starting caddy administration endpoint: listen tcp 127.0.0.1:2019: bind: Only one usage of each socket address (protocol/network address/port) is normally permitted."}
+{"level":"info","ts":1795537535.5518572,"msg":"maxprocs: Leaving GOMAXPROCS=4: CPU quota undefined"}
+{"level":"info","ts":1795537535.5518572,"msg":"GOMEMLIMIT is updated","GOMEMLIMIT":7689764044,"previous":9223372036854775807}
+{"level":"info","ts":1795537535.5518572,"msg":"using config from file","file":"C:\\kff\\tools\\caddy\\Caddyfile"}
+{"level":"info","ts":1795537535.5518572,"msg":"adapted config to JSON","adapter":"caddyfile"}
+{"level":"error","ts":1795537535.5619054,"msg":"loading initial config: loading new config: starting caddy administration endpoint: listen tcp 127.0.0.1:2019: bind: Only one usage of each socket address (protocol/network address/port) is normally permitted."}
+{"level":"info","ts":1795537663.7184446,"msg":"maxprocs: Leaving GOMAXPROCS=4: CPU quota undefined"}
+{"level":"info","ts":1795537663.7184446,"msg":"GOMEMLIMIT is updated","GOMEMLIMIT":7689764044,"previous":9223372036854775807}
+{"level":"info","ts":1795537663.7184446,"msg":"using config from file","file":"C:\\kff\\tools\\caddy\\Caddyfile"}
+{"level":"info","ts":1795537663.7184446,"msg":"adapted config to JSON","adapter":"caddyfile"}
+{"level":"error","ts":1795537663.7284265,"msg":"loading initial config: loading new config: starting caddy administration endpoint: listen tcp 127.0.0.1:2019: bind: Only one usage of each socket address (protocol/network address/port) is normally permitted."}
+{"level":"info","ts":1795537732.540803,"msg":"maxprocs: Leaving GOMAXPROCS=4: CPU quota undefined"}
+{"level":"info","ts":1795537732.540803,"msg":"GOMEMLIMIT is updated","GOMEMLIMIT":7689764044,"previous":9223372036854775807}
+{"level":"info","ts":1795537732.540803,"msg":"using config from file","file":"C:\\kff\\tools\\caddy\\Caddyfile"}
+{"level":"info","ts":1795537732.540803,"msg":"adapted config to JSON","adapter":"caddyfile"}
+{"level":"info","ts":1795537732.5503054,"logger":"admin","msg":"admin endpoint started","address":"localhost:2019","enforce_origin":false,"origins":["//127.0.0.1:2019","//localhost:2019","//[::1]:2019"]}
+{"level":"warn","ts":1795537732.5508418,"logger":"http","msg":"HTTP/2 skipped because it requires TLS","network":"tcp","addr":":8080"}
+{"level":"warn","ts":1795537732.5508418,"logger":"http","msg":"HTTP/3 skipped because it requires TLS","network":"tcp","addr":":8080"}
+{"level":"info","ts":1795537732.5508418,"logger":"http.log","msg":"server running","name":"srv0","protocols":["h1","h2","h3"]}
+{"level":"info","ts":1795537732.5529416,"msg":"autosaved config (load with --resume flag)","file":"C:\\Windows\\system32\\config\\systemprofile\\AppData\\Roaming\\Caddy\\autosave.json"}
+{"level":"info","ts":1795537732.5529416,"msg":"serving initial configuration"}
+{"level":"info","ts":1795537732.5508418,"logger":"tls.cache.maintenance","msg":"started background certificate maintenance","cache":"0x28d90942a400"}
+{"level":"info","ts":1795537732.5573058,"logger":"tls","msg":"cleaning storage unit","storage":"FileStorage:C:\\Windows\\system32\\config\\systemprofile\\AppData\\Roaming\\Caddy"}
+{"level":"info","ts":1795537732.564267,"logger":"tls","msg":"finished cleaning storage units"}
+{"level":"info","ts":1795538125.1816645,"msg":"shutting down","signal":"SIGINT"}
+{"level":"warn","ts":1795538125.1816645,"msg":"exiting; byeee!! 👋","signal":"SIGINT"}
+{"level":"info","ts":1795538125.182342,"logger":"http","msg":"servers shutting down with eternal grace period"}
+{"level":"info","ts":1795538125.1823924,"logger":"tls.cache.maintenance","msg":"stopped background certificate maintenance","cache":"0x28d90942a400"}
+{"level":"info","ts":1795538125.1823924,"logger":"admin","msg":"stopped previous server","address":"localhost:2019"}
+{"level":"info","ts":1795538125.1829422,"msg":"shutdown complete","signal":"SIGINT","exit_code":0}
+{"level":"info","ts":1795538125.5750332,"msg":"maxprocs: Leaving GOMAXPROCS=4: CPU quota undefined"}
+{"level":"info","ts":1795538125.5750332,"msg":"GOMEMLIMIT is updated","GOMEMLIMIT":7689764044,"previous":9223372036854775807}
+{"level":"info","ts":1795538125.5750332,"msg":"using config from file","file":"C:\\kff\\tools\\caddy\\Caddyfile"}
+{"level":"info","ts":1795538125.5750332,"msg":"adapted config to JSON","adapter":"caddyfile"}
+{"level":"info","ts":1795538125.583666,"logger":"admin","msg":"admin endpoint started","address":"localhost:2019","enforce_origin":false,"origins":["//localhost:2019","//[::1]:2019","//127.0.0.1:2019"]}
+{"level":"info","ts":1795538125.583666,"logger":"tls.cache.maintenance","msg":"started background certificate maintenance","cache":"0x143a7adc2d00"}
+{"level":"warn","ts":1795538125.5846539,"logger":"http","msg":"HTTP/2 skipped because it requires TLS","network":"tcp","addr":":8080"}
+{"level":"warn","ts":1795538125.5846539,"logger":"http","msg":"HTTP/3 skipped because it requires TLS","network":"tcp","addr":":8080"}
+{"level":"info","ts":1795538125.5846539,"logger":"http.log","msg":"server running","name":"srv0","protocols":["h1","h2","h3"]}
+{"level":"info","ts":1795538125.5846539,"msg":"autosaved config (load with --resume flag)","file":"C:\\Windows\\system32\\config\\systemprofile\\AppData\\Roaming\\Caddy\\autosave.json"}
+{"level":"info","ts":1795538125.5846539,"msg":"serving initial configuration"}
+{"level":"info","ts":1795538125.588154,"logger":"tls","msg":"storage cleaning happened too recently; skipping for now","storage":"FileStorage:C:\\Windows\\system32\\config\\systemprofile\\AppData\\Roaming\\Caddy","instance":"e17e7aaa-c6e6-43b1-b3ac-adf0f9530d04","try_again":1795624525.588154,"try_again_in":86400}
+{"level":"info","ts":1795538125.588154,"logger":"tls","msg":"finished cleaning storage units"}
+{"level":"info","ts":1795624523.9620993,"logger":"tls","msg":"cleaning storage unit","storage":"FileStorage:C:\\Windows\\system32\\config\\systemprofile\\AppData\\Roaming\\Caddy"}
+{"level":"info","ts":1795624523.9705868,"logger":"tls","msg":"finished cleaning storage units"}
+{"level":"info","ts":1795630070.2419536,"msg":"maxprocs: Leaving GOMAXPROCS=4: CPU quota undefined"}
+{"level":"info","ts":1795630070.2419536,"msg":"GOMEMLIMIT is updated","GOMEMLIMIT":7689764044,"previous":9223372036854775807}
+{"level":"info","ts":1795630070.2419536,"msg":"using config from file","file":"C:\\kff\\tools\\caddy\\Caddyfile"}
+{"level":"info","ts":1795630070.2419536,"msg":"adapted config to JSON","adapter":"caddyfile"}
+{"level":"info","ts":1795630070.2746756,"logger":"admin","msg":"admin endpoint started","address":"localhost:2019","enforce_origin":false,"origins":["//localhost:2019","//[::1]:2019","//127.0.0.1:2019"]}
+{"level":"info","ts":1795630070.2796803,"logger":"tls.cache.maintenance","msg":"started background certificate maintenance","cache":"0x309d2d7d0900"}
+{"level":"warn","ts":1795630070.2852385,"logger":"http","msg":"HTTP/2 skipped because it requires TLS","network":"tcp","addr":":8080"}
+{"level":"warn","ts":1795630070.2852385,"logger":"http","msg":"HTTP/3 skipped because it requires TLS","network":"tcp","addr":":8080"}
+{"level":"info","ts":1795630070.2852385,"logger":"http.log","msg":"server running","name":"srv0","protocols":["h1","h2","h3"]}
+{"level":"info","ts":1795630070.314365,"msg":"autosaved config (load with --resume flag)","file":"C:\\Windows\\system32\\config\\systemprofile\\AppData\\Roaming\\Caddy\\autosave.json"}
+{"level":"info","ts":1795630070.314365,"msg":"serving initial configuration"}
+{"level":"info","ts":1795630070.3546968,"logger":"tls","msg":"storage cleaning happened too recently; skipping for now","storage":"FileStorage:C:\\Windows\\system32\\config\\systemprofile\\AppData\\Roaming\\Caddy","instance":"e17e7aaa-c6e6-43b1-b3ac-adf0f9530d04","try_again":1795716470.3546968,"try_again_in":86400}
+{"level":"info","ts":1795630070.3552203,"logger":"tls","msg":"finished cleaning storage units"}

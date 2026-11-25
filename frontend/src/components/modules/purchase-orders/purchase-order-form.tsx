@@ -479,7 +479,7 @@ function PurchaseOrderFormContent({
         className="flex flex-col gap-5"
         aria-busy={isSaving}
       >
-        <FieldGroup className="grid gap-4 sm:grid-cols-2">
+        <FieldGroup className="grid gap-4 sm:grid-cols-2 [&>*]:min-w-0">
           <Field
             data-invalid={Boolean(poNumberError)}
             data-disabled={isSaving}
@@ -740,9 +740,9 @@ function PurchaseOrderFormContent({
                     Remove
                   </Button>
                 </FieldLegend>
-                <FieldGroup className="grid gap-4 sm:grid-cols-2 lg:grid-cols-7">
+                <FieldGroup className="grid gap-4 sm:grid-cols-2 lg:grid-cols-12 [&>*]:min-w-0">
                   <Field
-                    className="min-w-0 lg:col-span-2"
+                    className="min-w-0 sm:col-span-2 lg:col-span-3"
                     data-invalid={Boolean(lineErrors.itemId)}
                     data-disabled={isSaving || !values.supplierId}
                   >
@@ -768,7 +768,7 @@ function PurchaseOrderFormContent({
                     </FieldError>
                   </Field>
                   <Field
-                    className="min-w-0"
+                    className="min-w-0 lg:col-span-2"
                     data-invalid={Boolean(lineErrors.uomId)}
                     data-disabled={isSaving || !selected}
                   >
@@ -793,6 +793,7 @@ function PurchaseOrderFormContent({
                     </FieldError>
                   </Field>
                   <Field
+                    className="min-w-0 lg:col-span-2"
                     data-invalid={Boolean(lineErrors.qtyOrdered)}
                     data-disabled={isSaving}
                   >
@@ -820,7 +821,7 @@ function PurchaseOrderFormContent({
                     </FieldError>
                   </Field>
                   <Field
-                    className="min-w-0 sm:col-span-2"
+                    className="min-w-0 sm:col-span-2 lg:col-span-3"
                     data-invalid={Boolean(lineErrors.unitPrice)}
                     data-disabled={isSaving}
                   >
@@ -862,7 +863,7 @@ function PurchaseOrderFormContent({
                       {lineErrors.unitPrice}
                     </FieldError>
                   </Field>
-                  <Field className="min-w-0">
+                  <Field className="min-w-0 lg:col-span-2">
                     <FieldLabel htmlFor={`${prefix}-vatRate`}>VAT</FieldLabel>
                     <ComboboxSelect
                       id={`${prefix}-vatRate`}
@@ -932,10 +933,10 @@ function PurchaseOrderFormContent({
           <FieldError id={`${id}-notes-error`}>{errors.notes}</FieldError>
         </Field>
         <DialogFooter className="sticky bottom-0 bg-popover">
-          <div className="mr-auto flex min-w-0 items-center gap-3">
+          <div className="flex w-full min-w-0 flex-col gap-0.5 sm:mr-auto sm:w-auto sm:flex-row sm:items-center sm:gap-3">
             <span className="text-sm text-muted-foreground">Order value</span>
             <span
-              className="min-w-0 break-words text-lg font-semibold tabular-nums"
+              className="min-w-0 break-words text-sm font-semibold tabular-nums sm:text-base"
               aria-live="polite"
             >
               {taxSummary === null

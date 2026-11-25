@@ -19,7 +19,7 @@ export function PageHeader({ title, description, actions }: PageHeaderProps) {
 
     return (
         <div className="space-y-2">
-            <div className="flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex flex-col gap-2.5 @3xl/main:flex-row @3xl/main:items-start @3xl/main:justify-between">
                 <div className="min-w-0 space-y-0.5">
                     <h1 className="text-lg font-semibold tracking-tight sm:text-xl">{title}</h1>
                     {purpose && (
@@ -30,7 +30,7 @@ export function PageHeader({ title, description, actions }: PageHeaderProps) {
                     )}
                 </div>
                 {actions && (
-                    <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:shrink-0 sm:justify-end">
+                    <div className="flex w-full flex-wrap items-center gap-2 @3xl/main:w-auto @3xl/main:shrink-0 @3xl/main:justify-end">
                         {actions}
                     </div>
                 )}

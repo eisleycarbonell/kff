@@ -5,6 +5,7 @@ import Link from "next/link"
 import { Check, CheckCheck, ExternalLink } from "lucide-react"
 import { useNotifications } from "@/hooks/modules/notifications/use-notifications"
 import { useSession } from "@/hooks/use-session"
+import { canNavigateToRoute } from "@/lib/workspace-access"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -156,23 +157,24 @@ export function RoleNotificationsSheet({
                                     </div>
 
                                     <div className="flex items-center gap-1">
-                                        {item.route && (
-                                            <Button
-                                                type="button"
-                                                size="xs"
-                                                variant="ghost"
-                                                render={
-                                                    <Link
-                                                        href={item.route}
-                                                        onClick={() => onOpenChange(false)}
-                                                    />
-                                                }
-                                                nativeButton={false}
-                                            >
-                                                Open
-                                                <ExternalLink className="ml-1 size-3" />
-                                            </Button>
-                                        )}
+                                        {item.route &&
+                                            canNavigateToRoute(session.data, item.route) && (
+                                                <Button
+                                                    type="button"
+                                                    size="xs"
+                                                    variant="ghost"
+                                                    render={
+                                                        <Link
+                                                            href={item.route}
+                                                            onClick={() => onOpenChange(false)}
+                                                        />
+                                                    }
+                                                    nativeButton={false}
+                                                >
+                                                    Open
+                                                    <ExternalLink className="ml-1 size-3" />
+                                                </Button>
+                                            )}
                                         {!item.isRead && (
                                             <Button
                                                 type="button"

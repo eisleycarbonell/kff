@@ -193,7 +193,7 @@ export function BulkImportDialog({
 
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
-            <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-3xl">
+            <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-3xl">
                 <DialogHeader>
                     <div className="flex flex-wrap items-center gap-2 pr-6">
                         <DialogTitle>Import {config.title}</DialogTitle>
@@ -205,42 +205,27 @@ export function BulkImportDialog({
                 </DialogHeader>
 
                 <div className="space-y-4">
-                    <div className="rounded-lg border bg-muted/30 p-3 text-xs">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                            <span className="font-medium text-foreground">
-                                Expected CSV columns ({config.columns.length})
-                            </span>
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="h-7 gap-1.5 px-2 text-xs"
-                                onClick={() => downloadModuleTemplate(moduleKey)}
-                            >
-                                <Download className="size-3.5" />
-                                {config.templateFilename}
-                            </Button>
+                    <div className="flex flex-col gap-2.5 rounded-lg border bg-muted/30 p-3 text-xs sm:flex-row sm:items-center sm:justify-between">
+                        <div className="min-w-0">
+                            <p className="font-medium text-foreground">CSV template</p>
+                            <p className="break-words text-muted-foreground">
+                                Download {config.templateFilename} with the required columns and
+                                sample data.
+                            </p>
                         </div>
-                        <div className="mt-2 flex flex-wrap gap-1.5">
-                            {config.columns.map((column) => (
-                                <Badge
-                                    key={column.key}
-                                    variant={column.required ? "default" : "outline"}
-                                    title={column.description}
-                                    className="font-mono text-[11px]"
-                                >
-                                    {column.key}
-                                    {column.required ? " *" : ""}
-                                </Badge>
-                            ))}
-                        </div>
-                        <p className="mt-2 text-muted-foreground">
-                            Columns marked with <span className="font-semibold">*</span> are
-                            required. Column headers are matched case-insensitively.
-                        </p>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-8 shrink-0 gap-1.5 self-start text-xs sm:self-auto"
+                            onClick={() => downloadModuleTemplate(moduleKey)}
+                        >
+                            <Download className="size-3.5" />
+                            Download template
+                        </Button>
                     </div>
 
-                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-dashed p-4">
+                    <div className="flex flex-col gap-3 rounded-lg border border-dashed p-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
                         <input
                             ref={fileInputRef}
                             type="file"
@@ -314,7 +299,7 @@ export function BulkImportDialog({
                                 Preview (first {previewRows.length} of {rows.length} row
                                 {rows.length === 1 ? "" : "s"})
                             </p>
-                            <div className="max-h-56 overflow-auto rounded-md border">
+                            <div className="max-h-56 w-full min-w-0 overflow-auto rounded-md border">
                                 <Table>
                                     <TableHeader>
                                         <TableRow>

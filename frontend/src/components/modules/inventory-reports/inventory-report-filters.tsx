@@ -37,7 +37,7 @@ function FilterSelect({
     const id = useId()
     const all = useMemo(() => [{ value: "all", label: "All" }, ...choices], [choices])
     return (
-        <Field>
+        <Field className="min-w-0">
             <FieldLabel htmlFor={id}>{label}</FieldLabel>
             <ComboboxSelect
                 id={id}
@@ -107,20 +107,19 @@ export function InventoryReportFilters({
             aria-label="Inventory report filters"
         >
             {optionsError && (
-                <div role="alert" className="text-sm text-destructive">
-                    {optionsError}
+                <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-destructive">
+                    <span>{optionsError}</span>
                     <Button
                         type="button"
                         variant="outline"
                         onClick={retryOptions}
-                        className="ml-3"
                     >
                         Retry options
                     </Button>
                 </div>
             )}
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <Field>
+            <div className="grid gap-4 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
+                <Field className="min-w-0">
                     <FieldLabel htmlFor={`${id}-search`}>
                         Search report
                     </FieldLabel>
@@ -206,7 +205,7 @@ export function InventoryReportFilters({
                     />
                 )}
                 {draft.report === "low-stock" && (
-                    <Field>
+                    <Field className="min-w-0">
                         <FieldLabel htmlFor={`${id}-threshold`}>
                             Available quantity at or below
                         </FieldLabel>
@@ -226,7 +225,7 @@ export function InventoryReportFilters({
                 )}
                 {draft.report === "near-expiry" && (
                     <>
-                        <Field>
+                        <Field className="min-w-0">
                             <FieldLabel htmlFor={`${id}-expiry`}>
                                 Expiry window override in days (UTC)
                             </FieldLabel>
@@ -247,7 +246,7 @@ export function InventoryReportFilters({
                                 }
                             />
                         </Field>
-                        <Field orientation="horizontal">
+                        <Field orientation="horizontal" className="min-w-0">
                             <Checkbox
                                 id={`${id}-expired`}
                                 checked={draft.includeExpired ?? true}
@@ -279,7 +278,7 @@ export function InventoryReportFilters({
                             }
                         />
                         {(["fromDate", "toDate"] as const).map((key) => (
-                            <Field key={key}>
+                            <Field key={key} className="min-w-0">
                                 <FieldLabel htmlFor={`${id}-${key}`}>
                                     {key === "fromDate"
                                         ? "From date (UTC)"

@@ -76,23 +76,23 @@ export function DashboardRecentActivityCard({ activity }: { activity: DashboardR
     }
 
     return (
-        <Card className="border shadow-xs">
-            <CardHeader className="flex flex-row items-center justify-between pb-3">
-                <div className="space-y-0.5">
+        <Card className="@container/card flex flex-col border shadow-xs">
+            <CardHeader className="flex flex-col gap-2 pb-3 @lg/card:flex-row @lg/card:items-center @lg/card:justify-between">
+                <div className="min-w-0 flex-1 space-y-0.5">
                     <div className="flex items-center gap-2">
-                        <Activity className="size-4 text-primary" />
+                        <Activity className="size-4 shrink-0 text-primary" />
                         <CardTitle className="text-base font-semibold">Recent Ledger Activity</CardTitle>
                     </div>
                     <CardDescription className="text-xs">
                         Authoritative append-only transactions committed to the inventory ledger
                     </CardDescription>
                 </div>
-                <Badge variant="outline" className="text-xs font-mono">
+                <Badge variant="outline" className="shrink-0 self-start font-mono text-xs @lg/card:self-auto">
                     Append-Only Ledger
                 </Badge>
             </CardHeader>
 
-            <CardContent>
+            <CardContent className="flex min-w-0 flex-1 flex-col">
                 {activity.length === 0 ? (
                     <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-8 text-center">
                         <Activity className="size-8 text-muted-foreground/60" />
@@ -100,71 +100,73 @@ export function DashboardRecentActivityCard({ activity }: { activity: DashboardR
                         <p className="text-xs text-muted-foreground">Transactions will appear as operations take place.</p>
                     </div>
                 ) : (
-                    <div className="space-y-2.5">
-                        {activity.map((entry) => {
-                            const meta = getTxnMeta(entry.transactionType)
-                            const Icon = meta.icon
-                            const qtyNum = parseFloat(entry.qtyChange) || 0
-                            const isPositive = qtyNum > 0
+                    <>
+                        <div className="space-y-2.5">
+                            {activity.map((entry) => {
+                                const meta = getTxnMeta(entry.transactionType)
+                                const Icon = meta.icon
+                                const qtyNum = parseFloat(entry.qtyChange) || 0
+                                const isPositive = qtyNum > 0
 
-                            return (
-                                <div
-                                    key={entry.transactionId}
-                                    className="flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-card p-3 transition-colors hover:bg-muted/20"
-                                >
-                                    <div className="flex items-start gap-3">
-                                        <div className={`mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg ${meta.bg}`}>
-                                            <Icon className={`size-4 ${meta.color}`} />
-                                        </div>
-
-                                        <div className="space-y-0.5">
-                                            <div className="flex items-center gap-2">
-                                                <Badge variant={meta.badgeVariant} className="text-[10px]">
-                                                    {entry.transactionType}
-                                                </Badge>
-                                                <span className="font-semibold text-xs text-foreground">
-                                                    {entry.itemName}
-                                                </span>
-                                                <span className="font-mono text-[10px] text-muted-foreground">
-                                                    ({entry.itemSku})
-                                                </span>
+                                return (
+                                    <div
+                                        key={entry.transactionId}
+                                        className="flex flex-col gap-2.5 rounded-xl border border-border/60 bg-card p-3 transition-colors hover:bg-muted/20 @md/card:flex-row @md/card:items-center @md/card:justify-between"
+                                    >
+                                        <div className="flex min-w-0 flex-1 items-start gap-3">
+                                            <div className={`mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg ${meta.bg}`}>
+                                                <Icon className={`size-4 ${meta.color}`} />
                                             </div>
 
-                                            <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                                                <span>Lot: <span className="font-mono text-foreground">{entry.lotNumber}</span></span>
-                                                <span>•</span>
-                                                <span>{entry.locationName}</span>
-                                                {entry.referenceId && (
-                                                    <>
-                                                        <span>•</span>
-                                                        <span className="font-mono text-[10px]">Ref: {entry.referenceId}</span>
-                                                    </>
-                                                )}
+                                            <div className="min-w-0 flex-1 space-y-0.5">
+                                                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                                    <Badge variant={meta.badgeVariant} className="text-[10px]">
+                                                        {entry.transactionType}
+                                                    </Badge>
+                                                    <span className="break-words text-xs font-semibold text-foreground">
+                                                        {entry.itemName}
+                                                    </span>
+                                                    <span className="font-mono text-[10px] text-muted-foreground">
+                                                        ({entry.itemSku})
+                                                    </span>
+                                                </div>
+
+                                                <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
+                                                    <span className="break-words">
+                                                        Lot: <span className="font-mono text-foreground">{entry.lotNumber}</span>
+                                                    </span>
+                                                    <span className="break-words">{entry.locationName}</span>
+                                                    {entry.referenceId && (
+                                                        <span className="break-all font-mono text-[10px]">
+                                                            Ref: {entry.referenceId}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center justify-between gap-2 pl-11 @md/card:block @md/card:shrink-0 @md/card:pl-0 @md/card:text-right">
+                                            <p
+                                                className={`text-xs font-bold tabular-nums ${
+                                                    isPositive
+                                                        ? "text-emerald-600 dark:text-emerald-400"
+                                                        : "text-amber-600 dark:text-amber-400"
+                                                }`}
+                                            >
+                                                {isPositive ? "+" : ""}
+                                                {formatQuantity(entry.qtyChange)} {entry.primaryUomName}
+                                            </p>
+                                            <div className="flex items-center justify-end gap-1 text-[10px] text-muted-foreground">
+                                                <Clock className="size-2.5" />
+                                                <span>{formatDate(entry.createdAt)}</span>
                                             </div>
                                         </div>
                                     </div>
+                                )
+                            })}
+                        </div>
 
-                                    <div className="text-right shrink-0">
-                                        <p
-                                            className={`text-xs font-bold tabular-nums ${
-                                                isPositive
-                                                    ? "text-emerald-600 dark:text-emerald-400"
-                                                    : "text-amber-600 dark:text-amber-400"
-                                            }`}
-                                        >
-                                            {isPositive ? "+" : ""}
-                                            {formatQuantity(entry.qtyChange)} {entry.primaryUomName}
-                                        </p>
-                                        <div className="flex items-center justify-end gap-1 text-[10px] text-muted-foreground">
-                                            <Clock className="size-2.5" />
-                                            <span>{formatDate(entry.createdAt)}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            )
-                        })}
-
-                        <div className="flex justify-end pt-1">
+                        <div className="mt-auto flex justify-end pt-3">
                             <Button
                                 variant="ghost"
                                 size="sm"
@@ -176,7 +178,7 @@ export function DashboardRecentActivityCard({ activity }: { activity: DashboardR
                                 <ArrowUpRight className="size-3.5" />
                             </Button>
                         </div>
-                    </div>
+                    </>
                 )}
             </CardContent>
         </Card>

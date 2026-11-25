@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 import {
     LayoutDashboard,
     UsersRound,
@@ -14,11 +15,19 @@ import {
     ArrowLeftRight,
     Truck,
     Wallet,
+    FileSpreadsheet,
+    Factory,
+    Receipt,
+    Landmark,
 } from "lucide-react"
 import { NavMain } from "@/components/layout/nav-main"
 import { NavUser } from "@/components/layout/nav-user"
 import { useCompanySettings } from "@/hooks/modules/company-settings/use-company-settings"
 import { useSession } from "@/hooks/use-session"
+import {
+    getHomeRouteForSession,
+    isAccountingOnlySession,
+} from "@/lib/workspace-access"
 import {
     Sidebar,
     SidebarContent,
@@ -145,37 +154,6 @@ const data = {
             ],
         },
         {
-            title: "Accounting",
-            url: "#",
-            icon: Wallet,
-            items: [
-                {
-                    title: "Overview & P&L",
-                    url: "/accounting",
-                },
-                {
-                    title: "General Ledger",
-                    url: "/accounting/general-ledger",
-                },
-                {
-                    title: "Inventory Valuation",
-                    url: "/accounting/valuation",
-                },
-                {
-                    title: "Production Costing",
-                    url: "/accounting/production-costing",
-                },
-                {
-                    title: "Receivables & Margin",
-                    url: "/accounting/receivables-margins",
-                },
-                {
-                    title: "Payables & POs",
-                    url: "/accounting/payables",
-                },
-            ],
-        },
-        {
             title: "Users & Access",
             url: "#",
             icon: UsersRound,
@@ -197,40 +175,74 @@ const data = {
             items: [{ title: "Company Settings", url: "/settings" }],
         },
     ],
+    accountingNavMain: [
+        {
+            title: "Dashboard",
+            url: "/accounting",
+            icon: LayoutDashboard,
+        },
+        {
+            title: "Sales & Invoices",
+            url: "/accounting/receivables-margins",
+            icon: Receipt,
+        },
+        {
+            title: "Expenses & Bills",
+            url: "/accounting/payables",
+            icon: Wallet,
+        },
+        {
+            title: "Financial Reports",
+            url: "/accounting/general-ledger",
+            icon: FileSpreadsheet,
+        },
+        {
+            title: "Stock Value",
+            url: "/accounting/valuation",
+            icon: Boxes,
+        },
+        {
+            title: "Production Costs",
+            url: "/accounting/production-costing",
+            icon: Factory,
+        },
+    ],
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const session = useSession()
     const company = useCompanySettings()
     const permissions = session.data?.permissions
-    const isAccountingOnly =
-        permissions?.canManageAccounting === true &&
-        permissions.canManageInventory !== true &&
-        permissions.canManagePurchasing !== true &&
-        permissions.canManagePacking !== true &&
-        permissions.canManageTransfers !== true &&
-        permissions.canManageUsers !== true
+    const isAccountingOnly = isAccountingOnlySession(session.data)
+    const homeRoute = getHomeRouteForSession(session.data)
 
-    const items = data.navMain.filter((item) => {
-        if (item.title === "Accounting") {
-            return permissions?.canManageAccounting === true
-        }
-        if (item.title === "Users & Access") {
-            return permissions?.canManageUsers === true
-        }
-        if (isAccountingOnly) {
-            return item.title === "Dashboard"
-        }
-        return true
-    })
+    const items = isAccountingOnly
+        ? data.accountingNavMain
+        : data.navMain.filter((item) => {
+              if (item.title === "Users & Access") {
+                  return permissions?.canManageUsers === true
+              }
+              return true
+          })
+
     return (
         <Sidebar variant="inset" {...props}>
             <SidebarHeader>
                 <SidebarMenu>
                     <SidebarMenuItem>
-                        <SidebarMenuButton size="lg" render={<a href="#" />}>
-                            <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                                <Command className="size-4" />
+                        <SidebarMenuButton size="lg" render={<Link href={homeRoute} />}>
+                            <div
+                                className={
+                                    isAccountingOnly
+                                        ? "flex aspect-square size-8 items-center justify-center rounded-lg bg-emerald-600 text-white dark:bg-emerald-500"
+                                        : "flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground"
+                                }
+                            >
+                                {isAccountingOnly ? (
+                                    <Landmark className="size-4" />
+                                ) : (
+                                    <Command className="size-4" />
+                                )}
                             </div>
                             <div className="grid flex-1 text-left text-sm leading-tight">
                                 <span className="truncate font-medium">
@@ -238,7 +250,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                                         "Kusina Filipino Food"}
                                 </span>
                                 <span className="truncate text-xs">
-                                    Team workspace
+                                    {isAccountingOnly ? "Accounting Portal" : "Team workspace"}
                                 </span>
                             </div>
                         </SidebarMenuButton>
@@ -246,7 +258,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 </SidebarMenu>
             </SidebarHeader>
             <SidebarContent>
-                <NavMain items={items} />
+                <NavMain
+                    items={items}
+                    label={isAccountingOnly ? "Accounting" : "Navigation"}
+                />
                 {/* <NavProjects projects={data.projects} />
                 <NavSecondary items={data.navSecondary} className="mt-auto" /> */}
             </SidebarContent>

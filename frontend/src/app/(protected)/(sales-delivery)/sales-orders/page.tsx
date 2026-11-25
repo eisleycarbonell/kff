@@ -116,7 +116,7 @@ export default function SalesOrdersPage() {
                     aria-busy="true"
                     aria-label="Loading sales orders"
                 >
-                    <div className="grid gap-4 sm:grid-cols-3">
+                    <div className="grid gap-3 @lg/main:grid-cols-2 @3xl/main:grid-cols-3">
                         {[0, 1, 2].map((value) => (
                             <Skeleton key={value} className="h-28 rounded-xl" />
                         ))}
@@ -241,12 +241,12 @@ export default function SalesOrdersPage() {
                     </DialogHeader>
                     {viewed && (
                         <>
-                            <dl className="grid gap-4 text-sm sm:grid-cols-3">
+                            <dl className="grid gap-4 text-sm sm:grid-cols-3 [&>*]:min-w-0">
                                 <div>
                                     <dt className="text-muted-foreground">
                                         Customer PO
                                     </dt>
-                                    <dd className="mt-1">
+                                    <dd className="mt-1 break-words">
                                         {viewed.customerPoNumber ??
                                             "Not provided"}
                                     </dd>
@@ -282,61 +282,63 @@ export default function SalesOrdersPage() {
                                     {viewed.notes}
                                 </p>
                             )}
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Product</TableHead>
-                                        <TableHead>Unit</TableHead>
-                                        <TableHead>Ordered</TableHead>
-                                        <TableHead>Delivered</TableHead>
-                                        <TableHead>Remaining</TableHead>
-                                        <TableHead>
-                                            Allocated to deliveries
-                                        </TableHead>
-                                        <TableHead>Unit price</TableHead>
-                                        <TableHead>Line total</TableHead>
-                                <TableHead>VAT</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {viewed.lines.map((line) => (
-                                        <TableRow key={line.salesOrderLineId}>
-                                            <TableCell>
-                                                <p className="font-medium">
-                                                    {line.itemName}
-                                                </p>
-                                                <p className="text-xs text-muted-foreground">
-                                                    {line.itemSku}
-                                                </p>
-                                            </TableCell>
-                                            <TableCell>
-                                                {line.uomName}
-                                            </TableCell>
-                                            {[
-                                                line.qtyOrdered,
-                                                line.qtyDelivered,
-                                                line.qtyRemaining,
-                                                line.qtyAllocated,
-                                                line.unitPrice,
-                                                line.lineTotal,
-                                            ].map((value, index) => (
-                                                <TableCell
-                                                    key={index}
-                                                    className="tabular-nums"
-                                                >
-                                                    {formatSalesDecimal(value)}
-                                                </TableCell>
-                                            ))}
-                                            <TableCell className="tabular-nums text-muted-foreground">
-                                                {Number(line.vatRatePercent ?? 0) > 0
-                                                    ? `${line.vatRatePercent}% (${formatSalesDecimal(line.vatAmount ?? "0")})`
-                                                    : "No VAT"}
-                                            </TableCell>
+                            <div className="min-w-0 overflow-hidden rounded-lg border">
+                                <Table className="min-w-[780px]">
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Product</TableHead>
+                                            <TableHead>Unit</TableHead>
+                                            <TableHead>Ordered</TableHead>
+                                            <TableHead>Delivered</TableHead>
+                                            <TableHead>Remaining</TableHead>
+                                            <TableHead>
+                                                Allocated to deliveries
+                                            </TableHead>
+                                            <TableHead>Unit price</TableHead>
+                                            <TableHead>Line total</TableHead>
+                                            <TableHead>VAT</TableHead>
                                         </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                            <p className="text-right font-medium tabular-nums">
+                                    </TableHeader>
+                                    <TableBody>
+                                        {viewed.lines.map((line) => (
+                                            <TableRow key={line.salesOrderLineId}>
+                                                <TableCell>
+                                                    <p className="font-medium">
+                                                        {line.itemName}
+                                                    </p>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {line.itemSku}
+                                                    </p>
+                                                </TableCell>
+                                                <TableCell>
+                                                    {line.uomName}
+                                                </TableCell>
+                                                {[
+                                                    line.qtyOrdered,
+                                                    line.qtyDelivered,
+                                                    line.qtyRemaining,
+                                                    line.qtyAllocated,
+                                                    line.unitPrice,
+                                                    line.lineTotal,
+                                                ].map((value, index) => (
+                                                    <TableCell
+                                                        key={index}
+                                                        className="tabular-nums"
+                                                    >
+                                                        {formatSalesDecimal(value)}
+                                                    </TableCell>
+                                                ))}
+                                                <TableCell className="tabular-nums text-muted-foreground">
+                                                    {Number(line.vatRatePercent ?? 0) > 0
+                                                        ? `${line.vatRatePercent}% (${formatSalesDecimal(line.vatAmount ?? "0")})`
+                                                        : "No VAT"}
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                            <p className="break-words text-left font-medium tabular-nums sm:text-right">
                                 Order total:{" "}
                                 {viewed.netAmount && viewed.vatAmount
                                     ? `Net ${formatSalesDecimal(viewed.netAmount)} + VAT ${formatSalesDecimal(viewed.vatAmount)} = ${formatSalesDecimal(viewed.totalAmount)}`

@@ -8,6 +8,7 @@ export function createAuthRouter(service: AuthService, authenticate: RequestHand
     const controller = createAuthController(service);
     router.post('/login', validateRequest(loginRequestSchema), controller.login);
     router.post('/logout', controller.logout);
+    router.post('/keepalive', authenticate, controller.keepalive);
     router.get('/session', authenticate, controller.session);
     router.get('/socket-token', authenticate, controller.socketToken);
     return router;

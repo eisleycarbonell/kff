@@ -1,2 +1,2 @@
 @AGENTS.md
-@docs/system-flow.md
+@docs/business-rules.md

@@ -6,14 +6,14 @@ import { AccountingShell } from "@/components/modules/accounting/accounting-shel
 export default function ReceivablesMarginsPage() {
     return (
         <>
-            <title>Receivables &amp; Gross Margin | Accounting</title>
+            <title>Sales &amp; Invoices | Accounting Portal</title>
             <meta
                 name="description"
-                content="Customer billing receivables, sales backlog, delivered batch COGS, and gross margin analysis."
+                content="Track customer sales, pending deliveries, customer profitability, and printable customer invoices."
             />
             <AccountingShell
-                title="Receivables & Gross Margin"
-                description="Track customer account profitability, recognized delivery billing, unfulfilled sales backlog, and batch COGS."
+                title="Sales & Invoices"
+                description="Track customer sales, pending deliveries, customer profit, and printable invoice summaries."
             >
                 {(overview) => <AccountingReceivablesView overview={overview} />}
             </AccountingShell>

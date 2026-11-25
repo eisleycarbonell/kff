@@ -241,9 +241,9 @@ function FormContent({
                         }))
                         const stock = stocks.find((row) => row.lotId === line.lotId)
                         return (
-                            <div key={index} className="space-y-3 rounded-lg border p-3">
-                                <div className="grid items-end gap-3 sm:grid-cols-[1fr_1fr_9rem_auto]">
-                                    <Field>
+                            <div key={index} className="min-w-0 space-y-3 rounded-lg border p-3">
+                                <div className="grid items-end gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_9rem_auto] [&>*]:min-w-0">
+                                    <Field className="min-w-0">
                                         <FieldLabel htmlFor={`${id}-line-${index}`}>
                                             Product
                                         </FieldLabel>
@@ -261,7 +261,7 @@ function FormContent({
                                             className="w-full"
                                         />
                                     </Field>
-                                    <Field>
+                                    <Field className="min-w-0">
                                         <FieldLabel htmlFor={`${id}-lot-${index}`}>
                                             Finished-product lot
                                         </FieldLabel>
@@ -277,7 +277,7 @@ function FormContent({
                                             className="w-full"
                                         />
                                     </Field>
-                                    <Field>
+                                    <Field className="min-w-0">
                                         <FieldLabel htmlFor={`${id}-qty-${index}`}>
                                             Quantity{" "}
                                             {selectedLine ? `(${selectedLine.uomName})` : ""}
@@ -299,6 +299,7 @@ function FormContent({
                                         type="button"
                                         variant="ghost"
                                         size="icon"
+                                        className="justify-self-end self-end"
                                         aria-label={`Remove lot allocation ${index + 1}`}
                                         onClick={() =>
                                             update(

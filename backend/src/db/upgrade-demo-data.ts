@@ -216,6 +216,9 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
         );
     } else {
         config({ path: '.env', quiet: true });
+        if (process.argv.includes('--allow')) {
+            process.env.KFF_ALLOW_TEST_DATA = 'true';
+        }
         requireTestDataOptIn();
         const client = createPostgresClient(resolveDirectDatabaseUrl(), {
             max: 1,

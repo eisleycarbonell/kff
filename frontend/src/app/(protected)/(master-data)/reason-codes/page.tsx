@@ -86,7 +86,7 @@ export default function Page() {
             {f.loadStatus === "loading" && <Skeleton className="h-64" />}
             {f.loadStatus === "ready" && (
                 <>
-                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="grid gap-3 @lg/main:grid-cols-2 @5xl/main:grid-cols-4">
                         <div className="rounded-xl border bg-card p-3.5">
                             <p className="text-xs font-medium text-muted-foreground">Total reason codes</p>
                             <p className="mt-1 text-xl font-semibold sm:text-2xl">{totalCount}</p>

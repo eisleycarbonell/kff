@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useId } from "react"
 import Link from "next/link"
@@ -237,53 +237,55 @@ export function SalesMaterialPlanDialog({
                                 before purchasing, packing or dispatching.
                             </AlertDescription>
                         </Alert>
-                        <section className="space-y-2">
+                        <section className="min-w-0 space-y-2">
                             <h3 className="font-medium">Finished products</h3>
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Product</TableHead>
-                                        <TableHead>
-                                            Unallocated demand
-                                        </TableHead>
-                                        <TableHead>
-                                            Finished available
-                                        </TableHead>
-                                        <TableHead>Use from stock</TableHead>
-                                        <TableHead>To pack</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {plan.products.map((product) => (
-                                        <TableRow
-                                            key={product.salesOrderLineId}
-                                        >
-                                            <TableCell>
-                                                <p className="font-medium">
-                                                    {product.itemName}
-                                                </p>
-                                                <p className="text-xs text-muted-foreground">
-                                                    {product.itemSku}
-                                                </p>
-                                            </TableCell>
-                                            {[
-                                                product.qtyDemand,
-                                                product.qtyFinishedAvailable,
-                                                product.qtyFromStock,
-                                                product.qtyToPack,
-                                            ].map((qty, index) => (
-                                                <TableCell
-                                                    key={index}
-                                                    className="tabular-nums"
-                                                >
-                                                    {formatSalesDecimal(qty)}{" "}
-                                                    {product.uomName}
-                                                </TableCell>
-                                            ))}
+                            <div className="min-w-0 overflow-hidden rounded-lg border">
+                                <Table className="min-w-[620px]">
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Product</TableHead>
+                                            <TableHead>
+                                                Unallocated demand
+                                            </TableHead>
+                                            <TableHead>
+                                                Finished available
+                                            </TableHead>
+                                            <TableHead>Use from stock</TableHead>
+                                            <TableHead>To pack</TableHead>
                                         </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {plan.products.map((product) => (
+                                            <TableRow
+                                                key={product.salesOrderLineId}
+                                            >
+                                                <TableCell>
+                                                    <p className="font-medium">
+                                                        {product.itemName}
+                                                    </p>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {product.itemSku}
+                                                    </p>
+                                                </TableCell>
+                                                {[
+                                                    product.qtyDemand,
+                                                    product.qtyFinishedAvailable,
+                                                    product.qtyFromStock,
+                                                    product.qtyToPack,
+                                                ].map((qty, index) => (
+                                                    <TableCell
+                                                        key={index}
+                                                        className="tabular-nums"
+                                                    >
+                                                        {formatSalesDecimal(qty)}{" "}
+                                                        {product.uomName}
+                                                    </TableCell>
+                                                ))}
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
                         </section>
                         {issues.length > 0 && (
                             <Alert variant="destructive">
@@ -299,7 +301,7 @@ export function SalesMaterialPlanDialog({
                                 </AlertDescription>
                             </Alert>
                         )}
-                        <section className="space-y-2">
+                        <section className="min-w-0 space-y-2">
                             <h3 className="font-medium">
                                 Combined materials at {plan.sourceLocationName}
                             </h3>
@@ -310,96 +312,98 @@ export function SalesMaterialPlanDialog({
                                         : "No additional materials are needed for the current unallocated demand."}
                                 </p>
                             ) : (
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Material</TableHead>
-                                            <TableHead>Required</TableHead>
-                                            <TableHead>Available</TableHead>
-                                            <TableHead>
-                                                Shortage to purchase
-                                            </TableHead>
-                                            <TableHead>
-                                                Linked suppliers
-                                            </TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {plan.materials.map((material) => (
-                                            <TableRow key={material.itemId}>
-                                                <TableCell>
-                                                    <p className="font-medium">
-                                                        {material.itemName}
-                                                    </p>
-                                                    <p className="text-xs text-muted-foreground">
-                                                        {material.itemSku}
-                                                    </p>
-                                                </TableCell>
-                                                {[
-                                                    material.qtyRequired,
-                                                    material.qtyAvailable,
-                                                    material.qtyShortage,
-                                                ].map((qty, index) => (
-                                                    <TableCell
-                                                        key={index}
-                                                        className={
-                                                            "tabular-nums " +
-                                                            (index === 2 &&
-                                                                /[1-9]/.test(qty)
-                                                                ? "font-medium text-destructive"
-                                                                : "")
-                                                        }
-                                                    >
-                                                        {formatSalesDecimal(
-                                                            qty,
-                                                        )}{" "}
-                                                        {material.uomName}
-                                                    </TableCell>
-                                                ))}
-                                                <TableCell>
-                                                    {material.suppliers.length ? (
-                                                        /[1-9]/.test(material.qtyShortage) ? (
-                                                            <div className="flex flex-wrap gap-1.5">
-                                                                {material.suppliers.map((supplier) => (
-                                                                    <Button
-                                                                        key={supplier.supplierId}
-                                                                        size="xs"
-                                                                        variant="outline"
-                                                                        render={
-                                                                            <Link
-                                                                                href={buildSupplierRequisitionHref(
-                                                                                    plan,
-                                                                                    supplier.supplierId,
-                                                                                    [
-                                                                                        {
-                                                                                            itemId: material.itemId,
-                                                                                            qtyShortage:
-                                                                                                material.qtyShortage,
-                                                                                        },
-                                                                                    ],
-                                                                                )}
-                                                                            />
-                                                                        }
-                                                                        nativeButton={false}
-                                                                    >
-                                                                        <ShoppingCart className="size-3" />
-                                                                        {supplier.name}
-                                                                    </Button>
-                                                                ))}
-                                                            </div>
-                                                        ) : (
-                                                            material.suppliers
-                                                                .map((supplier) => supplier.name)
-                                                                .join(", ")
-                                                        )
-                                                    ) : (
-                                                        "Link an active supplier in Suppliers"
-                                                    )}
-                                                </TableCell>
+                                <div className="min-w-0 overflow-hidden rounded-lg border">
+                                    <Table className="min-w-[660px]">
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Material</TableHead>
+                                                <TableHead>Required</TableHead>
+                                                <TableHead>Available</TableHead>
+                                                <TableHead>
+                                                    Shortage to purchase
+                                                </TableHead>
+                                                <TableHead>
+                                                    Linked suppliers
+                                                </TableHead>
                                             </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {plan.materials.map((material) => (
+                                                <TableRow key={material.itemId}>
+                                                    <TableCell>
+                                                        <p className="font-medium">
+                                                            {material.itemName}
+                                                        </p>
+                                                        <p className="text-xs text-muted-foreground">
+                                                            {material.itemSku}
+                                                        </p>
+                                                    </TableCell>
+                                                    {[
+                                                        material.qtyRequired,
+                                                        material.qtyAvailable,
+                                                        material.qtyShortage,
+                                                    ].map((qty, index) => (
+                                                        <TableCell
+                                                            key={index}
+                                                            className={
+                                                                "tabular-nums " +
+                                                                (index === 2 &&
+                                                                    /[1-9]/.test(qty)
+                                                                    ? "font-medium text-destructive"
+                                                                    : "")
+                                                            }
+                                                        >
+                                                            {formatSalesDecimal(
+                                                                qty,
+                                                            )}{" "}
+                                                            {material.uomName}
+                                                        </TableCell>
+                                                    ))}
+                                                    <TableCell>
+                                                        {material.suppliers.length ? (
+                                                            /[1-9]/.test(material.qtyShortage) ? (
+                                                                <div className="flex flex-wrap gap-1.5">
+                                                                    {material.suppliers.map((supplier) => (
+                                                                        <Button
+                                                                            key={supplier.supplierId}
+                                                                            size="xs"
+                                                                            variant="outline"
+                                                                            render={
+                                                                                <Link
+                                                                                    href={buildSupplierRequisitionHref(
+                                                                                        plan,
+                                                                                        supplier.supplierId,
+                                                                                        [
+                                                                                            {
+                                                                                                itemId: material.itemId,
+                                                                                                qtyShortage:
+                                                                                                    material.qtyShortage,
+                                                                                            },
+                                                                                        ],
+                                                                                    )}
+                                                                                />
+                                                                            }
+                                                                            nativeButton={false}
+                                                                        >
+                                                                            <ShoppingCart className="size-3" />
+                                                                            {supplier.name}
+                                                                        </Button>
+                                                                    ))}
+                                                                </div>
+                                                            ) : (
+                                                                material.suppliers
+                                                                    .map((supplier) => supplier.name)
+                                                                    .join(", ")
+                                                            )
+                                                        ) : (
+                                                            "Link an active supplier in Suppliers"
+                                                        )}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </div>
                             )}
                             {shortagesBySupplier.length > 0 && plan && (
                                 <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-3">

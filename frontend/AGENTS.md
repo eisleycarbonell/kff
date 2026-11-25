@@ -23,19 +23,55 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 # Project Rules - KFF Frontend
 
-These rules apply to `frontend/`. Run frontend commands from that directory.
-Source-folder shorthand such as `app/`, `components/`, and `hooks/` refers to
-folders under `frontend/src/`; reference links are relative to `frontend/`.
-If repository-root skill discovery finds no packages, repeat the skill check
-from `frontend/` so its installed dependencies are discovered.
+These rules apply to `frontend/` (whether inside the monorepo or separated into its own
+repository). Run frontend commands from this directory. All documentation and skill paths in
+this file resolve strictly inside `frontend/`. Source-folder shorthand such as `app/`,
+`components/`, and `hooks/` refers to folders under `frontend/src/`. If repository-root
+skill discovery finds no packages, repeat `npx @tanstack/intent@latest list` from `frontend/`
+so its installed dependencies are discovered.
+
+## AI Skills & Cross-Repo Backend Communication
+
+- Installed skills live under [.agents/skills/](.agents/skills/) and are summarized in
+  [docs/AI-SKILLS.md](docs/AI-SKILLS.md):
+  - `kff-backend-bridge` ([SKILL.md](.agents/skills/kff-backend-bridge/SKILL.md)): Use when
+    applying backend contract handoffs, syncing Zod DTOs/hooks, requesting new backend
+    endpoints, or debugging Next.js `/api/*` proxy, CORS, cookies, or Socket.IO sync.
+  - `kff-frontend-module` ([SKILL.md](.agents/skills/kff-frontend-module/SKILL.md)): Runbook for
+    KFF Next.js pages, hooks, TanStack tables, forms, `ComboboxSelect`, and bulk imports.
+  - `shadcn`, `animate-ui`, `gsap-*` (8 skills), `migrate-radix-to-base`: External UI/motion
+    skills tracked in [skills-lock.json](skills-lock.json).
+- Read [the API & Realtime backend contract](docs/API-BACKEND-CONTRACT.md) and
+  [frontend architecture](docs/ARCHITECTURE.md) before changing HTTP endpoints, proxy/CORS
+  config, `X-Notify-*` headers, or Socket.IO query invalidations. Emit a `KFF Contract Request`
+  block whenever UI changes need backend updates.
 
 ## Shared system flow and frontend business rules
 
-Read the [shared agent instructions](../AGENTS.md) and the
-[complete system flow](../docs/system-flow.md) before changing a business
-feature. The system-flow document defines the business requirements; the users
+Read [the complete system flow](docs/specs/system-flow.md) and
+[the API backend contract](docs/API-BACKEND-CONTRACT.md) before changing a business feature.
+Also consult [docs/specs/sales-delivery-modules.md](docs/specs/sales-delivery-modules.md) for
+sales/delivery work and [docs/specs/test-data.md](docs/specs/test-data.md) for demo accounts
+and sample data rules. The system-flow document defines business requirements; the `users`
 module below remains the reference for frontend structure and presentation.
 
+- The business buys already processed spices and packs finished products. Keep workflows focused
+  on buy, receive, store, reserve, pack, transfer, track, and report, with minimal complexity.
+- Customer demand can initiate replenishment: record customer POs on Sales Orders, show the
+  advisory Material plan (without creating reservations), use eligible finished stock first,
+  aggregate BOM requirements for packing gaps, and buy material shortages through supplier POs.
+- Labels are `Packaging - Label` items assigned to Finished Goods through `labelItemId`. Brands
+  are retired (retain legacy UI/data read-only). Published BOM defines actual label consumption.
+- The Create Purchase Order form requests a backend-generated PO number (`POST /api/purchase-orders/next-number`);
+  users may keep or replace it before saving, while saved numbers stay immutable. PO materials
+  require an active link to the selected supplier.
+- Count Sessions, QC Decisions, and Stock Dispositions are retired workflows: preserve read history
+  without accepting new requests/actions. Use Stock Adjustments and Scrap & Disposal instead.
+  New received/packed lots start Approved; lot dates remain optional where allowed.
+- Sales confirmation does not reserve warehouse stock. Draft deliveries allocate sales demand;
+  dispatch checks availability and moves stock into In Transit; completed customer delivery records
+  `Sale` ledger deductions and updates sales fulfillment atomically. Customers remain separate
+  from company inventory locations.
 - Follow the documented purchasing, receiving, packing, inventory, transfer,
   reporting, and administration workflows. Use section 21 for the intended
   sidebar grouping and the documented route names. Keep sidebar and breadcrumb
@@ -52,18 +88,19 @@ module below remains the reference for frontend structure and presentation.
   manufacture/expiration dates optional where the business flow allows it.
 - Reflect dispatch, In Transit, and confirmed receipt as distinct transfer
   steps. Keep warehouse and branch stock views on the shared inventory model.
-- Apply supported role settings to visible/disabled actions and handle backend
-  authorization failures. Server-managed audit identities are supplied by the
-  authenticated backend rather than editable form fields.
+- Apply supported role settings (`canManageInventory`, `canManagePurchasing`,
+  `canManagePacking`, `canManageTransfers`, `canManageUsers`, `canManageAccounting`) to
+  visible/disabled actions and handle backend authorization failures. Server-managed audit
+  identities come from the authenticated backend rather than editable form fields.
 - Show workflow actions according to the record's backend-supported state and
   permissions. Await server confirmation before displaying successful stock
   changes, then refresh affected operational data and metrics.
 - Build reports and dashboards from operational API data. Keep placeholder or
   unavailable features distinguishable from implemented workflows.
 
-The shared business document's route-handler/server-action diagram maps to the
-existing frontend hook -> Express API -> backend service architecture. Keep
-complex inventory logic and database writes in the backend.
+When business behavior changes, keep `docs/specs/system-flow.md`,
+`docs/API-BACKEND-CONTRACT.md`, and affected specs aligned. Complex inventory logic and
+database writes remain exclusively in the separate backend.
 
 ## Reference implementation
 
@@ -318,7 +355,7 @@ substantial; do not create empty files to match this tree.
 
 Inventory -> Inventory Stock (`/inventory`) owns on-hand, reserved,
 and available quantities. Master Data -> Items (`/items`) owns catalog fields.
-Use the [stock contract](../docs/inventory-stocks-module.md). Keep quantities as
+Use the [stock contract](docs/specs/inventory-stocks-module.md). Keep quantities as
 exact decimal strings and group summary totals by primary UOM. Count adjustments
 require lot, location, reason, and a preserved expected balance. Expose actions
 only to inventory managers, preserve failed counts, and refresh stock after a
@@ -326,7 +363,7 @@ committed adjustment. Stock balances and ledger history have no delete action.
 
 ## UOM and Locations boundary
 
-Use [the UOM and Locations contract](../docs/uom-locations-modules.md) for `/uom`
+Use [the UOM and Locations contract](docs/specs/uom-locations-modules.md) for `/uom`
 and `/locations`. Keep UOM factors as exact 8-place decimal strings, use real
 classes, and protect referenced conversions. Location master data manages type
 and active status; stock stays in Inventory Stocks. Disable inactive adjustment

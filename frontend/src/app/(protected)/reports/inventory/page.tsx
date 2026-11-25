@@ -95,7 +95,7 @@ export default function InventoryReportsPage() {
                     id="inventory-report-panel"
                     role="tabpanel"
                     aria-labelledby={"report-tab-" + feature.filters.report}
-                    className="space-y-5"
+                    className="min-w-0 space-y-5"
                 >
                     {feature.filters.report === "low-stock" && (
                         <p className="text-sm text-muted-foreground">
@@ -114,10 +114,9 @@ export default function InventoryReportsPage() {
                     {feature.error && (
                         <Alert variant="destructive">
                             <AlertTitle>Unable to load inventory report</AlertTitle>
-                            <AlertDescription>
-                                {feature.error.message}
+                            <AlertDescription className="flex flex-wrap items-center gap-3">
+                                <span>{feature.error.message}</span>
                                 <Button
-                                    className="ml-3"
                                     variant="outline"
                                     onClick={feature.refresh}
                                     disabled={feature.isFetching}

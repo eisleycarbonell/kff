@@ -22,6 +22,9 @@ try {
             'Use rebuild-test-database.cmd. For automation: KFF_ALLOW_TEST_DATA=true npm run db:rebuild -- --yes',
         );
     } else {
+        if (process.argv.includes('--allow')) {
+            process.env.KFF_ALLOW_TEST_DATA = 'true';
+        }
         requireTestDataOptIn();
         console.log(`Database to rebuild: ${databaseTarget(resolveDirectDatabaseUrl())}`);
         console.log(

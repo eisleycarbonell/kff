@@ -38,7 +38,7 @@ export default function Page() {
                     ) : undefined
                 }
             />
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-3 @lg/main:grid-cols-2 @3xl/main:grid-cols-3">
                 {[
                     ["Requests", f.rows.length],
                     ["Awaiting review", f.rows.filter((r) => r.status === "Submitted").length],

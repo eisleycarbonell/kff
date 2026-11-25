@@ -37,7 +37,7 @@ const metrics = [
 export const StockStatistics = memo(function StockStatistics({ stocks }: { stocks: Stock[] }) {
     const totals = useMemo(() => stockTotalsByUom(stocks), [stocks])
     return (
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 @xl/main:grid-cols-2 @4xl/main:grid-cols-3">
             {metrics.map(({ key, label, description, icon: Icon }) => (
                 <Card key={key} className="border py-3 ring-0">
                     <CardHeader className="px-4">

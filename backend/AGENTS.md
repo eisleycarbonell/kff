@@ -1,46 +1,81 @@
 # KFF Backend Rules
 
-These rules apply to `backend/`. Run commands from this directory. Use the
-users API as the reference for new modules and module refactors. Adapt its
-fields and behavior to the feature and the actual database schema.
+These rules apply to `backend/` (whether inside the monorepo or separated into its own
+repository). Run commands from this directory. All documentation and skill paths in this file
+resolve strictly inside `backend/`. Use the users API as the reference for new modules and
+module refactors. Adapt its fields and behavior to the feature and the actual database schema.
+
+## AI Skills & Cross-Repo Frontend Communication
+
+- Installed skills live under [.agents/skills/](.agents/skills/) and are summarized in
+  [docs/AI-SKILLS.md](docs/AI-SKILLS.md):
+  - `kff-frontend-bridge` ([SKILL.md](.agents/skills/kff-frontend-bridge/SKILL.md)): Use when changing
+    any HTTP endpoint, Zod DTO, error code, permission flag, CORS/cookie rule, or `ROUTE_SYNC_SPECS`
+    Socket.IO query key so the separate frontend stays in sync.
+  - `kff-backend-module` ([SKILL.md](.agents/skills/kff-backend-module/SKILL.md)): Runbook for
+    creating/updating KFF Express + Drizzle modules and tests.
+  - `supabase` & `supabase-postgres-best-practices`: Installed external PostgreSQL/Supabase skills
+    tracked in [skills-lock.json](skills-lock.json).
+- Read [the API & Realtime frontend contract](docs/API-FRONTEND-CONTRACT.md) and
+  [backend architecture](docs/ARCHITECTURE.md) before changing HTTP boundaries, CORS/cookies,
+  `X-Notify-*` / `X-Socket-Id` headers, or Socket.IO events, and emit a `KFF Contract Handoff`
+  block when endpoints or DTOs change.
 
 ## Shared system flow and backend business rules
 
-Read the [shared agent instructions](../AGENTS.md) and the
-[complete system flow](../docs/system-flow.md) before changing a business
-feature. The system-flow document defines the business requirements; the users
-API below remains the reference for backend module structure.
+Read [the complete system flow](docs/specs/system-flow.md) and
+[the API frontend contract](docs/API-FRONTEND-CONTRACT.md) before changing a business
+feature. Also consult [docs/specs/sales-delivery-modules.md](docs/specs/sales-delivery-modules.md) for
+sales/delivery changes and [docs/specs/test-data.md](docs/specs/test-data.md) for seed/sample data rules.
+The system-flow document defines the business requirements; the users API below remains the
+reference for backend module structure.
 
+- The business buys already processed spices and packs finished products. Keep workflows focused
+  on buy, receive, store, reserve, pack, transfer, track, and report, with minimal complexity.
+- Customer demand can initiate replenishment: record customer POs on Sales Orders, compute
+  advisory Material plans without creating reservations, consume eligible finished stock first,
+  aggregate BOM requirements for packing gaps, and buy shortages through supplier POs.
+- Labels are `Packaging - Label` items assigned to Finished Goods via `labelItemId`. Brands are
+  retired (retain legacy schema/data only; not mounted). Published BOM defines actual label usage.
 - Implement inventory operations in backend business services using the shared
   Drizzle client and the actual database schema. Validate request shape with
   Zod, then enforce permissions, workflow state, relationships, quantities, and
   availability in the service or appropriate authorization middleware.
+- Generate backend PO numbers for Create PO forms (`POST /api/purchase-orders/next-number`) while
+  allowing unique custom numbers before saving; saved PO numbers remain immutable and PO lines
+  require active supplier-item links.
 - Run receiving, reservation creation, packing start/completion, adjustments,
-  scrap, and transfer dispatch/receipt inside PostgreSQL transactions. Commit
-  related operational records, ledger entries, balances, reservation changes,
+  scrap, transfer dispatch/receipt, and delivery dispatch/completion inside PostgreSQL transactions.
+  Commit related operational records, ledger entries, balances, reservation changes,
   and statuses together, or roll the entire operation back.
-- Enforce availability under concurrency with appropriate database-level
-  locking or atomic checks. Account for other active reservations when
-  calculating available stock and maximum producible quantity.
+- Enforce availability (`onHand - activeReservations` from both packing orders and delivery orders)
+  under concurrency with appropriate database-level locking or atomic checks. Account for other
+  active reservations when calculating available stock and maximum producible quantity.
 - Snapshot BOM requirements into packing-order materials at creation and
   require a valid BOM before planning. Preserve those snapshots for historical
   orders. Consume reservations and release unused quantities as documented.
-- Receiving creates a lot linked to the PO line, records the Receive ledger
+- Receiving creates an Approved lot linked to the PO line, records the Receive ledger
   entry, updates stock, and supports partial receiving. Packing completion
-  creates a finished lot linked to the packing order, records Consume/Produce
+  creates an Approved finished lot linked to the packing order, records Consume/Produce
   entries, and updates source and destination stock atomically.
-- Treat inventory transactions as append-only. Correct errors with additional
+- Count Sessions, QC Decisions, and Stock Dispositions are retired workflows: preserve read history
+  and reject new creation/transition requests. Use direct Stock Adjustments and Scrap & Disposal.
+- Treat `inventory_transactions` as append-only. Correct errors with additional
   transactions. Track balances by item/lot/location and use compatible UOM
-  conversions into the item's primary UOM with appropriate decimal precision.
+  conversions into the item's primary UOM with exact decimal precision.
 - Require distinct transfer locations. Dispatch posts source-to-In-Transit
-  movements; receipt posts In-Transit-to-destination movements. Branches and
-  stores use the same stock and ledger services as warehouses.
+  movements; receipt posts In-Transit-to-destination movements. Customer deliveries move stock
+  through protected In Transit inventory and post negative `Sale` entries atomically on completion.
+  Branches, stores, warehouses, and In Transit share the same inventory model; customer contacts
+  stay separate from company locations.
 - Preserve foreign-key integrity and lot provenance. Support optional lot dates
-  where appropriate. Populate `createdBy` and `updatedBy` from authenticated
-  identity and enforce role permissions independently of frontend controls.
+  where appropriate, including packaging and labels. Populate `createdBy` and `updatedBy` from
+  authenticated identity and enforce role permissions (`canManageInventory`, `canManagePurchasing`,
+  `canManagePacking`, `canManageTransfers`, `canManageUsers`, `canManageAccounting`) independently
+  of frontend controls.
 - Derive reports from operational data and use the documented statuses and
-  relationships. Compare requested workflows with existing schema/contracts
-  and coordinate necessary changes within the feature's scope.
+  relationships. When business behavior changes, keep `docs/specs/system-flow.md` and affected
+  module contracts aligned.
 
 The general service-layer diagram in the business document uses the existing
 Express route -> controller -> service -> transaction/Drizzle architecture.
@@ -212,7 +247,7 @@ is unnecessary for the current modules.
   `/api/items` require an authenticated session; writes require
   `canManageInventory`. Use the shared authentication/permission middleware and
   server-derived audit identities for new protected features.
-- Read [the items module contract](../docs/items-module.md) for exact decimal
+- Read [the items module contract](docs/specs/items-module.md) for exact decimal
   fields, deactivation, and the primary-UOM/type lock on referenced catalog items.
   Register real item and auth services through the app factory in `index.ts`.
 
@@ -244,7 +279,7 @@ API references: [Zod schemas](https://zod.dev/api),
 
 ## Inventory Stocks boundary
 
-Stock quantities belong to [Inventory Stocks](../docs/inventory-stocks-module.md),
+Stock quantities belong to [Inventory Stocks](docs/specs/inventory-stocks-module.md),
 not item master data. Count adjustments require `canManageInventory`, an existing
 lot/location, an Inventory Adjustment reason, an expected on-hand value, and the
 counted value. Update balances and append the ledger entry in one transaction.
@@ -254,7 +289,7 @@ count below reservations. Do not create direct balance-edit or delete endpoints.
 
 ## UOM and Locations boundary
 
-Read [the UOM and Locations contract](../docs/uom-locations-modules.md) before
+Read [the UOM and Locations contract](docs/specs/uom-locations-modules.md) before
 changing these modules. Preserve exact 8-place UOM factors, one base per nonempty
 class, reference locks, and empty-class deletion. Locations deactivate without
 hard deletion and must have no stock, outstanding reservations, or open work.
@@ -264,7 +299,7 @@ Lock multiple locations in ascending ID order. Metadata APIs never edit stock.
 
 ## Reviewed inventory controls and reports
 
-Use [the controls contract](../docs/inventory-controls-and-reports.md) for company
+Use [the controls contract](docs/specs/inventory-controls-and-reports.md) for company
 settings, packaging/reorder/reason maintenance, scrap approvals, formula releases,
 operational reports and retained read history for retired Count/QC/Disposition
 requests. New requests/actions for those retired kinds are disabled. Keep authoritative review and stock

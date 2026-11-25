@@ -69,7 +69,7 @@ export function PriceCurrencyInput({
                     }}
                     disabled={disabled}
                     searchable={false}
-                    className="h-10 w-28 shrink-0"
+                    className="h-10 w-24 shrink-0 sm:w-28"
                 />
                 <NumericInput
                     id={id}

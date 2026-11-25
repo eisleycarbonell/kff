@@ -85,7 +85,7 @@ export default function RolesPage() {
                 )}
             {roles.loadStatus === "loading" && (
                 <div className="space-y-4" aria-busy="true" aria-label="Loading roles">
-                    <div className="grid gap-4 sm:grid-cols-3">
+                    <div className="grid gap-3 @lg/main:grid-cols-2 @3xl/main:grid-cols-3">
                         {[0, 1, 2].map((index) => (
                             <Skeleton key={index} className="h-32 rounded-xl" />
                         ))}

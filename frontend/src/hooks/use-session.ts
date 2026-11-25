@@ -1,9 +1,14 @@
 "use client"
 
 import { z } from "zod"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query"
 import { Toast } from "@base-ui/react/toast"
 import { apiRequest, ApiError } from "@/lib/api-request"
+import {
+    broadcastSessionLogout,
+    clearLastActivityTimestamp,
+    writeLastActivityTimestamp,
+} from "@/lib/idle-session"
 import { useNotifyTargetStore } from "@/lib/realtime-notify-store"
 
 export const sessionSchema = z.object({
@@ -57,6 +62,14 @@ function resetRealtimeSessionState() {
     notifyStore.resetToAuto()
     notifyStore.setSocketId(null)
 }
+export function clearClientSession(client: QueryClient): void {
+    client.clear()
+    resetRealtimeSessionState()
+    client.setQueryData(SESSION_QUERY_KEY, null)
+}
+export async function keepaliveSession(): Promise<void> {
+    await apiRequest("/auth/keepalive", { method: "POST" }, true)
+}
 export async function logoutSession(): Promise<void> {
     try {
         await apiRequest("/auth/logout", { method: "POST" }, true)
@@ -84,6 +97,7 @@ export function useLogin() {
         onSuccess: (session) => {
             client.clear()
             resetRealtimeSessionState()
+            writeLastActivityTimestamp()
             client.setQueryData(SESSION_QUERY_KEY, session)
         },
         onError: (error) =>
@@ -96,9 +110,9 @@ export function useLogout() {
     return useMutation({
         mutationFn: logoutSession,
         onSuccess: () => {
-            client.clear()
-            resetRealtimeSessionState()
-            client.setQueryData(SESSION_QUERY_KEY, null)
+            clearLastActivityTimestamp()
+            broadcastSessionLogout("manual")
+            clearClientSession(client)
         },
         onError: (error) =>
             showToast({ type: "error", title: "Unable to sign out", description: error.message }),

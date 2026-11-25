@@ -8,7 +8,7 @@ data; see [database setup and accounts](test-data.md). The backend enforces acce
 Every active module also explains itself inside the application. Its header
 shows **Purpose**, followed by **How to use this module**. Expand that panel for
 the module's steps, links to its connected workflow and relevant operating notes.
-The in-app text covers all 31 active sidebar modules, including reports and
+The in-app text covers all 36 active sidebar modules, including reports, accounting, and
 administration. The In Transit transfer view shares the Stock Transfers guide.
 
 ## Customer PO to purchasing, packing and delivery

@@ -182,8 +182,8 @@ export function ComboboxSelect<TValue extends ComboboxValueType = string>({
                 sideOffset={sideOffset}
                 className={cn(
                     isSearchable
-                        ? "w-auto min-w-[max(13rem,var(--anchor-width))] max-w-[min(28rem,var(--available-width))]"
-                        : "w-(--anchor-width) min-w-[calc(var(--anchor-width)+--spacing(7))] max-w-(--available-width)",
+                        ? "w-auto min-w-[min(max(13rem,var(--anchor-width)),var(--available-width))] max-w-[min(28rem,var(--available-width))]"
+                        : "w-(--anchor-width) min-w-[min(calc(var(--anchor-width)+--spacing(7)),var(--available-width))] max-w-(--available-width)",
                     contentClassName,
                 )}
             >

@@ -68,8 +68,11 @@ export default function SettingsForm({
             { value: v.currencyCode, label: v.currencyCode },
         ]
     return (
-        <form onSubmit={submit} className="space-y-5 rounded-xl border bg-card p-5">
-            <fieldset disabled={busy || !canManage} className="grid gap-5 sm:grid-cols-2">
+        <form onSubmit={submit} className="space-y-5 rounded-xl border bg-card p-4 sm:p-5">
+            <fieldset
+                disabled={busy || !canManage}
+                className="grid gap-5 @2xl/main:grid-cols-2 [&>*]:min-w-0"
+            >
                 {(
                     [
                         "companyName",
@@ -82,7 +85,7 @@ export default function SettingsForm({
                         "vatRatePercent",
                     ] as const
                 ).map((key) => (
-                    <Field key={key}>
+                    <Field key={key} className="min-w-0">
                         <FieldLabel htmlFor={id + key}>
                             {
                                 {

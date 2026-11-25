@@ -85,7 +85,7 @@ export function ItemSuppliersDialog({
               return (
                 <div
                   key={supplier.supplierId}
-                  className="flex items-center justify-between gap-3 rounded-md border p-3"
+                  className="flex flex-col gap-3 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="min-w-0">
                     <p className="break-words font-medium">{supplier.name}</p>
@@ -100,6 +100,7 @@ export function ItemSuppliersDialog({
                   {links.canManage && (
                     <Button
                       variant="outline"
+                      className="self-start shrink-0 sm:self-auto"
                       disabled={
                         links.isSaving ||
                         (!active && (!supplier.isActive || !material.isActive))

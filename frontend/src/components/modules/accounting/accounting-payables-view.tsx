@@ -1,8 +1,11 @@
 "use client"
 
 import { useDeferredValue, useMemo, useState } from "react"
-import { Building2, Clock, Download, PackageCheck, Search, ShoppingCart } from "lucide-react"
-import { computeSupplierPayables } from "@/components/modules/accounting/accounting-engine"
+import { AlertTriangle, Clock, Download, PackageCheck, Search, Wallet } from "lucide-react"
+import {
+    computeSimpleAccountingSummary,
+    computeSupplierPayables,
+} from "@/components/modules/accounting/accounting-engine"
 import {
     AccountingKpiStrip,
     AccountingPagination,
@@ -32,6 +35,7 @@ const PO_STATUSES = ["Draft", "Sent", "Partially Received", "Completed", "Cancel
 export function AccountingPayablesView({ overview }: { overview: AccountingOverview }) {
     const currency = overview.currencyCode
     const s = overview.summary
+    const simple = useMemo(() => computeSimpleAccountingSummary(overview), [overview])
     const suppliers = useMemo(
         () => computeSupplierPayables(overview.purchasingCosting),
         [overview.purchasingCosting],
@@ -45,7 +49,7 @@ export function AccountingPayablesView({ overview }: { overview: AccountingOverv
 
     const statusItems = useMemo(
         () => [
-            { value: "all", label: "All PO statuses" },
+            { value: "all", label: "All bill statuses" },
             ...PO_STATUSES.map((st) => ({ value: st, label: st })),
         ],
         [],
@@ -68,14 +72,14 @@ export function AccountingPayablesView({ overview }: { overview: AccountingOverv
     const sliceEnd = sliceStart + pageSize
 
     function handleExportSuppliers() {
-        downloadCsv("accounting-supplier-payables-summary.csv", [
+        downloadCsv("suppliers-bills-summary.csv", [
             [
                 "Supplier",
-                "Active POs",
-                "Order Lines",
-                "Total Committed",
-                "Received AP (GRNI)",
-                "Open Commitment",
+                "Orders",
+                "Line Items",
+                "Total Ordered",
+                "Received Bills",
+                "Still Open",
                 "Received %",
                 "Currency",
             ],
@@ -93,17 +97,17 @@ export function AccountingPayablesView({ overview }: { overview: AccountingOverv
     }
 
     function handleExportPos() {
-        downloadCsv("accounting-po-commitments.csv", [
+        downloadCsv("supplier-bills-list.csv", [
             [
-                "PO Number",
+                "PO / Bill #",
                 "Supplier",
                 "Status",
                 "Order Date",
                 "Expected Delivery",
                 "Lines",
-                "Ordered Total",
-                "Received Value",
-                "Remaining Commitment",
+                "Order Total",
+                "Received Bill",
+                "Still Open",
                 "Currency",
             ],
             ...filteredPos.map((row) => [
@@ -126,41 +130,41 @@ export function AccountingPayablesView({ overview }: { overview: AccountingOverv
             <AccountingKpiStrip
                 cards={[
                     {
-                        title: "Total PO Commitments",
-                        value: formatCurrency(s.purchaseCommittedValue, currency),
-                        badge: `${overview.purchasingCosting.length} POs in period`,
-                        helper: "Total agreed purchase order value across non-cancelled orders.",
-                        icon: ShoppingCart,
-                        color: "text-sky-600 dark:text-sky-400",
-                        bg: "bg-sky-500/10",
+                        title: "Total Operating Expenses",
+                        value: formatCurrency(simple.totalExpenses, currency),
+                        badge: "P&L expenses",
+                        helper: `Cost of goods sold (${formatCurrency(simple.costOfGoodsSold, currency)}) plus scrap and count losses.`,
+                        icon: Wallet,
+                        color: "text-rose-600 dark:text-rose-400",
+                        bg: "bg-rose-500/10",
                     },
                     {
-                        title: "Accrued AP — Goods Received",
+                        title: "Supplier Bills (Received)",
                         value: formatCurrency(s.purchaseReceivedValue, currency),
-                        badge: "Account 2100 GRNI",
+                        badge: `${suppliers.length} supplier(s)`,
                         helper:
                             s.totalInputVat && Number.parseFloat(s.totalInputVat) > 0
-                                ? `Net received ${formatCurrency(s.purchaseReceivedNetValue ?? s.purchaseReceivedValue, currency)} + Input VAT ${formatCurrency(s.totalInputVat, currency)} (Acct 1150).`
-                                : "Inventory value already received from suppliers awaiting settlement.",
+                                ? `Goods ${formatCurrency(s.purchaseReceivedNetValue ?? s.purchaseReceivedValue, currency)} + Input VAT ${formatCurrency(s.totalInputVat, currency)}.`
+                                : "Amount billed for supplier items already received into stock.",
                         icon: PackageCheck,
                         color: "text-emerald-600 dark:text-emerald-400",
                         bg: "bg-emerald-500/10",
                     },
                     {
-                        title: "Open Remaining Commitment",
+                        title: "Upcoming Open Bills",
                         value: formatCurrency(s.purchaseOutstandingValue, currency),
-                        badge: "Future delivery",
-                        helper: "Ordered amount on open supplier POs not yet received into stock.",
+                        badge: `${overview.purchasingCosting.length} POs in period`,
+                        helper: "Ordered amount on open purchase orders not yet received.",
                         icon: Clock,
                         color: "text-amber-600 dark:text-amber-400",
                         bg: "bg-amber-500/10",
                     },
                     {
-                        title: "Active Vendor Accounts",
-                        value: String(suppliers.length),
-                        badge: "Supplier AP",
-                        helper: "Suppliers with committed or received purchase balances in period.",
-                        icon: Building2,
+                        title: "Scrap & Stock Losses",
+                        value: formatCurrency(s.scrapLossValue, currency),
+                        badge: "Shrinkage",
+                        helper: "Stock write-offs from expired, spoiled, or damaged goods.",
+                        icon: AlertTriangle,
                         color: "text-primary",
                         bg: "bg-primary/10",
                     },
@@ -169,23 +173,24 @@ export function AccountingPayablesView({ overview }: { overview: AccountingOverv
 
             <Card className="border shadow-xs">
                 <CardHeader className="flex flex-col gap-3 border-b pb-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
+                    <div className="min-w-0">
                         <CardTitle className="text-base font-semibold">
-                            Supplier AP &amp; Purchasing Commitment Summary
+                            Suppliers Summary
                         </CardTitle>
                         <CardDescription className="text-xs">
-                            Vendor-level breakdown of Goods Received Not Invoiced (GRNI) liabilities vs remaining open order commitments.
+                            See how much you ordered from each vendor, how much is already received as a bill, and what remains open.
                         </CardDescription>
                     </div>
                     <Button
                         type="button"
                         size="sm"
                         variant="outline"
+                        className="shrink-0 self-start sm:self-auto"
                         onClick={handleExportSuppliers}
                         disabled={suppliers.length === 0}
                     >
                         <Download className="mr-1.5 size-4" />
-                        Export Supplier CSV
+                        Export Suppliers CSV
                     </Button>
                 </CardHeader>
                 <CardContent className="p-0">
@@ -193,11 +198,11 @@ export function AccountingPayablesView({ overview }: { overview: AccountingOverv
                         <TableHeader className="bg-muted/50">
                             <TableRow>
                                 <TableHead>Supplier</TableHead>
-                                <TableHead className="text-right">PO Count</TableHead>
+                                <TableHead className="text-right">Orders</TableHead>
                                 <TableHead className="text-right">Lines</TableHead>
-                                <TableHead className="text-right">Total Committed</TableHead>
-                                <TableHead className="text-right">Received AP (GRNI)</TableHead>
-                                <TableHead className="text-right">Open Commitment</TableHead>
+                                <TableHead className="text-right">Total Ordered</TableHead>
+                                <TableHead className="text-right">Received Bills</TableHead>
+                                <TableHead className="text-right">Still Open</TableHead>
                                 <TableHead className="text-right">Received %</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -224,7 +229,7 @@ export function AccountingPayablesView({ overview }: { overview: AccountingOverv
                             {suppliers.length === 0 && (
                                 <TableRow>
                                     <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
-                                        No active supplier commitments found in this period.
+                                        No supplier purchase orders found in this period.
                                     </TableCell>
                                 </TableRow>
                             )}
@@ -236,23 +241,24 @@ export function AccountingPayablesView({ overview }: { overview: AccountingOverv
             <Card className="border shadow-xs">
                 <CardHeader className="gap-3 border-b pb-4">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
+                        <div className="min-w-0">
                             <CardTitle className="text-base font-semibold">
-                                Purchase Order Commitment Subledger
+                                Supplier Bills (Purchase Orders)
                             </CardTitle>
                             <CardDescription className="text-xs">
-                                Individual purchase order receipts and open liabilities awaiting arrival.
+                                Individual purchase orders showing billed received amounts and open deliveries.
                             </CardDescription>
                         </div>
                         <Button
                             type="button"
                             size="sm"
                             variant="outline"
+                            className="shrink-0 self-start sm:self-auto"
                             onClick={handleExportPos}
                             disabled={filteredPos.length === 0}
                         >
                             <Download className="mr-1.5 size-4" />
-                            Export PO CSV
+                            Export Bills CSV
                         </Button>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
@@ -276,7 +282,8 @@ export function AccountingPayablesView({ overview }: { overview: AccountingOverv
                                     setStatusFilter(v ?? "all")
                                     setPageIndex(0)
                                 }}
-                                placeholder="PO status"
+                                placeholder="Bill status"
+                                className="w-full"
                             />
                         </div>
                     </div>
@@ -285,12 +292,12 @@ export function AccountingPayablesView({ overview }: { overview: AccountingOverv
                     <Table>
                         <TableHeader className="bg-muted/50">
                             <TableRow>
-                                <TableHead>PO Number</TableHead>
+                                <TableHead>Bill / PO #</TableHead>
                                 <TableHead>Supplier</TableHead>
                                 <TableHead>Status</TableHead>
-                                <TableHead>Expected Delivery</TableHead>
-                                <TableHead className="text-right">Ordered Total</TableHead>
-                                <TableHead className="text-right">Received Value</TableHead>
+                                <TableHead>Expected Date</TableHead>
+                                <TableHead className="text-right">Order Total</TableHead>
+                                <TableHead className="text-right">Received Bill</TableHead>
                                 <TableHead className="text-right">Remaining</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -324,7 +331,7 @@ export function AccountingPayablesView({ overview }: { overview: AccountingOverv
                             {filteredPos.length === 0 && (
                                 <TableRow>
                                     <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
-                                        No matching purchase order commitments found.
+                                        No matching supplier bills found.
                                     </TableCell>
                                 </TableRow>
                             )}

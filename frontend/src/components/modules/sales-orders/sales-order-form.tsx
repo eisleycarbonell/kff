@@ -318,7 +318,7 @@ function FormContent({
             noValidate
         >
             <FieldGroup className="gap-4">
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-4 sm:grid-cols-2 [&>*]:min-w-0">
                     <Field data-invalid={Boolean(orderNumberError)}>
                         <FieldLabel htmlFor={`${id}-number`}>
                             Sales order number
@@ -534,13 +534,14 @@ function FormContent({
                     return (
                         <fieldset
                             key={line.uiKey}
-                            className="rounded-lg border p-4"
+                            className="min-w-0 rounded-lg border p-4"
                         >
                             <legend className="px-1 text-sm font-medium">
                                 Line {index + 1}
                             </legend>
-                            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1.4fr_1.1fr_auto]">
+                            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-12 [&>*]:min-w-0">
                                 <Field
+                                    className="min-w-0 sm:col-span-2 lg:col-span-4"
                                     data-invalid={Boolean(
                                         errors[`lines.${index}.itemId`],
                                     )}
@@ -602,6 +603,7 @@ function FormContent({
                                     </FieldError>
                                 </Field>
                                 <Field
+                                    className="min-w-0 lg:col-span-2"
                                     data-invalid={Boolean(
                                         errors[`lines.${index}.qtyOrdered`],
                                     )}
@@ -634,6 +636,7 @@ function FormContent({
                                     </FieldError>
                                 </Field>
                                 <Field
+                                    className="min-w-0 lg:col-span-3"
                                     data-invalid={Boolean(
                                         errors[`lines.${index}.unitPrice`],
                                     )}
@@ -694,7 +697,7 @@ function FormContent({
                                         {errors[`lines.${index}.unitPrice`]}
                                     </FieldError>
                                 </Field>
-                                <Field>
+                                <Field className="min-w-0 lg:col-span-2">
                                     <FieldLabel htmlFor={`${id}-vat-${index}`}>
                                         VAT
                                     </FieldLabel>
@@ -749,7 +752,7 @@ function FormContent({
                                     type="button"
                                     variant="ghost"
                                     size="icon-sm"
-                                    className="sm:mt-6"
+                                    className="justify-self-end self-end lg:col-span-1 lg:mt-6 lg:self-start"
                                     aria-label={`Remove line ${index + 1}`}
                                     disabled={
                                         isSaving || values.lines.length === 1
@@ -875,7 +878,7 @@ function FormContent({
                     )
                 })}
             </div>
-            <p className="text-right text-sm text-muted-foreground">
+            <p className="break-words text-left text-sm text-muted-foreground sm:text-right">
                 Order total preview:{" "}
                 <span className="font-semibold text-foreground tabular-nums">
                     {preview === null

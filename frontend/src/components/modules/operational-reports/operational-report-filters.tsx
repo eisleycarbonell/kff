@@ -36,18 +36,20 @@ export function ReportFilters({
             className="flex flex-wrap items-end gap-4 rounded-xl border bg-card p-4"
         >
             {kind === "genealogy" ? (
-                <ChoiceField
-                    label="Trace lot"
-                    value={draft.lotId || "all"}
-                    onChange={(v) => setDraft((d) => ({ ...d, lotId: v === "all" ? "" : v }))}
-                    choices={[
-                        { value: "all", label: "All lots" },
-                        ...lots.map((r) => ({ value: String(r.lotId), label: r.lotNumber })),
-                    ]}
-                />
+                <div className="w-full min-w-0 sm:w-64">
+                    <ChoiceField
+                        label="Trace lot"
+                        value={draft.lotId || "all"}
+                        onChange={(v) => setDraft((d) => ({ ...d, lotId: v === "all" ? "" : v }))}
+                        choices={[
+                            { value: "all", label: "All lots" },
+                            ...lots.map((r) => ({ value: String(r.lotId), label: r.lotNumber })),
+                        ]}
+                    />
+                </div>
             ) : (
                 ["fromDate", "toDate"].map((key) => (
-                    <Field key={key}>
+                    <Field key={key} className="w-full min-w-0 sm:w-44">
                         <FieldLabel htmlFor={id + key}>
                             {key === "fromDate" ? "From date" : "To date"}
                         </FieldLabel>
@@ -74,7 +76,7 @@ export function ReportFilters({
                 Reset
             </Button>
             {error && (
-                <p role="alert" className="text-destructive">
+                <p role="alert" className="w-full text-sm text-destructive">
                     {error}
                 </p>
             )}
